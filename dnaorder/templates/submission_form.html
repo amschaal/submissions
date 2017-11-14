@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>DNA Tech Core Order Form</h1>
+<form enctype="multipart/form-data" method="POST">
+{% csrf_token %}
+<table>
+{{form.as_table}}
+</table>
+<button>Submit</button>
+</form>
+<h3 id="template_header" style="display:none">Please fill out the following template to submit in the "Form" field:</h3>
+{% for type in submission_types %}<a class="order_form" id="form_{{type.id}}" href="{{type.form.url}}" title="{{type.description}}" style="display:none;">{{type.name}}</a>{% endfor %}
+<script>
+$( "select[name=type]").change(function(el) {
+	var id = $(this).val();  
+	if (!id)
+		$('#template_header').hide();
+	else{
+		$('#template_header').show();
+		$('.order_form').hide();
+		$('#form_'+id).show();
+	}
+		
+	});
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Order submitted!</h1>
+<p>Your order has been submitted at {{submission.submitted|date}}.  Communications regarding the order will be sent to {{submission.email}}.  To inquire on the status of the order, contact dnatech@ucdavis.edu.</p>
+<p>If you'd like to submit another order, <a href="{% url 'submission' %}">click here</a>.</p>
+{% endblock %}
