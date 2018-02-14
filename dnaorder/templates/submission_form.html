@@ -1,26 +1,57 @@
 {% extends 'base.html' %}
+{% load material_form %}
 {% block content %}
-<h1>DNA Tech Core Order Form</h1>
+<style>
+50% {
+  font-size: 200%;
+}
+.blow-up {
+  animation-duration: 1s;
+  animation-name: blowup;
+}
+
+@keyframes blowup {
+  from {
+    font-size: 100%; 
+  }
+
+  50% {
+    font-size: 150%;
+  }
+
+  to {
+    font-size: 100%;
+  }
+}
+</style>
+<div class="card">
+
 <form enctype="multipart/form-data" method="POST">
+<div class="card-content">
+<h4>DNA Tech Core Order Form</h4>
 {% csrf_token %}
-<table>
-{{form.as_table}}
-</table>
-<button>Submit</button>
+{% form form=form %}{% endform %}
+<button class="btn waves-effect waves-teal">Submit</button>
+</div>
 </form>
-<h3 id="template_header" style="display:none">Please fill out the following template to submit in the "Form" field:</h3>
-{% for type in submission_types %}<a class="order_form" id="form_{{type.id}}" href="{{type.form.url}}" title="{{type.description}}" style="display:none;">{{type.name}}</a>{% endfor %}
+</div>
+<div style="display:none">
+{% for type in submission_types %}<span id="form_{{type.id}}">Template: <a class="order_form" href="{{type.form.url}}" title="{{type.description}}">{{type.name}}</a></span>{% endfor %}
+</div>
 <script>
 $( "select[name=type]").change(function(el) {
 	var id = $(this).val();  
+	/*
 	if (!id)
 		$('#template_header').hide();
 	else{
 		$('#template_header').show();
 		$('.order_form').hide();
-		$('#form_'+id).show();
-	}
-		
+	*/
+	if(id)
+		$('#sample_form_help').html($('<span class="blow-up"></span>').html($('#form_'+id).clone()));
+	else
+		$('#sample_form_help').html('<span class="blow-up">Please select a submission type in order to generate a template.</a').addClass('blow-up');
 	});
 </script>
 {% endblock %}

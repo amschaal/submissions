@@ -14,4 +14,4 @@ for el in elements:
 #     print tostring(el)
 print sorted(element_map.keys())
 
-print tostring(element_map['DataType'])
+# print tostring(element_map['DataType'])

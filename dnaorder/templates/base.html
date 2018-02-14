@@ -5,9 +5,19 @@
   src="https://code.jquery.com/jquery-3.2.1.min.js"
   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
   crossorigin="anonymous"></script>
+  {% include 'material/includes/material_css.html' %}
+  {% include 'material/includes/material_js.html' %}
 </head>
-<body>
+  <body class="valign-wrapper2">
+      
+      <div class="container expand-on-small-only">
+          
+<div class="row valign change-form">
+    <div class="col s12 m8 offset-m2 l8 offset-l2">
 {% block content %}
 {% endblock %}
+</div>
+</div>
+</div>
 </body>
 </html>
