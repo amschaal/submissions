@@ -27,8 +27,6 @@ class SubmissionForm(forms.ModelForm):
 #         print file
 #         data = tablib.Dataset().load(file.read())
         samplesheet = SRASampleSheet(file)
-        print 'validate'
-        print samplesheet._header_index
 #         print samplesheet.data
 #         print samplesheet.sample_ids()
         self._sra_samples = samplesheet.sample_ids()

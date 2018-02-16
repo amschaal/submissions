@@ -13,7 +13,16 @@ class SampleSheet(object):
         self.end_column = end_column
         if sample_id:
             self._SAMPLE_ID = sample_id
-        self._data = tablib.Dataset(*self._raw_data[self._data_index:], headers=self._raw_data[self._header_index])
+        headers = self._raw_data[self._header_index]
+        self._data = tablib.Dataset(*self._raw_data[self._data_index:], headers=headers)
+        #If filtering columns
+        if start_column and end_column:
+            self._data = self._data.subset(cols=headers[start_column:end_column+1]) 
+        elif start_column:
+            self._data = self._data.subset(cols=headers[start_column:])
+        elif end_column:
+            self._data = self._data.subset(cols=headers[:end_column+1])
+        print len(self._data)    
     @cached_property
     def _header_index(self):
         return self.header_index
@@ -24,6 +33,7 @@ class SampleSheet(object):
     def data(self):
         return self._data.dict
     def sample_ids(self):
+        print 'sample_ids'
         return self._data[self._SAMPLE_ID]
 
 class SRASampleSheet(SampleSheet):
