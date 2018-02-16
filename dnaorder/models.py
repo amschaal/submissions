@@ -6,6 +6,11 @@ class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
     form = models.FileField(upload_to='submission_forms/')
+    header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
+    data_index = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
+    start_column = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
+    end_column = models.PositiveSmallIntegerField(null=True,blank=True)
+    sample_identifier = models.CharField(max_length=25,default='sample_name')
     def __unicode__(self):
         return self.name
 

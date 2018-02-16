@@ -10,5 +10,5 @@ def submission(request):
         form = SubmissionForm(request.POST,request.FILES)
         if form.is_valid():
             submission = form.save(commit=True)
-            return render(request,'submitted.html',{'submission':submission})
+            return render(request,'submitted.html',{'submission':submission,'samples':form._sample_ids})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
