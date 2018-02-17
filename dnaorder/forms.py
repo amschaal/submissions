@@ -27,7 +27,7 @@ class SubmissionForm(forms.ModelForm):
 #         print file
 #         data = tablib.Dataset().load(file.read())
         samplesheet = SRASampleSheet(file)
-#         print samplesheet.data
+        print samplesheet.data
 #         print samplesheet.sample_ids()
         self._sra_samples = samplesheet.sample_ids()
         print self._sra_samples 
@@ -41,6 +41,7 @@ class SubmissionForm(forms.ModelForm):
             raise forms.ValidationError("You must choose a submission type.")
         samplesheet = CoreSampleSheet(file,type)
         self._sample_ids = samplesheet.sample_ids()
+        print samplesheet.data
         print self._sample_ids 
         return file
     def clean(self):
