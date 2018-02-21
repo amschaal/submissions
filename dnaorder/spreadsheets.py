@@ -4,6 +4,7 @@ from django.utils.functional import cached_property
 import pandas
 from psycopg2.tests.testutils import skip_after_libpq
 from collections import OrderedDict
+from dnaorder.models import Validator
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -44,25 +45,57 @@ class SampleSheet(object):
     def __init__(self,file,header_index=0,skip_rows=None,end_column=None,sample_id=None):
         self._file = file
         self.df = pandas.read_excel(file,header=header_index,usecols=end_column)
+        file.seek(0)
         if skip_rows:
             self.df = self.df.drop(self.df.index[range(0,skip_rows)])#df.index[2]
         if sample_id:
             self._SAMPLE_ID = sample_id
+        self.sample_df = self.df.set_index(self._SAMPLE_ID)
+    @property
+    def headers(self):
+        return list(self.df.columns)
     @property
     def data(self):
-        return self.df.to_dict(orient='records',into=OrderedDict)
+        df1 = self.df.where((pandas.notnull(self.df)), None)
+        return df1.to_dict(orient='records',into=OrderedDict)
     def sample_ids(self):
         return self.df[self._SAMPLE_ID]
 
 class SRASampleSheet(SampleSheet):
     def __init__(self,file,sample_id=None):
+        #find header row based on sample id column name
         self._SAMPLE_ID = sample_id or self._SAMPLE_ID
         df = pandas.read_excel(file)
-        header_index = list(df.iloc[:,0]).index(self._SAMPLE_ID) + 1
         file.seek(0)
+        header_index = list(df.iloc[:,0]).index(self._SAMPLE_ID) + 1
+        #reset file pointer and init
         super(SRASampleSheet, self).__init__(file,header_index=header_index,sample_id=self._SAMPLE_ID)
-
+    @property
+    def required_columns(self):
+        return [c for c in list(self.df.columns) if c.startswith('*') and c != self._SAMPLE_ID]
+    def missing_values(self):
+        print 'missing values'
+        missing = OrderedDict()
+        for r in self.required_columns:
+            ids = self.sample_df[self.sample_df[r].isnull()].index.values
+            if len(ids) > 0:
+                missing[r] = ids
+        return missing
 class CoreSampleSheet(SampleSheet):
     def __init__(self,file,submission_type):
+        self.submission_type = submission_type
         super(CoreSampleSheet, self).__init__(file,submission_type.header_index,submission_type.skip_rows,submission_type.end_column,submission_type.sample_identifier)
-    
+    def validate(self):
+        print 'validate'
+        validators = Validator.objects.filter(field_id__in=self.headers)
+        for v in validators:
+            for id,r in self.sample_df[v.field_id].items():
+                if not v.is_valid(r):
+                    print 'Invalid '+str(r)
+        print validators
+    @property
+    def template_headers(self):
+        template_df = CoreSampleSheet(self.submission_type.form.file,self.submission_type)
+        print 'template headers'
+        return template_df.headers
+        

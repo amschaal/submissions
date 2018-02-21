@@ -1,6 +1,9 @@
 from django.db import models
 import uuid
 from django.utils import timezone
+from django.contrib.postgres.fields.jsonb import JSONField
+from django.forms.fields import RegexField
+import re
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -33,9 +36,22 @@ class Submission(models.Model):
     institute = models.CharField(max_length=75)
     type = models.ForeignKey(SubmissionType)
     sample_form = models.FileField(upload_to=sample_form_path)
-    sra_form = models.FileField(upload_to=sra_samples_path)
+    sample_data = JSONField(null=True,blank=True)
+    sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
+    sra_data = JSONField(null=True,blank=True)
     def __unicode__(self):
         return '{submitted} - {type} - {pi}'.format(submitted=self.submitted,type=str(self.type),pi=self.pi_name)
+    class Meta:
+        ordering = ['submitted']
 
-    
-    
+class Validator(models.Model):
+    field_id = models.CharField(max_length=30)
+    message = models.CharField(max_length=250,null=True,blank=True)
+    regex = models.CharField(max_length=250,null=True,blank=True)
+    choices = models.TextField(null=True,blank=True)
+    def is_valid(self,value):
+        if self.regex:
+            pattern = re.compile(self.regex)
+            if not pattern.match(str(value)):
+                return False
+            
