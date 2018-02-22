@@ -52,6 +52,9 @@ class Validator(models.Model):
     def is_valid(self,value):
         if self.regex:
             pattern = re.compile(self.regex)
+            print self.regex
+            print value
             if not pattern.match(str(value)):
                 return False
+        return True
             

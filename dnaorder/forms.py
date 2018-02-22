@@ -38,14 +38,20 @@ class SubmissionForm(forms.ModelForm):
     #         print file
     #         data = tablib.Dataset().load(file.read())
             samplesheet = SRASampleSheet(file)
-            missing = samplesheet.missing_values()
-            if len(missing) > 0:
-                raise forms.ValidationError([
-                    forms.ValidationError('Required field "%s" missing values for: %s'%(col,', '.join(ids))) for col, ids in missing.items()
-                ])
+#             missing = samplesheet.missing_values()
+#             if len(missing) > 0:
+#                 raise forms.ValidationError([
+#                     forms.ValidationError('Required field "%s" missing values for: %s'%(col,', '.join(ids))) for col, ids in missing.items()
+#                 ])
             self._sra_data = samplesheet.data
     #         print samplesheet.sample_ids()
             self._sra_samples = samplesheet.sample_ids()
+            _errors = samplesheet.validate()
+            if len(_errors):
+                errors = []
+                for e in _errors:
+                    errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
+                raise forms.ValidationError(errors)
             print self._sra_samples 
         return file
 #         raise forms.ValidationError("Is no good.")
@@ -60,8 +66,10 @@ class SubmissionForm(forms.ModelForm):
             errors.append(forms.ValidationError("Sample submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
         self._sample_ids = samplesheet.sample_ids()
         
-        samplesheet.validate()
-        if len(errors):
+        _errors = samplesheet.validate()
+        if len(_errors):
+            for e in _errors:
+                errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
             raise forms.ValidationError(errors)
         self._sample_data = samplesheet.data
         return file
@@ -70,21 +78,26 @@ class SubmissionForm(forms.ModelForm):
         if hasattr(self, '_sample_ids') and hasattr(self, '_sra_samples'): 
             sample_diff = set(self._sra_samples)-set(self._sample_ids)
             if len(sample_diff) > 0:
-                raise forms.ValidationError('The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff)))
+                raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
 
 class ValidatorForm(forms.ModelForm):
     class Meta:
         model = Validator
         exclude = []
         help_texts = {
-                      'regex':'Enter a valid regular expression to validate against.',
+                      'regex':'Enter a valid regular expression to validate against. Example for matching values such as "20.3 ul": ^\d+(\.{1}\d+)? ul$',
                       'choices':'Enter comma delimited choices.'
                       }
     def clean_regex(self):
         regex = self.cleaned_data.get('regex')
-        try:
-            re.compile(regex)
-        except re.error:
-            raise forms.ValidationError('Please enter a valid regular expression.')
-        return regex    
+        if regex:
+            try:
+                re.compile(regex)
+            except re.error:
+                raise forms.ValidationError('Please enter a valid regular expression.')
+        return regex
+    def clean(self):
+        cleaned_data = super(ValidatorForm, self).clean()
+        if not cleaned_data.get('regex') or cleaned_data.get('choices'):
+            raise forms.ValidationError('Please enter at least 1 validation method (regex, choices).')
         
