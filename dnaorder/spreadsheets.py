@@ -42,7 +42,7 @@ class SampleSheetTablib(object):
 
 class SampleSheet(object):
     _SAMPLE_ID = '*sample_name'
-    def __init__(self,file,header_index=0,skip_rows=None,end_column=None,sample_id=None):
+    def __init__(self,file,header_index=0,skip_rows=None,end_column=None,sample_id=None,to_lower=True):
         self._file = file
         self.df = pandas.read_excel(file,header=header_index,usecols=end_column)
         file.seek(0)
@@ -61,6 +61,9 @@ class SampleSheet(object):
         self.df.rename(columns=rename, inplace=True)
         if self._SAMPLE_ID in self.required_columns:
             self.required_columns.remove(self._SAMPLE_ID)
+        
+        if to_lower:
+            self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
         
         self.sample_df = self.df.set_index(self._SAMPLE_ID)
         self._errors = []
@@ -104,6 +107,8 @@ class SampleSheet(object):
                 self._errors.append({'column':v.field_id,'ids':ids, 'message':v.message})
         
         return self._errors
+    def join(self,df):
+        return self.sample_df.join(df.sample_df,how='left')
 class SRASampleSheet(SampleSheet):
     def __init__(self,file,sample_id=None):
         #find header row based on sample id column name

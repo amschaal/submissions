@@ -43,6 +43,17 @@ class Submission(models.Model):
         return '{submitted} - {type} - {pi}'.format(submitted=self.submitted,type=str(self.type),pi=self.pi_name)
     class Meta:
         ordering = ['submitted']
+    @property
+    def samplesheet(self):
+        from dnaorder.spreadsheets import CoreSampleSheet
+        return CoreSampleSheet(self.sample_form.file,self.type)
+    @property
+    def sra_samplesheet(self):
+        from dnaorder.spreadsheets import SRASampleSheet
+        return SRASampleSheet(self.sra_form.file) if self.sra_form else None
+    @property
+    def sample_ids(self):
+        return [s.get(self.type.sample_identifier) for s in self.sample_data]
 
 class Validator(models.Model):
     field_id = models.CharField(max_length=30)
@@ -56,5 +67,7 @@ class Validator(models.Model):
             print value
             if not pattern.match(str(value)):
                 return False
+        if self.choices and str(value) not in [c.strip() for c in self.choices.split(',')]:
+            return False
         return True
             

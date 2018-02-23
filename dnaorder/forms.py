@@ -98,6 +98,6 @@ class ValidatorForm(forms.ModelForm):
         return regex
     def clean(self):
         cleaned_data = super(ValidatorForm, self).clean()
-        if not cleaned_data.get('regex') or cleaned_data.get('choices'):
+        if not cleaned_data.get('regex') and not cleaned_data.get('choices'):
             raise forms.ValidationError('Please enter at least 1 validation method (regex, choices).')
         

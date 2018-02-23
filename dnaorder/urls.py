@@ -22,4 +22,7 @@ import views
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', views.submission, name='submission'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    url(r'^orders/$', views.orders, name='orders'),
+    url(r'^orders/(?P<id>[0-9a-f-]+)/$', views.order, name='order'),
+    url(r'^orders/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
