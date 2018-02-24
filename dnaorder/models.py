@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.forms.fields import RegexField
 import re
+import os
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -18,15 +19,22 @@ class SubmissionType(models.Model):
         return self.name
 
 def sra_samples_path(instance, filename):
-    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-    return 'submissions/{date:%Y}/{date:%m}/{date:%d}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
+    ext = os.path.splitext(filename)[1]
+    filename = '%s.sra%s'%(instance.id,ext)
+    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
 #     return 'user_{0}/{1}'.format(instance.user.id, filename)
 def sample_form_path(instance, filename):
-    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-    return 'submissions/{date:%Y}/{date:%m}/{date:%d}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
+    ext = os.path.splitext(filename)[1]
+    filename = '%s.samples%s'%(instance.id,ext)
+    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
 
+def generate_id():
+    while True:
+        id = str(uuid.uuid4())[-12:]
+        if not Submission.objects.filter(id=id).exists():
+            return id
 class Submission(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     submitted = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)

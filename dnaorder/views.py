@@ -32,28 +32,40 @@ def download(request,id):
     data = request.GET.get('data','samples')#samples, sra, or combined
     format = request.GET.get('format','original')
     filename = None
-    if format == 'csv':
-        tmpfile = tempfile.NamedTemporaryFile()
-        print tmpfile.name
-        if data == 'sra':
-            samplesheet = order.sra_samplesheet
-            filename = "SRA.%s.csv"%order.id
-        else:
-            samplesheet = order.samplesheet
-            filename = "samples.%s.csv"%order.id
-#         print samplesheet
-#         print samplesheet.df.to_csv()
-        samplesheet.df.to_csv(tmpfile.name)
-        print 'read'
-        print os.path.exists(tmpfile.name)
-        print tmpfile.read()
-        file_path = tmpfile.name
-    else:
+    if format == 'original':
         if data == 'sra':
             file_path = order.sra_form.file.name
         else:
             file_path = order.sample_form.file.name
-        
+    else:
+        tmpfile = tempfile.NamedTemporaryFile()
+        print tmpfile.name
+        if data == 'sra':
+            df = order.sra_samplesheet.df
+            filename = "%s.sra"%order.id
+        elif data == 'combined':
+            df = order.samplesheet.join(order.sra_samplesheet)
+            filename = "%s.combined"%order.id
+        else:
+            df = order.samplesheet.df
+            filename = "%s.samples"%order.id
+#         print samplesheet
+        #Make it all lower case.  Maybe this should be an option in the interface?
+        df = df.apply(lambda x: x.str.lower(),axis='columns')
+#         df = df[:][:].str.lower()
+        print df[df.columns]
+        if format == 'xlsx':
+            #writer = ExcelWriter(tmpfile.name, engine='xlsxwriter')
+            df.to_excel(tmpfile.name,engine='xlsxwriter',index=False)
+            filename += '.xlsx'
+        if format == 'csv':
+            df.to_csv(tmpfile.name,index=False)
+            filename += '.csv'
+            
+#         print 'read'
+#         print os.path.exists(tmpfile.name)
+#         print tmpfile.read()
+        file_path = tmpfile.name
         
     print file_path
     # generate the file

@@ -61,7 +61,8 @@ class SampleSheet(object):
         self.df.rename(columns=rename, inplace=True)
         if self._SAMPLE_ID in self.required_columns:
             self.required_columns.remove(self._SAMPLE_ID)
-        
+        print 'columns'
+        print self.df.columns
         if to_lower:
             self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
         
@@ -108,7 +109,7 @@ class SampleSheet(object):
         
         return self._errors
     def join(self,df):
-        return self.sample_df.join(df.sample_df,how='left')
+        return self.sample_df.join(df.sample_df,how='left',rsuffix='_sra')
 class SRASampleSheet(SampleSheet):
     def __init__(self,file,sample_id=None):
         #find header row based on sample id column name

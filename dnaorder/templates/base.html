@@ -10,9 +10,17 @@
   <script type="text/javascript" src="/static/vendor/materialize/js/materialize.min.js"></script
 </head>
   <body class="valign-wrapper2">
-      
-      <div class="container expand-on-small-only">
-          
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo">DNA Technologies Core Ordering System</a>
+      <ul id="nav-mobile" class="right hide-on-med-and-down">
+        <li><a href="{% url 'orders' %}">Orders</a></li>
+        <li><a href="{% url 'submission' %}">Submit order</a></li>
+      </ul>
+    </div>
+  </nav>              
+<div class="container expand-on-small-only">
+  
 <div class="row valign change-form">
     <div class="col s12 m8 offset-m2 l8 offset-l2">
 {% block content %}
