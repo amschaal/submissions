@@ -61,8 +61,6 @@ class SampleSheet(object):
         self.df.rename(columns=rename, inplace=True)
         if self._SAMPLE_ID in self.required_columns:
             self.required_columns.remove(self._SAMPLE_ID)
-        print 'columns'
-        print self.df.columns
         if to_lower:
             self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
         
@@ -102,7 +100,6 @@ class SampleSheet(object):
             ids = []
             for id, r in self.sample_df[v.field_id].items():
                 if not pandas.isnull(r) and not v.is_valid(r):
-                    print r
                     ids.append(id)
             if len(ids) > 0:
                 self._errors.append({'column':v.field_id,'ids':ids, 'message':v.message})

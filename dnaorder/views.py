@@ -39,7 +39,6 @@ def download(request,id):
             file_path = order.sample_form.file.name
     else:
         tmpfile = tempfile.NamedTemporaryFile()
-        print tmpfile.name
         if data == 'sra':
             df = order.sra_samplesheet.df
             filename = "%s.sra"%order.id
@@ -53,7 +52,6 @@ def download(request,id):
         #Make it all lower case.  Maybe this should be an option in the interface?
         df = df.apply(lambda x: x.str.lower(),axis='columns')
 #         df = df[:][:].str.lower()
-        print df[df.columns]
         if format == 'xlsx':
             #writer = ExcelWriter(tmpfile.name, engine='xlsxwriter')
             df.to_excel(tmpfile.name,engine='xlsxwriter',index=False)

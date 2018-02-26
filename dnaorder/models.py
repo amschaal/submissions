@@ -5,6 +5,7 @@ from django.contrib.postgres.fields.jsonb import JSONField
 from django.forms.fields import RegexField
 import re
 import os
+from django.contrib.postgres.fields.ranges import FloatRangeField
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -68,14 +69,22 @@ class Validator(models.Model):
     message = models.CharField(max_length=250,null=True,blank=True)
     regex = models.CharField(max_length=250,null=True,blank=True)
     choices = models.TextField(null=True,blank=True)
+    range = FloatRangeField(null=True,blank=True)
+    def __unicode__(self):
+        return self.field_id
     def is_valid(self,value):
         if self.regex:
             pattern = re.compile(self.regex)
-            print self.regex
-            print value
             if not pattern.match(str(value)):
                 return False
         if self.choices and str(value) not in [c.strip() for c in self.choices.split(',')]:
             return False
+        if self.range:
+            try:
+                v = float(value)
+                if not v in self.range:
+                    return False
+            except:
+                return False
         return True
             

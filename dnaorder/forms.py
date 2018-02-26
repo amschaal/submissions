@@ -52,7 +52,6 @@ class SubmissionForm(forms.ModelForm):
                 for e in _errors:
                     errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
                 raise forms.ValidationError(errors)
-            print self._sra_samples 
         return file
 #         raise forms.ValidationError("Is no good.")
     def clean_sample_form(self):
@@ -86,7 +85,8 @@ class ValidatorForm(forms.ModelForm):
         exclude = []
         help_texts = {
                       'regex':'Enter a valid regular expression to validate against. Example for matching values such as "20.3 ul": ^\d+(\.{1}\d+)? ul$',
-                      'choices':'Enter comma delimited choices.'
+                      'choices':'Enter comma delimited choices.',
+                      'choices':'Enter a numeric range.  You may enter a min, max, or both.'
                       }
     def clean_regex(self):
         regex = self.cleaned_data.get('regex')
@@ -98,6 +98,6 @@ class ValidatorForm(forms.ModelForm):
         return regex
     def clean(self):
         cleaned_data = super(ValidatorForm, self).clean()
-        if not cleaned_data.get('regex') and not cleaned_data.get('choices'):
-            raise forms.ValidationError('Please enter at least 1 validation method (regex, choices).')
+        if not cleaned_data.get('regex') and not cleaned_data.get('choices') and not cleaned_data.get('range'):
+            raise forms.ValidationError('Please enter at least 1 validation method (regex, choices, range).')
         
