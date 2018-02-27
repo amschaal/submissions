@@ -47,7 +47,7 @@
 </div>
 
   <!-- Modal Structure -->
-  <div id="modal1" class="modal">
+  <div id="samples_modal" class="modal">
     <div class="modal-content">
       <h4>Samplesheet errors</h4>
       <p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>
@@ -59,7 +59,7 @@
   </div>
 
   <!-- Modal Structure -->
-  <div id="modal2" class="modal">
+  <div id="sra_modal" class="modal">
     <div class="modal-content">
       <h4>Samplesheet errors</h4>
       <p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>
@@ -88,30 +88,26 @@ function getColumnDefs(headers,tooltipFunc,styleFunc){
 	return cols;
 };
 
-{% if sample_data %}
-	var sample_data = {{sample_data|safe}};
-	var sample_headers = {{sample_headers|safe}};
-	var sample_errors = {{sample_errors|safe}};
+{% if form.samplesheet %}
+	var samplesheet = {{form.samplesheet.to_json|safe}};
 	function getSampleErrors(data){
-		return getErrors(data,sample_errors).join('\n');
+		return getErrors(data,samplesheet.errors).join('\n');
 	}
 	function getSampleCellStyle(data){
-		var errors = getErrors(data,sample_errors);
+		var errors = getErrors(data,samplesheet.errors);
 		if (errors.length > 0)
 			return {backgroundColor:'pink'};
 		else
 			return null;
 	}
 {% endif %}
-{% if sra_sample_data %}
-var sra_sample_data = {{sra_sample_data|safe}};
-var sra_sample_headers = {{sra_sample_headers|safe}};
-var sra_sample_errors = {{sra_sample_errors|safe}};
+{% if form.sra_samplesheet %}
+	var sra_samplesheet = {{form.sra_samplesheet.to_json|safe}};
 function getSRAErrors(data){
-	return getErrors(data,sra_sample_errors).join('\n');
+	return getErrors(data,sra_samplesheet.errors).join('\n');
 }
 function getSRACellStyle(data){
-	var errors = getErrors(data,sra_sample_errors);
+	var errors = getErrors(data,sra_samplesheet.errors);
 	if (errors.length > 0)
 		return {backgroundColor:'pink'};
 	else
@@ -138,22 +134,22 @@ $(document).ready(function(){
 			$('#sample_form_help').html($('<span class="blow-up"></span>').html($('#form_'+id).clone()));
 		else
 			$('#sample_form_help').html('<span class="blow-up">Please select a submission type in order to generate a template.</a').addClass('blow-up');
-		});	
-	$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" class="modal-trigger" href="#modal1">Visualize Errors</a>');
-	$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" class="modal-trigger" href="#modal2">Visualize Errors</a>');
-	{% if sample_data %}
+		});
+	$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" class="modal-trigger" href="#samples_modal">Visualize Errors</a>');
+	$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" class="modal-trigger" href="#sra_modal">Visualize Errors</a>');
+	{% if form.samplesheet %}
 	var samplesheet_grid = document.querySelector('#samplesheet_grid');
-	samplesheet_grid = new agGrid.Grid(samplesheet_grid, {columnDefs:getColumnDefs(sample_headers,getSampleErrors,getSampleCellStyle),rowData:sample_data,domLayout: 'autoHeight'});
+	samplesheet_grid = new agGrid.Grid(samplesheet_grid, {columnDefs:getColumnDefs(samplesheet.headers,getSampleErrors,getSampleCellStyle),rowData:samplesheet.data,domLayout: 'autoHeight'});
 	{% endif %}
 	$('#visualize_sample_errors').click(function(){
-		$('#modal1').modal('open');
+		$('#samples_modal').modal('open');
 	});
-	{% if sra_sample_data %}
+	{% if form.sra_samplesheet %}
 	var sra_samplesheet_grid = document.querySelector('#sra_grid');
-	sra_samplesheet_grid = new agGrid.Grid(sra_samplesheet_grid, {columnDefs:getColumnDefs(sra_sample_headers,getSRAErrors,getSRACellStyle),rowData:sra_sample_data,domLayout: 'autoHeight'});
+	sra_samplesheet_grid = new agGrid.Grid(sra_samplesheet_grid, {columnDefs:getColumnDefs(sra_samplesheet.headers,getSRAErrors,getSRACellStyle),rowData:sra_samplesheet.data,domLayout: 'autoHeight'});
 	{% endif %}
 	$('#visualize_sra_errors').click(function(){
-		$('#modal2').modal('open');
+		$('#sra_modal').modal('open');
 	});
 	
 });

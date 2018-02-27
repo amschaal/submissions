@@ -5,13 +5,14 @@ import tablib
 from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet
 import material
 import re
+from django.utils.safestring import mark_safe
 
 class SubmissionForm(forms.ModelForm):
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data']
         help_texts = {
-                      'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate templat</a>e and upload them here.',
+                      'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>'
                       }
     layout = material.base.Layout(
@@ -52,7 +53,7 @@ class SubmissionForm(forms.ModelForm):
             if len(_errors):
                 errors = []
                 for e in _errors:
-                    errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
+                    errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
                 raise forms.ValidationError(errors)
         return file
 #         raise forms.ValidationError("Is no good.")
@@ -72,7 +73,7 @@ class SubmissionForm(forms.ModelForm):
         print self.samplesheet.error_lookup()
         if len(_errors):
             for e in _errors:
-                errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
+                errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
             raise forms.ValidationError(errors)
         return file
     def clean(self):

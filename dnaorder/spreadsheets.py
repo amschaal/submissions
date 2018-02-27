@@ -5,6 +5,7 @@ import pandas
 from psycopg2.tests.testutils import skip_after_libpq
 from collections import OrderedDict
 from dnaorder.models import Validator
+import json
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -116,6 +117,9 @@ class SampleSheet(object):
                 errors[e['column']][id]+=[e['message']]
             
         return errors
+    def to_json(self,stringify=True):
+        data = {'headers':self.headers,'data':self.data,'errors':self.error_lookup()}
+        return json.dumps(data) if stringify else data
     def join(self,df):
         return self.sample_df.join(df.sample_df,how='left',rsuffix='_sra')
 class SRASampleSheet(SampleSheet):
