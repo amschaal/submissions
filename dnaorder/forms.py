@@ -37,16 +37,18 @@ class SubmissionForm(forms.ModelForm):
         if file:
     #         print file
     #         data = tablib.Dataset().load(file.read())
-            samplesheet = SRASampleSheet(file)
+            if hasattr(self, 'samplesheet'):
+                self.sra_samplesheet = SRASampleSheet(file,main_samplesheet=self.samplesheet)
 #             missing = samplesheet.missing_values()
 #             if len(missing) > 0:
 #                 raise forms.ValidationError([
 #                     forms.ValidationError('Required field "%s" missing values for: %s'%(col,', '.join(ids))) for col, ids in missing.items()
 #                 ])
-            self._sra_data = samplesheet.data
-    #         print samplesheet.sample_ids()
-            self._sra_samples = samplesheet.sample_ids()
-            _errors = samplesheet.validate()
+            self._sra_data = self.sra_samplesheet.data
+    #         print self.sra_samplesheet.sample_ids()
+            self._sra_samples = self.sra_samplesheet.sample_ids()
+            _errors = self.sra_samplesheet.validate()
+            print self.sra_samplesheet.error_lookup()
             if len(_errors):
                 errors = []
                 for e in _errors:
@@ -60,17 +62,18 @@ class SubmissionForm(forms.ModelForm):
         errors = []
         if not type:
             raise forms.ValidationError("You must choose a submission type.")
-        samplesheet = CoreSampleSheet(file,type)
-        if samplesheet.headers != samplesheet.template_headers:
+        self.samplesheet = CoreSampleSheet(file,type)
+        self._sample_data = self.samplesheet.data
+        if self.samplesheet.headers != self.samplesheet.template_headers:
             errors.append(forms.ValidationError("Sample submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
-        self._sample_ids = samplesheet.sample_ids()
+        self._sample_ids = self.samplesheet.sample_ids()
         
-        _errors = samplesheet.validate()
+        _errors = self.samplesheet.validate()
+        print self.samplesheet.error_lookup()
         if len(_errors):
             for e in _errors:
                 errors.append(forms.ValidationError("{message} Column: \"{column}\" IDs: \"{ids}\"".format(message=e['message'],column=e['column'],ids=', '.join(e['ids']))))
             raise forms.ValidationError(errors)
-        self._sample_data = samplesheet.data
         return file
     def clean(self):
         cleaned_data = super(SubmissionForm, self).clean()

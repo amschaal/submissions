@@ -4,6 +4,7 @@ from dnaorder.models import SubmissionType, Submission
 from sendfile import sendfile
 import tempfile
 import os
+import json
 
 def submission(request):
     submission_types = SubmissionType.objects.all()
@@ -14,6 +15,16 @@ def submission(request):
         if form.is_valid():
             submission = form.save(commit=True)
             return render(request,'submitted.html',{'submission':submission,'samples':form._sample_ids})
+        else:
+            samplesheet = getattr(form, 'samplesheet',None)
+            sample_data = json.dumps(samplesheet.data) if samplesheet else None
+            sample_headers = json.dumps(samplesheet.headers) if samplesheet else None
+            sample_errors = json.dumps(samplesheet.error_lookup()) if samplesheet else None
+            sra_samplesheet = getattr(form, 'sra_samplesheet',None)
+            sra_sample_data = json.dumps(sra_samplesheet.data) if sra_samplesheet else None
+            sra_sample_headers = json.dumps(sra_samplesheet.headers) if sra_samplesheet else None
+            sra_sample_errors = json.dumps(sra_samplesheet.error_lookup()) if sra_samplesheet else None
+            return render(request,'submission_form.html',{'form':form,'submission_types':submission_types,'sample_data':sample_data,'sample_headers':sample_headers,'sample_errors':sample_errors,'sra_sample_data':sra_sample_data,'sra_sample_headers':sra_sample_headers,'sra_sample_errors':sra_sample_errors})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def orders(request):

@@ -105,18 +105,35 @@ class SampleSheet(object):
                 self._errors.append({'column':v.field_id,'ids':ids, 'message':v.message})
         
         return self._errors
+    def error_lookup(self):
+        errors = {}
+        for e in self._errors:
+            if not errors.has_key(e['column']):
+                errors[e['column']] = {}
+            for id in e['ids']:
+                if not errors[e['column']].has_key(id):
+                    errors[e['column']][id] = []
+                errors[e['column']][id]+=[e['message']]
+            
+        return errors
     def join(self,df):
         return self.sample_df.join(df.sample_df,how='left',rsuffix='_sra')
 class SRASampleSheet(SampleSheet):
-    def __init__(self,file,sample_id=None):
+    def __init__(self,file,sample_id=None,main_samplesheet=None):
         #find header row based on sample id column name
         self._SAMPLE_ID = sample_id or self._SAMPLE_ID
+        self._main_samplesheet = main_samplesheet
         df = pandas.read_excel(file)
         file.seek(0)
         header_index = list(df.iloc[:,0]).index(self._SAMPLE_ID) + 1
         #reset file pointer and init
         super(SRASampleSheet, self).__init__(file,header_index=header_index,sample_id=self._SAMPLE_ID)
-
+    def validate(self):
+        SampleSheet.validate(self)
+        if self._main_samplesheet:
+            diff = list(set(self.sample_ids()) - set(self._main_samplesheet.sample_ids()))
+            self._errors.append({'column':self._SAMPLE_ID,'ids':diff, 'message':'Sample ID not found in primary sample sheet.'})
+        return self._errors
 class CoreSampleSheet(SampleSheet):
     def __init__(self,file,submission_type):
         self.submission_type = submission_type
