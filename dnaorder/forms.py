@@ -54,6 +54,8 @@ class SubmissionForm(forms.ModelForm):
                 errors = []
                 for e in _errors:
                     errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
+                if len(errors) > 0:
+                    errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#">Visualize Errors</a>')))
                 raise forms.ValidationError(errors)
         return file
 #         raise forms.ValidationError("Is no good.")
@@ -74,6 +76,8 @@ class SubmissionForm(forms.ModelForm):
         if len(_errors):
             for e in _errors:
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
+            if len(errors) > 0:
+                errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#">Visualize Errors</a>')))
             raise forms.ValidationError(errors)
         return file
     def clean(self):

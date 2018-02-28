@@ -2,6 +2,9 @@
 {% load material_form %}
 {% block content %}
 <style>
+.visualize_errors{
+	font-size: 150%
+}
 50% {
   font-size: 200%;
 }
@@ -46,77 +49,16 @@
 {% for type in submission_types %}<span id="form_{{type.id}}">Template: <a class="order_form" href="{{type.form.url}}" title="{{type.description}}">{{type.name}}</a></span>{% endfor %}
 </div>
 
-  <!-- Modal Structure -->
-  <div id="samples_modal" class="modal">
-    <div class="modal-content">
-      <h4>Samplesheet errors</h4>
-      <p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>
-      <div id="samplesheet_grid" style="height: 100%;width:100%" class="ag-theme-fresh"></div>
-    </div>
-    <div class="modal-footer">
-      <a href="#!" class="modal-action modal-close btn">Close</a>
-    </div>
-  </div>
+{% include 'partials/modal.html'%}
 
-  <!-- Modal Structure -->
-  <div id="sra_modal" class="modal">
-    <div class="modal-content">
-      <h4>Samplesheet errors</h4>
-      <p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>
-      <div id="sra_grid" style="height: 100%;width:100%" class="ag-theme-fresh"></div>
-    </div>
-    <div class="modal-footer">
-      <a href="#!" class="modal-action modal-close btn">Close</a>
-    </div>
-  </div>
-
-<script src="https://unpkg.com/ag-grid/dist/ag-grid.min.js"></script>
 <script>
-function tip(cell){
-	  console.log(cell);
-	  return 'foobar';
-}
-function getErrors(data,error_data){
-	var col_id = data.colDef.field;
-	var row_id = data.data.sample_name;
-	if (error_data[col_id] && error_data[col_id][row_id])
-		return error_data[col_id][row_id];
-	return [];
-}
-function getColumnDefs(headers,tooltipFunc,styleFunc){
-	var cols = headers.map(function(header){return {headerName: header, field: header, tooltip:tooltipFunc,cellStyle:styleFunc};});
-	return cols;
-};
 
 {% if form.samplesheet %}
 	var samplesheet = {{form.samplesheet.to_json|safe}};
-	function getSampleErrors(data){
-		return getErrors(data,samplesheet.errors).join('\n');
-	}
-	function getSampleCellStyle(data){
-		var errors = getErrors(data,samplesheet.errors);
-		if (errors.length > 0)
-			return {backgroundColor:'pink'};
-		else
-			return null;
-	}
 {% endif %}
 {% if form.sra_samplesheet %}
 	var sra_samplesheet = {{form.sra_samplesheet.to_json|safe}};
-function getSRAErrors(data){
-	return getErrors(data,sra_samplesheet.errors).join('\n');
-}
-function getSRACellStyle(data){
-	var errors = getErrors(data,sra_samplesheet.errors);
-	if (errors.length > 0)
-		return {backgroundColor:'pink'};
-	else
-		return null;
-}
 {% endif %}
-
-
-
 
 
 $(document).ready(function(){
@@ -135,23 +77,20 @@ $(document).ready(function(){
 		else
 			$('#sample_form_help').html('<span class="blow-up">Please select a submission type in order to generate a template.</a').addClass('blow-up');
 		});
-	$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" class="modal-trigger" href="#samples_modal">Visualize Errors</a>');
-	$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" class="modal-trigger" href="#sra_modal">Visualize Errors</a>');
+	//$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" href="#samples_modal">Visualize Errors</a>');
+	//$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" href="#sra_modal">Visualize Errors</a>');
 	{% if form.samplesheet %}
-	var samplesheet_grid = document.querySelector('#samplesheet_grid');
-	samplesheet_grid = new agGrid.Grid(samplesheet_grid, {columnDefs:getColumnDefs(samplesheet.headers,getSampleErrors,getSampleCellStyle),rowData:samplesheet.data,domLayout: 'autoHeight'});
-	{% endif %}
-	$('#visualize_sample_errors').click(function(){
-		$('#samples_modal').modal('open');
+	var samples_modal = new spreadsheet_modal(samplesheet,{error:true,title:'Samplesheet errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
+	$('input[name=sample_form]').parent().parent().find('.visualize_errors').click(function(){
+		samples_modal.open();
 	});
+	{% endif %}
 	{% if form.sra_samplesheet %}
-	var sra_samplesheet_grid = document.querySelector('#sra_grid');
-	sra_samplesheet_grid = new agGrid.Grid(sra_samplesheet_grid, {columnDefs:getColumnDefs(sra_samplesheet.headers,getSRAErrors,getSRACellStyle),rowData:sra_samplesheet.data,domLayout: 'autoHeight'});
-	{% endif %}
-	$('#visualize_sra_errors').click(function(){
-		$('#sra_modal').modal('open');
+	var sra_modal = new spreadsheet_modal(sra_samplesheet,{error:true,title:'SRA errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
+	$('input[name=sra_form]').parent().parent().find('.visualize_errors').click(function(){
+		sra_modal.open();
 	});
-	
+	{% endif %}
 });
 
 </script>

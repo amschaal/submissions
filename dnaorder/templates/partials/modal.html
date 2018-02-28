@@ -1,0 +1,63 @@
+  <!-- Modal Structure -->
+  <div id="modal_base" class="modal">
+    <div class="modal-content">
+      <h4 class="title">Title</h4>
+      <div class="modal-body"></div>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-action modal-close btn">Close</a>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/ag-grid/dist/ag-grid.min.js"></script>
+<script>
+function getErrors(data,error_data){
+	var col_id = data.colDef.field;
+	var row_id = data.data.sample_name;
+	if (error_data[col_id] && error_data[col_id][row_id])
+		return error_data[col_id][row_id];
+	return [];
+}
+function getColumnDefs(headers,tooltipFunc,styleFunc){
+	var cols = headers.map(function(header){return {headerName: header, field: header, tooltip:tooltipFunc,cellStyle:styleFunc};});
+	console.log('cols',cols);
+	return cols;
+};
+
+function spreadsheet_modal(data, params){
+	this.data = data;
+	this.params = params ? params : {};
+	function getCellErrors(cell_data){
+			return getErrors(cell_data,data.errors).join('\n');
+		}
+	function getCellStyle(cell_data){
+			var errors = getErrors(cell_data,data.errors);
+			if (errors.length > 0)
+				return {backgroundColor:'pink'};
+			else
+				return null;
+		}
+	if (!this.params.modal){
+		this.modal_el = $('#modal_base').clone().appendTo('body')[0];
+		//this.grid_el = $(this.modal_el).find('.samplesheet_grid')[0];
+		if (this.params.title)
+			$(this.modal_el).find('.title').html(this.params.title);
+		if (this.params.body)
+			$(this.modal_el).find('.modal-body').html(this.params.body);
+	}else
+		this.modal_el = $(this.params.modal);
+	$(this.modal_el).modal();
+	this.open = function(){
+		if (!this.grid_el){
+			this.grid_el = $('<div class="samplesheet_grid" style="height: 100%;width:100%"></div>').addClass('ag-theme-fresh').appendTo($(this.modal_el).find('.modal-body'))[0];
+			if (this.params.error)
+				self.grid = new agGrid.Grid(this.grid_el, {columnDefs:getColumnDefs(this.data.headers,getCellErrors,getCellStyle),rowData:this.data.data,domLayout: 'autoHeight'});
+			else
+				self.grid = new agGrid.Grid(this.grid_el, {columnDefs:getColumnDefs(this.data.headers),rowData:this.data.data,domLayout: 'autoHeight'});
+			self.initialized = true;
+		}
+		console.log('this',this);
+		$(this.modal_el).modal('open');
+	}
+}
+</script>

@@ -58,64 +58,27 @@
 </tr>
 {% endif %}
 </table>
-
-  <!-- Modal Structure -->
-  <div id="samples_modal" class="modal">
-    <div class="modal-content">
-      <h4>Samplesheet</h4>
-      <div id="samplesheet_grid" style="height: 100%;width:100%" class="ag-theme-fresh"></div>
-    </div>
-    <div class="modal-footer">
-      <a href="#!" class="modal-action modal-close btn">Close</a>
-    </div>
-  </div>
-
-  <!-- Modal Structure -->
-  <div id="sra_modal" class="modal">
-    <div class="modal-content">
-      <h4>SRA Samplesheet</h4>
-      <div id="sra_grid" style="height: 100%;width:100%" class="ag-theme-fresh"></div>
-    </div>
-    <div class="modal-footer">
-      <a href="#!" class="modal-action modal-close btn">Close</a>
-    </div>
-  </div>
-
-
-<script src="https://unpkg.com/ag-grid/dist/ag-grid.min.js"></script>
+{% include 'partials/modal.html'%}
 <script>
-function getColumnDefs(headers){
-	var cols = headers.map(function(header){return {headerName: header, field: header};});
-	return cols;
-};
 
-{% if order.samplesheet %}
-	var samplesheet = {{order.samplesheet.to_json|safe}};
-{% endif %}
-{% if order.sra_samplesheet %}
-	var sra_samplesheet = {{order.sra_samplesheet.to_json|safe}};
-{% endif %}
+
 
 
 $(document).ready(function(){
-	$('.modal').modal();
-	$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" class="modal-trigger" href="#samples_modal">Visualize Errors</a>');
-	$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" class="modal-trigger" href="#sra_modal">Visualize Errors</a>');
-	{% if order.samplesheet %}
-	var samplesheet_grid = document.querySelector('#samplesheet_grid');
-	samplesheet_grid = new agGrid.Grid(samplesheet_grid, {columnDefs:getColumnDefs(samplesheet.headers),rowData:samplesheet.data,domLayout: 'autoHeight'});
-	{% endif %}
+{% if order.samplesheet %}
+	var samplesheet = {{order.samplesheet.to_json|safe}};
+	var sample_modal = new spreadsheet_modal(samplesheet,{title:'Samplesheet'});
 	$('#view_samples').click(function(){
-		$('#samples_modal').modal('open');
+		sample_modal.open();
 	});
-	{% if order.sra_samplesheet %}
-	var sra_samplesheet_grid = document.querySelector('#sra_grid');
-	sra_samplesheet_grid = new agGrid.Grid(sra_samplesheet_grid, {columnDefs:getColumnDefs(sra_samplesheet.headers),rowData:sra_samplesheet.data,domLayout: 'autoHeight'});
-	{% endif %}
+{% endif %}
+{% if order.sra_samplesheet %}
+	var sra_samplesheet = {{order.sra_samplesheet.to_json|safe}};
+	var sra_modal = new spreadsheet_modal(sra_samplesheet,{title:'SRA Samplesheet'});
 	$('#view_sra').click(function(){
-		$('#sra_modal').modal('open');
+		sra_modal.open();
 	});
-	
+{% endif %}
 });
 
 </script>
