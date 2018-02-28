@@ -55,7 +55,7 @@ class SubmissionForm(forms.ModelForm):
                 for e in _errors:
                     errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
                 if len(errors) > 0:
-                    errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#">Visualize Errors</a>')))
+                    errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
                 raise forms.ValidationError(errors)
         return file
 #         raise forms.ValidationError("Is no good.")
@@ -77,15 +77,18 @@ class SubmissionForm(forms.ModelForm):
             for e in _errors:
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
             if len(errors) > 0:
-                errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#">Visualize Errors</a>')))
+                errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
             raise forms.ValidationError(errors)
         return file
-    def clean(self):
-        cleaned_data = super(SubmissionForm, self).clean()
-        if hasattr(self, '_sample_ids') and hasattr(self, '_sra_samples'): 
-            sample_diff = set(self._sra_samples)-set(self._sample_ids)
-            if len(sample_diff) > 0:
-                raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
+#     def clean(self):
+#         cleaned_data = super(SubmissionForm, self).clean()
+#         if hasattr(self, '_sample_ids') and hasattr(self, '_sra_samples'): 
+#             sample_diff = set(self._sra_samples)-set(self._sample_ids)
+#             if len(sample_diff) > 0:
+#                 if len(self._errors.get('sra_form',[])) > 0:
+#                     self._errors['sra_form'].insert(0,forms.ValidationError('The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))))
+#                 else:
+#                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
 
 class ValidatorForm(forms.ModelForm):
     class Meta:
