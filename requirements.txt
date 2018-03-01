@@ -1,2 +1,12 @@
 Django==1.11.7
-lxml
+PyYAML==3.12
+XlsxWriter==1.0.2
+django-material==1.2.2
+django-sendfile==0.3.11
+djangorestframework==3.7.7
+djangorestframework-filters==0.10.2
+lxml==3.3.3
+openpyxl==2.5.0
+pandas==0.22.0
+psycopg2==2.7.4
+tablib==0.12.1

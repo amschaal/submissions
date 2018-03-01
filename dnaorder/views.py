@@ -29,7 +29,7 @@ def submission(request):
 
 def orders(request):
     orders = Submission.objects.all().order_by('-submitted')
-    return render(request,'orders.html',{'orders':orders})
+    return render(request,'orders_searchable.html',{'orders':orders})
 
 def order(request,id):
     order = Submission.objects.get(id=id)
