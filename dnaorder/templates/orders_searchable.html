@@ -11,85 +11,50 @@
     <script src="/static/vendor/angular/angular.min.js"></script>
     <script src="/static/vendor/ng-table/ng-table.min.js"></script>
     <script src="/static/js/services/ng-table-services.js"></script>
+    <link rel="stylesheet" href="/static/vendor/ng-table/ng-table.min.css">
+    <style>
+    .ng-table-counts{
+    	float:right;
+    	display:inline-block;
+    	margin-top: 10px;
+    }
+    .ng-table-pagination{
+    	float:left;
+    	display:inline-block;
+    	margin-top: 10px;
+    }
+    </style>
 <div ng-app="main">
 
 
 <div ng-controller="DemoCtrl as demo">
-
-{% verbatim %}
-<table ng-table="demo.tableParams" class="table" >
-        <tr ng-repeat="user in $data">
-            <td data-title="'Name'" ng-if="true">
-                {{user.name}}
-            </td>
-            <td data-title="'Age'" ng-if="true" filter="{ age: 'text'}">
-                {{user.age}}
-            </td>
-        </tr>
-    </table>
-<table ng-table="demo.orderTable" class="table" >
-        <tr ng-repeat="order in $data">
-            <td data-title="'Id'" filter="{ id__icontains: 'text'}">
-                {{order.id}}
-            </td>
-            <td data-title="'Name'" filter="{ name__icontains: 'text'}">
-                {{order.name}}
-            </td>
-        </tr>
-    </table>
-{% endverbatim %}
-
 <h3>Orders</h3>
-<table>
-<thead>
-<tr><th>ID</th><th>Submitted</th><th>Name</th><th>Email</th><th>PI</th><th>Type</th><th>#Samples</th><th>SRA?</th></tr>
-</thead>
-<tbody>
-{% for o in orders %}
-<tr><td><a title="{{o.id}}" href="{% url 'order' id=o.id %}">{{o.id|truncatechars:10}}</a></td><td>{{o.submitted}}</td><td>{{o.name}}</td><td>{{o.email}}</td><td>{{o.pi_name}}</td><td>{{o.type}}</td><td><span title="{% for s in o.sample_ids %}{{s}}{% if not forloop.last %}, {% endif %}{% endfor %}">{{o.sample_ids|length}}</span></td><td>{% if o.sra_form %}<i class="small material-icons" style="color:green">check_circle</i>{% endif %}</td></tr>
-{% endfor %}
-</tbody>
+{% verbatim %}
+<table ng-table="demo.orderTable" class="table striped" >
+   <tr ng-repeat="order in $data">
+       <td data-title="'Id'" filter="{ id__icontains: 'text'}"><a href="/orders/{{order.id}}/">{{order.id}}</a></td>
+       <td data-title="'Submitted'" sortable="'submitted'">{{order.submitted|date}}</td>
+       <td data-title="'Name'" filter="{ name__icontains: 'text'}" sortable="'name'">{{order.name}}</td>
+       <td data-title="'Email'" filter="{ email__icontains: 'text'}" sortable="'email'">{{order.email}}</td>
+       <td data-title="'PI'" filter="{ pi_name__icontains: 'text'}" sortable="'pi_name'">{{order.pi_name}}</td>
+       <td data-title="'Type'" filter="{ type__name__icontains: 'text'}" sortable="'type__name'">{{order.type.name}}</td>
+       <td data-title="'#Samples'">{{order.sample_data.length}}</td>
+       <td data-title="'#SRA'">{{order.sra_data.length}}</td>
+   </tr>
 </table>
+{% endverbatim %}
 
     <script>
         var app = angular.module('main', ['ngTable']).
                 controller('DemoCtrl', function($scope, NgTableParams,DRFNgTableParams,$http) {
                     var self = this;
-                    var data = [{name: "Moroni", age: 50},
-                        {name: "Tiancum", age: 43},
-                        {name: "Jacob", age: 27},
-                        {name: "Nephi", age: 29},
-                        {name: "Enos", age: 34},
-                        {name: "Tiancum", age: 43},
-                        {name: "Jacob", age: 27},
-                        {name: "Nephi", age: 29},
-                        {name: "Enos", age: 34},
-                        {name: "Tiancum", age: 43},
-                        {name: "Jacob", age: 27},
-                        {name: "Nephi", age: 29},
-                        {name: "Enos", age: 34},
-                        {name: "Tiancum", age: 43},
-                        {name: "Jacob", age: 27},
-                        {name: "Nephi", age: 29},
-                        {name: "Enos", age: 34}];
-                    self.data = data;
-                self.tableParams = new NgTableParams({
-                    }, {
-                        getData:function(){return data;}
-                    });
                 self.orderTable = DRFNgTableParams('/api/orders',{});
-                self.orderTable_test = new NgTableParams({}, {
-        			filterOptions:{filterDelay: 500},
-        			getData: function(params) {
-        				// ajax request to api
-        				return $http.get('/api/orders/').then(function(response){
-        					console.log(response.data.results);
-        					params.total(response.data.count);
-       						return response.data;
-        				});
-        			}
-        		});
                 });
+       app.run(['$templateCache',
+          function($templateCache) {
+      $templateCache.put('ng-table/filters/text.html', '<input placeholder="Filter..." type="text" name="{{name}}" ng-disabled="$filterRow.disabled" ng-model="params.filter()[name]" ng-if="filter == \'text\'" class="input-filter form-control" />');
+         }
+        ]);
         		
     </script>
     </div>
