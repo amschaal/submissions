@@ -136,15 +136,23 @@ class SRASampleSheet(SampleSheet):
         SampleSheet.validate(self)
         if self._main_samplesheet:
             diff = list(set(self.sample_ids()) - set(self._main_samplesheet.sample_ids()))
-            self._errors.append({'column':self._SAMPLE_ID,'ids':diff, 'message':'Sample ID not found in primary sample sheet.'})
+            if len(diff)>0:
+                self._errors.append({'column':self._SAMPLE_ID,'ids':diff, 'message':'Sample ID not found in primary sample sheet.'})
         return self._errors
+class CoreSampleSheetTemplate(SampleSheet):
+    def __init__(self,submission_type):
+        self.submission_type = submission_type
+        super(CoreSampleSheetTemplate, self).__init__(self.submission_type.form.file,submission_type.header_index,submission_type.skip_rows,submission_type.end_column,submission_type.sample_identifier)
+
 class CoreSampleSheet(SampleSheet):
     def __init__(self,file,submission_type):
         self.submission_type = submission_type
+        self.template_samplesheet = CoreSampleSheetTemplate(self.submission_type)
         super(CoreSampleSheet, self).__init__(file,submission_type.header_index,submission_type.skip_rows,submission_type.end_column,submission_type.sample_identifier)
     @property
-    def template_headers(self):
-        template_df = CoreSampleSheet(self.submission_type.form.file,self.submission_type)
-        print 'template headers'
-        return template_df.headers
-        
+    def headers_modified(self):
+        if self.headers != self.template_samplesheet.headers:
+            return True
+        if self.required_columns != self.template_samplesheet.required_columns:
+            return True
+        return False

@@ -15,6 +15,7 @@ class SubmissionForm(forms.ModelForm):
                       'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>'
                       }
+        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone'}
     layout = material.base.Layout(
         'name',
         material.base.Row('email', 'phone'),
@@ -67,7 +68,7 @@ class SubmissionForm(forms.ModelForm):
             raise forms.ValidationError("You must choose a submission type.")
         self.samplesheet = CoreSampleSheet(file,type)
         self._sample_data = self.samplesheet.data
-        if self.samplesheet.headers != self.samplesheet.template_headers:
+        if self.samplesheet.headers_modified:
             errors.append(forms.ValidationError("Sample submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
         self._sample_ids = self.samplesheet.sample_ids()
         

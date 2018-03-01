@@ -61,23 +61,25 @@
 	var sra_samplesheet = {{form.sra_samplesheet.to_json|safe}};
 {% endif %}
 
+function change_type(el){
+	var id = $(this).val();  
+	/*
+	if (!id)
+		$('#template_header').hide();
+	else{
+		$('#template_header').show();
+		$('.order_form').hide();
+	*/
+	if(id)
+		$('#sample_form_help').html($('<span class="blow-up"></span>').html($('#form_'+id).clone()));
+	else
+		$('#sample_form_help').html('<span class="blow-up">Please select a submission type in order to generate a template.</a').addClass('blow-up');
+}
 
 $(document).ready(function(){
 	$('.modal').modal();
-	$( "select[name=type]").change(function(el) {
-		var id = $(this).val();  
-		/*
-		if (!id)
-			$('#template_header').hide();
-		else{
-			$('#template_header').show();
-			$('.order_form').hide();
-		*/
-		if(id)
-			$('#sample_form_help').html($('<span class="blow-up"></span>').html($('#form_'+id).clone()));
-		else
-			$('#sample_form_help').html('<span class="blow-up">Please select a submission type in order to generate a template.</a').addClass('blow-up');
-		});
+	$( "select[name=type]").change(change_type);
+	$( "select[name=type]").trigger('change');
 	//$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" href="#samples_modal">Visualize Errors</a>');
 	//$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" href="#sra_modal">Visualize Errors</a>');
 	{% if form.samplesheet %}

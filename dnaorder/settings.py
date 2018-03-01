@@ -37,8 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_filters',
+    'django_filters',
+    'material',
     'dnaorder',
-    'material'
 ]
 
 MIDDLEWARE = [
@@ -126,5 +129,14 @@ MEDIA_ROOT = '/virtualenvs/dnaorder/include/dnaorder/media/'#os.path.join(BASE_D
 MEDIA_URL = '/media/'
 
 SENDFILE_BACKEND = 'sendfile.backends.simple'
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAdminUser'
+    ],
+    'DEFAULT_FILTER_BACKENDS': ('rest_framework_filters.backends.DjangoFilterBackend',)
+}
 
 from config import *
