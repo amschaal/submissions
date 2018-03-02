@@ -28,8 +28,7 @@ def submission(request):
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def orders(request):
-    orders = Submission.objects.all().order_by('-submitted')
-    return render(request,'orders_searchable.html',{'orders':orders})
+    return render(request,'orders.html',{})
 
 def order(request,id):
     order = Submission.objects.get(id=id)

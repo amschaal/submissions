@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Orders</h3>
+<table>
+<thead>
+<tr><th>ID</th><th>Submitted</th><th>Name</th><th>Email</th><th>PI</th><th>Type</th><th>#Samples</th><th>SRA?</th></tr>
+</thead>
+<tbody>
+{% for o in orders %}
+<tr><td><a title="{{o.id}}" href="{% url 'order' id=o.id %}">{{o.id|truncatechars:10}}</a></td><td>{{o.submitted}}</td><td>{{o.name}}</td><td>{{o.email}}</td><td>{{o.pi_name}}</td><td>{{o.type}}</td><td><span title="{% for s in o.sample_ids %}{{s}}{% if not forloop.last %}, {% endif %}{% endfor %}">{{o.sample_ids|length}}</span></td><td>{% if o.sra_form %}<i class="small material-icons" style="color:green">check_circle</i>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}
