@@ -5,6 +5,7 @@ from sendfile import sendfile
 import tempfile
 import os
 import json
+from django.contrib.auth.decorators import login_required
 
 def submission(request):
     submission_types = SubmissionType.objects.all()
@@ -14,7 +15,7 @@ def submission(request):
         form = SubmissionForm(request.POST,request.FILES)
         if form.is_valid():
             submission = form.save(commit=True)
-            return render(request,'submitted.html',{'submission':submission,'samples':form._sample_ids})
+            return render(request,'order.html',{'order':submission,'submitted':True})
 #         else:
 #             samplesheet = getattr(form, 'samplesheet',None)
 #             sample_data = json.dumps(samplesheet.data) if samplesheet else None
@@ -27,6 +28,7 @@ def submission(request):
 #             return render(request,'submission_form.html',{'form':form,'submission_types':submission_types,'sample_data':sample_data,'sample_headers':sample_headers,'sample_errors':sample_errors,'sra_sample_data':sra_sample_data,'sra_sample_headers':sra_sample_headers,'sra_sample_errors':sra_sample_errors})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
+@login_required
 def orders(request):
     return render(request,'orders.html',{})
 

@@ -13,17 +13,20 @@ class SubmissionForm(forms.ModelForm):
         exclude = ['submitted','sample_data','sra_data']
         help_texts = {
                       'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
-                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>'
+                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
+                      'notes':'Please enter any additional notes necessary here'
                       }
-        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone'}
+        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Do you want the Bioinformatics Core to analyze the data?'}
     layout = material.base.Layout(
         'name',
         material.base.Row('email', 'phone'),
         material.base.Row('pi_name', 'pi_email'),
         'institute',
+        'notes',
         'type',
         'sample_form',
         'sra_form',
+        'biocore',
     )
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)

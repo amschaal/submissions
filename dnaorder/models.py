@@ -29,6 +29,9 @@ def sample_form_path(instance, filename):
     filename = '%s.samples%s'%(instance.id,ext)
     return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
 
+def submission_file_path(instance, filename):
+    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=instance.submission.submitted,order_id=instance.submission.id,filename=filename)
+
 def generate_id():
     while True:
         id = str(uuid.uuid4())[-12:]
@@ -48,6 +51,11 @@ class Submission(models.Model):
     sample_data = JSONField(null=True,blank=True)
     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
+    notes = models.TextField(null=True,blank=True)
+    biocore = models.BooleanField(default=False)
+    def get_files(self):
+        from dnaorder.api.serializers import SubmissionFileSerializer
+        return SubmissionFileSerializer(self.files.all(),many=True).data
     def __unicode__(self):
         return '{submitted} - {type} - {pi}'.format(submitted=self.submitted,type=str(self.type),pi=self.pi_name)
     class Meta:
@@ -63,6 +71,16 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
+
+class SubmissionFile(models.Model):
+    submission = models.ForeignKey(Submission,related_name="files")
+    file = models.FileField(upload_to=submission_file_path)
+    def get_filename(self):
+        return os.path.basename(self.file.name)
+    def get_size(self):
+        return self.file.size
+    class Meta:
+        ordering = ['-id']
 
 class Validator(models.Model):
     field_id = models.CharField(max_length=30)

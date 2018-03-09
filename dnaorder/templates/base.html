@@ -14,7 +14,7 @@
     <div class="nav-wrapper">
       <a href="#" class="brand-logo">DNA Technologies Core Ordering System</a>
       <ul id="nav-mobile" class="right hide-on-med-and-down">
-        <li><a href="{% url 'orders' %}">Orders</a></li>
+        {% if request.user.is_authenticated %}<li><a href="{% url 'orders' %}">Orders</a></li>{% endif %}
         <li><a href="{% url 'submission' %}">Submit order</a></li>
       </ul>
     </div>
