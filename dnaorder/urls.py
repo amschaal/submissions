@@ -26,6 +26,7 @@ urlpatterns = [
     url(r'^$', views.submission, name='submission'),
     url(r'^orders/$', views.orders, name='orders'),
     url(r'^orders/(?P<id>[0-9a-f-]+)/$', views.order, name='order'),
+    url(r'^orders/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_order'),
     url(r'^orders/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

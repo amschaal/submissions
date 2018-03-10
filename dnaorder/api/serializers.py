@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from dnaorder.models import Submission, SubmissionType, SubmissionFile
+from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
+    SubmissionStatus
 import os
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
@@ -7,8 +8,14 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         model = SubmissionType
         fields = ['id','name']
 
+class SubmissionStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubmissionStatus
+        fields = ['id','name']
+
 class SubmissionSerializer(serializers.ModelSerializer):
     type = SubmissionTypeSerializer(read_only=True)
+    status = SubmissionStatusSerializer(read_only=True)
     class Meta:
         model = Submission
         exclude = []

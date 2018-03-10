@@ -1,11 +1,13 @@
-from dnaorder.forms import SubmissionForm
-from django.shortcuts import render
+from dnaorder.forms import SubmissionForm, UpdateSubmissionForm,\
+    SubmissionStatusForm
+from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission
 from sendfile import sendfile
 import tempfile
 import os
 import json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 
 def submission(request):
     submission_types = SubmissionType.objects.all()
@@ -16,16 +18,20 @@ def submission(request):
         if form.is_valid():
             submission = form.save(commit=True)
             return render(request,'order.html',{'order':submission,'submitted':True})
-#         else:
-#             samplesheet = getattr(form, 'samplesheet',None)
-#             sample_data = json.dumps(samplesheet.data) if samplesheet else None
-#             sample_headers = json.dumps(samplesheet.headers) if samplesheet else None
-#             sample_errors = json.dumps(samplesheet.error_lookup()) if samplesheet else None
-#             sra_samplesheet = getattr(form, 'sra_samplesheet',None)
-#             sra_sample_data = json.dumps(sra_samplesheet.data) if sra_samplesheet else None
-#             sra_sample_headers = json.dumps(sra_samplesheet.headers) if sra_samplesheet else None
-#             sra_sample_errors = json.dumps(sra_samplesheet.error_lookup()) if sra_samplesheet else None
-#             return render(request,'submission_form.html',{'form':form,'submission_types':submission_types,'sample_data':sample_data,'sample_headers':sample_headers,'sample_errors':sample_errors,'sra_sample_data':sra_sample_data,'sra_sample_headers':sra_sample_headers,'sra_sample_errors':sra_sample_errors})
+    return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+
+def update_submission(request,id):
+    submission = Submission.objects.get(id=id)
+    if not request.user.is_authenticated and not submission.editable():
+        raise PermissionDenied
+    submission_types = SubmissionType.objects.all()
+    if request.method == 'GET':
+        form = UpdateSubmissionForm(instance=submission)
+    elif request.method == 'POST':
+        form = UpdateSubmissionForm(request.POST,request.FILES,instance=submission)
+        if form.is_valid():
+            submission = form.save(commit=True)
+            return redirect('order',id=id)
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 @login_required
@@ -34,7 +40,8 @@ def orders(request):
 
 def order(request,id):
     order = Submission.objects.get(id=id)
-    return render(request,'order.html',{'order':order})
+    status_form = SubmissionStatusForm(instance=order) if request.user.is_authenticated else None
+    return render(request,'order.html',{'order':order,'status_form':status_form})
 
 def download(request,id):
     from django.http import HttpResponse

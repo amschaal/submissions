@@ -1,16 +1,21 @@
 from django import forms
-from dnaorder.models import Submission, Validator
+from dnaorder.models import Submission, Validator, SubmissionStatus
 from __builtin__ import file
 import tablib
 from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet
 import material
 import re
 from django.utils.safestring import mark_safe
+from django.contrib.admin.widgets import AdminFileWidget
 
+class SubmissionStatusForm(forms.ModelForm):
+    class Meta:
+        model = Submission
+        fields = ['status']
 class SubmissionForm(forms.ModelForm):
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data']
+        exclude = ['submitted','sample_data','sra_data','status']
         help_texts = {
                       'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
@@ -34,6 +39,8 @@ class SubmissionForm(forms.ModelForm):
             submission.sample_data = self._sample_data
         if hasattr(self, '_sra_data'):
             submission.sra_data = self._sra_data
+        if not submission.status:
+            submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
         if commit:
             submission.save()
         return submission
@@ -93,6 +100,16 @@ class SubmissionForm(forms.ModelForm):
 #                     self._errors['sra_form'].insert(0,forms.ValidationError('The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))))
 #                 else:
 #                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
+
+class UpdateSubmissionForm(SubmissionForm):
+#     def __init__(self,*args,**kwargs):
+#         super(UpdateSubmissionForm, self).__init__(*args,**kwargs)
+#         self.fields['sample_form'].widget = AdminFileWidget()
+#         self.fields['sra_form'].widget = AdminFileWidget()
+    def clean_sample_form(self):
+        file = self.files.get('sample_form')
+        if file:
+            return super(UpdateSubmissionForm, self).clean_sample_form()
 
 class ValidatorForm(forms.ModelForm):
     class Meta:

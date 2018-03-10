@@ -7,14 +7,21 @@
 }
 </style>
 {% if submitted %}
-<h3>Order {{order.id}} submitted!</h3>
+<h3>Order {{order.id}} submitted! {% if request.user.is_authenticated or order.editable %}<a class="btn right" href="{% url 'update_order' id=order.id %}">Modify</a>{% endif%}</h3>
 <p>Communications regarding the order will be sent to {{order.email}}.  Please check your email and click the link to confirm the order.  To inquire on the status of the order, contact dnatech@ucdavis.edu.</p>
 <p>You may now upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
 {% else %}
-<h3>Order {{order.id}}</h3>
+<h3>Order {{order.id}} {% if request.user.is_authenticated or order.editable %}<a class="btn right" href="{% url 'update_order' id=order.id %}">Modify</a>{% endif%}</h3>
 {% endif %}
+
 <table>
+{% if status_form %}
+<tr><th>Status</th><td>{{status_form.status}}</td></tr>
+{% else %}
+<tr><th>Status</th><td>{{order.status.name}}</td></tr>
+{% endif %}
 <tr><th>Submitted</th><td>{{order.submitted}}</td></tr>
+<tr><th>Updated</th><td>{{order.updated}}</td></tr>
 <tr><th>Name</th><td>{{order.name}}</td></tr>
 <tr><th>Email</th><td>{{order.email}}</td></tr>
 <tr><th>Phone</th><td>{{order.phone}}</td></tr>
@@ -73,6 +80,8 @@
 {% endfor %}
 </div>
 <input id="fileupload" type="file" name="file" data-url="/api/submission_files/" multiple>
+
+
 {% include 'partials/modal.html'%}
 <script src="/static/vendor/jquery-file-upload/vendor/jquery.ui.widget.js"></script>
 <script src="/static/vendor/jquery-file-upload/jquery.iframe-transport.js"></script>
@@ -83,6 +92,13 @@
 
 
 $(document).ready(function(){
+	$.ajaxPrefilter(function( options ) {
+	    if ( !options.beforeSend) {
+	        options.beforeSend = function (xhr) { 
+	            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+	        }
+	    }
+	});
 	$(function () {
 	    $('#fileupload').fileupload({
 	        dataType: 'json',
@@ -111,6 +127,9 @@ $(document).ready(function(){
           	}
 	    });
 	});
+	$('select[name=status]').change(function(data){
+		$.post('/api/orders/{{order.id}}/update_status/',{status:this.value},function(data){$.toast({text:data.message,position:'top-center'})});
+	})
 {% if order.samplesheet %}
 	var samplesheet = {{order.samplesheet.to_json|safe}};
 	var sample_modal = new spreadsheet_modal(samplesheet,{title:'Samplesheet'});

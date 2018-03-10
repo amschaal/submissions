@@ -37,9 +37,36 @@ def generate_id():
         id = str(uuid.uuid4())[-12:]
         if not Submission.objects.filter(id=id).exists():
             return id
+        
+class SubmissionStatus(models.Model):
+    order = models.PositiveSmallIntegerField()
+    name = models.CharField(max_length=40)
+    default = models.BooleanField(default=False)
+    def __unicode__(self):
+        return self.name
+    class Meta:
+        verbose_name_plural = "Submission Statuses"
+        ordering = ['order']
+
 class Submission(models.Model):
+#     STATUS_SUBMITTED = 'submitted'
+#     STATUS_ACCEPTED = 'accepted'
+#     STATUS_RECEIVED = 'received'
+#     STATUS_PASSED_QC = 'passed_qc'
+#     STATUS_LIBRARIES_PREPPED = 'libraries_prepped'
+#     STATUS_DATA_AVAILABLE = 'data_available'
+#     STATUS_CHOICES = (
+#         (STATUS_SUBMITTED,'Submitted for review'),
+#         (STATUS_ACCEPTED,'Submission accepted'),
+#         (STATUS_RECEIVED,'Samples received'),
+#         (STATUS_PASSED_QC,'Samples passed QC'),
+#         (STATUS_LIBRARIES_PREPPED,'Libraries prepped'),
+#         (STATUS_DATA_AVAILABLE,'Data available')
+#         )
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    status = models.ForeignKey(SubmissionStatus,null=True)
     submitted = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
@@ -71,6 +98,8 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
+    def editable(self):
+        return True if not self.status or self.status.default else False
 
 class SubmissionFile(models.Model):
     submission = models.ForeignKey(Submission,related_name="files")
