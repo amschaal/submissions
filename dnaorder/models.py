@@ -108,6 +108,10 @@ class SubmissionFile(models.Model):
         return os.path.basename(self.file.name)
     def get_size(self):
         return self.file.size
+    def formatted_size(self):
+        from django.template.defaultfilters import filesizeformat
+        
+        return filesizeformat(self.get_size())
     class Meta:
         ordering = ['-id']
 

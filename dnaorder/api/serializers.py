@@ -26,7 +26,7 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
     def get_filename(self,instance):
         return os.path.basename(instance.file.name)
     def get_size(self,instance):
-        return instance.file.size
+        return instance.formatted_size()
     class Meta:
         model = SubmissionFile
         exclude = []

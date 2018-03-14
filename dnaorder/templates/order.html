@@ -5,6 +5,16 @@
   width:90%;
   max-height:90%;
 }
+.bar {
+    height: 18px;
+    background: green;
+}
+#progress{
+	display:none;
+}
+#files table td{
+	padding: 5px;
+}
 </style>
 {% if submitted %}
 <h3>Order {{order.id}} submitted! {% if request.user.is_authenticated or order.editable %}<a class="btn right" href="{% url 'update_order' id=order.id %}">Modify</a>{% endif%}</h3>
@@ -74,11 +84,17 @@
 <tr><th>Biocore</th><td>{% if order.biocore %}<i class="material-icons" style="color:green">check_circle</i>{% else %}<i class="material-icons" style="color:red">close</i>{% endif %}</td></tr>
 </table>
 <h4>File attachments</h4>
-<div id="files">
-{% for f in order.files.all %}
-<div><a href={{f.file.url}}>{{f.get_filename}}</a></div>
-{% endfor %}
+
+<div id="progress">
+	<h5>Upload progress</h5>
+    <div class="bar" style="width: 0%;"></div>
 </div>
+<div id="files">
+<table>
+{% for f in order.files.all %}
+<tr><td><a href={{f.file.url}}>{{f.get_filename}}</a></td><td>{{f.formatted_size}}</td></tr>
+{% endfor %}
+</table>
 <input id="fileupload" type="file" name="file" data-url="/api/submission_files/" multiple>
 
 
@@ -121,10 +137,27 @@ $(document).ready(function(){
           	done: function (e, data) {
           		$('#files').append('<div><a href="'+data.result.file+'">'+data.result.filename+'</a></div>');
           		console.log('file',data.result);
+          		$.toast({text:data.result.filename+' uploaded',position:'top-center'})
           	    // data.result
           	    // data.textStatus;
           	    // data.jqXHR;
-          	}
+          	},
+          	fail: function (e, data) {
+          		console.log('file',data.files);
+          		$.each(data.files,function(index,file){$.toast({text:'Upload failed for '+file.name,position:'top-center',icon:'error'})});
+          		//$.toast({text:'Upload failed for '+data.result.filename,position:'top-center',icon:'error'})
+          	    // data.result
+          	    // data.textStatus;
+          	    // data.jqXHR;
+          	},
+          	progressall: function (e, data) {
+          		$('#progress').show();
+          		var progress = parseInt(data.loaded / data.total * 100, 10);
+                $('#progress .bar').css(
+                    'width',
+                    progress + '%'
+                );
+            }
 	    });
 	});
 	$('select[name=status]').change(function(data){
