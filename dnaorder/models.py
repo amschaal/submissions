@@ -6,6 +6,7 @@ from django.forms.fields import RegexField
 import re
 import os
 from django.contrib.postgres.fields.ranges import FloatRangeField
+import datetime
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -103,6 +104,7 @@ class Submission(models.Model):
 
 class SubmissionFile(models.Model):
     submission = models.ForeignKey(Submission,related_name="files")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
     file = models.FileField(upload_to=submission_file_path)
     def get_filename(self):
         return os.path.basename(self.file.name)
@@ -110,10 +112,13 @@ class SubmissionFile(models.Model):
         return self.file.size
     def formatted_size(self):
         from django.template.defaultfilters import filesizeformat
-        
         return filesizeformat(self.get_size())
+    def get_modified(self):
+        return datetime.datetime.fromtimestamp(os.path.getmtime(self.file.file.name))
+    def formatted_date(self):
+        return self.uploaded_at.strftime('%x %X')
     class Meta:
-        ordering = ['-id']
+        ordering = ['id']
 
 class Validator(models.Model):
     field_id = models.CharField(max_length=30)

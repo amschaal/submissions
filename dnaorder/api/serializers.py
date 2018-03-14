@@ -23,10 +23,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()
+    date = serializers.SerializerMethodField()
     def get_filename(self,instance):
         return os.path.basename(instance.file.name)
     def get_size(self,instance):
         return instance.formatted_size()
+    def get_date(self,instance):
+        return instance.formatted_date()
     class Meta:
         model = SubmissionFile
         exclude = []
