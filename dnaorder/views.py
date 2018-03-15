@@ -40,7 +40,7 @@ def orders(request):
 def order(request,id):
     order = Submission.objects.get(id=id)
     status_form = SubmissionStatusForm(instance=order) if request.user.is_authenticated else None
-    return render(request,'order.html',{'order':order,'status_form':status_form})
+    return render(request,'order.html',{'order':order,'status_form':status_form,'editable':order.editable(request.user)})
 
 def download(request,id):
     from django.http import HttpResponse

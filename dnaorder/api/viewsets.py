@@ -3,6 +3,9 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus
 from rest_framework.decorators import detail_route
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
+from dnaorder.api.permissions import SubmissionFilePermissions
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
@@ -15,18 +18,18 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
         submission.save()
         return response.Response({'status':'success','message':'Status updated.'})
-#     def upload_file(self, request):
-#         SubmissionFileSerializer
-#         up_file = request.FILES['file']
-#         destination = open('/Users/Username/' + up_file.name, 'wb+')
-#         for chunk in up_file.chunks():
-#             destination.write(chunk)
-#             destination.close()
-# 
-#         # ...
-#         # do some stuff with uploaded file
-#         # ...
-#         return Response(up_file.name, status.HTTP_201_CREATED)
+
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
     serializer_class = SubmissionFileSerializer
+    def get_permissions(self):
+        if self.action == 'list':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [SubmissionFilePermissions]
+        return [permission() for permission in permission_classes]
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not instance.submission.editable(request.user):
+            raise PermissionDenied('Only authenticated users may delete files once a submission is final.')
+        return super(SubmissionFileViewSet, self).destroy(request,*args,**kwargs)

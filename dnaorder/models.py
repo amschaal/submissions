@@ -38,7 +38,13 @@ def generate_id():
         id = str(uuid.uuid4())[-12:]
         if not Submission.objects.filter(id=id).exists():
             return id
-        
+
+def generate_file_id():
+    while True:
+        id = str(uuid.uuid4())[-12:]
+        if not SubmissionFile.objects.filter(id=id).exists():
+            return id
+
 class SubmissionStatus(models.Model):
     order = models.PositiveSmallIntegerField()
     name = models.CharField(max_length=40)
@@ -99,10 +105,13 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
-    def editable(self):
+    def editable(self,user=None):
+        if user and user.is_authenticated:
+            return True
         return True if not self.status or self.status.default else False
 
 class SubmissionFile(models.Model):
+    id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
     submission = models.ForeignKey(Submission,related_name="files")
     uploaded_at = models.DateTimeField(auto_now_add=True)
     file = models.FileField(upload_to=submission_file_path)
