@@ -143,4 +143,6 @@ REST_FRAMEWORK = {
     'MAX_PAGINATE_BY': 1000
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 from config import *

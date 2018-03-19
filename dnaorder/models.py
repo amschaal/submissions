@@ -109,6 +109,9 @@ class Submission(models.Model):
         if user and user.is_authenticated:
             return True
         return True if not self.status or self.status.default else False
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('order', args=[str(self.id)])
 
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
