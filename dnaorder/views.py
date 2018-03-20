@@ -1,5 +1,4 @@
-from dnaorder.forms import SubmissionForm, UpdateSubmissionForm,\
-    SubmissionStatusForm
+from dnaorder.forms import SubmissionForm, SubmissionStatusForm
 from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission
 from sendfile import sendfile
@@ -16,7 +15,7 @@ def submission(request):
         form = SubmissionForm(request.POST,request.FILES)
         if form.is_valid():
             submission = form.save(commit=True)
-            return render(request,'order.html',{'order':submission,'submitted':True})
+            return render(request,'order.html',{'order':submission,'editable':submission.editable(request.user),'submitted':True})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def update_submission(request,id):
@@ -25,9 +24,9 @@ def update_submission(request,id):
         raise PermissionDenied
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
-        form = UpdateSubmissionForm(instance=submission)
+        form = SubmissionForm(instance=submission)
     elif request.method == 'POST':
-        form = UpdateSubmissionForm(request.POST,request.FILES,instance=submission)
+        form = SubmissionForm(request.POST,request.FILES,instance=submission)
         if form.is_valid():
             submission = form.save(commit=True)
             return redirect('order',id=id)

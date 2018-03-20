@@ -30,7 +30,7 @@
 <div ng-controller="OrdersCtrl as orders">
 <h3>Orders</h3>
 {% verbatim %}
-<table ng-table="orders.orderTable" class="table striped" >
+<table ng-table="orders.orderTable" class="table striped" ng-cloak>
    <tr ng-repeat="order in $data">
        <td data-title="'Id'" filter="{ id__icontains: 'text'}"><a href="/orders/{{order.id}}/">{{order.id}}</a></td>
        <td data-title="'Status'" filter="{ status__name__icontains: 'text'}" sortable="'status__order'">{{order.status.name}}</td>

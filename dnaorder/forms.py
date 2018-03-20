@@ -76,6 +76,8 @@ class SubmissionForm(forms.ModelForm):
 #         raise forms.ValidationError("Is no good.")
     def clean_sample_form(self):
         file = self.files.get('sample_form')
+        if not file and self.instance:
+            file = self.instance.sample_form.file
         type = self.cleaned_data.get('type')
         errors = []
         if not type:
@@ -105,15 +107,6 @@ class SubmissionForm(forms.ModelForm):
 #                 else:
 #                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
 
-class UpdateSubmissionForm(SubmissionForm):
-#     def __init__(self,*args,**kwargs):
-#         super(UpdateSubmissionForm, self).__init__(*args,**kwargs)
-#         self.fields['sample_form'].widget = AdminFileWidget()
-#         self.fields['sra_form'].widget = AdminFileWidget()
-    def clean_sample_form(self):
-        file = self.files.get('sample_form')
-        if file:
-            return super(UpdateSubmissionForm, self).clean_sample_form()
 
 class ValidatorForm(forms.ModelForm):
     class Meta:
