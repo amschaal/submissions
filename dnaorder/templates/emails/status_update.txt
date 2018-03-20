@@ -1,0 +1,8 @@
+Dear {{submission.name}},
+
+The status for your order placed on {{submission.submitted|date}} has been updated to "{{submission.status.name}}".  You may view your order details and the status details at the following URL:
+{{BASE_URI}}{{submission.get_absolute_url}}
+
+Thank you,
+
+The DNA Technologies Core
