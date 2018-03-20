@@ -19,6 +19,9 @@
 .file-delete{
 	cursor: pointer;
 }
+.toast.error{
+background-color:#cc0000;
+}
 </style>
 {% if submitted %}
 <h3>Order {{order.id}} submitted! {% if editable %}<a class="btn right" href="{% url 'update_order' id=order.id %}">Modify</a>{% endif%}</h3>
@@ -36,7 +39,7 @@
 <tr>
 	<th>Status</th>
 	<td>
-		<form>
+		<form id="status-form">
 			{% form form=status_form %}{% part form.status label %}{% endpart %}{% endform %}
 		</form>
 	</td>
@@ -157,14 +160,14 @@ $(document).ready(function(){
           	done: function (e, data) {
           		$('#files table').append('<tr file-id="'+data.result.id+'"><td><i class="file-delete material-icons dp16">delete</i> '+data.result.date+'</td><td><a href="'+data.result.file+'">'+data.result.filename+'</a></td><td>'+data.result.size+'</td></tr>');
           		console.log('file',data.result);
-          		$.toast({text:data.result.filename+' uploaded',position:'top-center'})
+          		Materialize.toast(data.result.filename+' uploaded',3000);
           	    // data.result
           	    // data.textStatus;
           	    // data.jqXHR;
           	},
           	fail: function (e, data) {
           		console.log('file',data.files);
-          		$.each(data.files,function(index,file){$.toast({text:'Upload failed for '+file.name,position:'top-center',icon:'error'})});
+          		$.each(data.files,function(index,file){Materialize.toast('Upload failed for '+file.name,5000,'error')});
           		//$.toast({text:'Upload failed for '+data.result.filename,position:'top-center',icon:'error'})
           	    // data.result
           	    // data.textStatus;
@@ -181,16 +184,16 @@ $(document).ready(function(){
 	    });
 	});
 	$('select[name=status]').change(function(data){
-		$.post('/api/orders/{{order.id}}/update_status/',{status:this.value,email:$('[name=send_email]').is(":checked")?true:null},function(data){$.toast({text:data.message,position:'top-center'})});
+		$.post('/api/orders/{{order.id}}/update_status/',{status:this.value,email:$('[name=send_email]').is(":checked")?true:null},function(data){Materialize.toast(data.message,5000);});
 	});
 	function delete_file(id){
 		$.ajax('/api/submission_files/'+id+'/',{type: 'DELETE'})
 		.done(function(){
 			$('[file-id='+id+']').closest('tr').remove();
-			$.toast({text:"File deleted",position:'top-center'});
+			Materialize.toast("File deleted",5000);
 		})
 		.fail(function(){
-			$.toast({text:"Error deleting file",position:'top-center',icon:'error'});
+			Materialize.toast("Error deleting file",5000,'error');
 		});
 	}
 	$( "#files table" ).on( "click",".file-delete", function() {
