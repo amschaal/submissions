@@ -19,8 +19,9 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission = self.get_object()
         submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
         submission.save()
-        if request.data.get('email',True):
+        if request.data.get('email',False):
             emails.status_update(submission,request=request)
+            return response.Response({'status':'success','message':'Status updated. Email sent to "{0}".'.format(submission.email)})
         return response.Response({'status':'success','message':'Status updated.'})
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):

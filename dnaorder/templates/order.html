@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load material_form %}
 {% block content %}
 <style>
 .modal{
@@ -27,9 +28,19 @@
 <h3>Order {{order.id}} {% if editable %}<a class="btn right" href="{% url 'update_order' id=order.id %}">Modify</a>{% endif%}</h3>
 {% endif %}
 
+
+
 <table>
+
 {% if status_form %}
-<tr><th>Status</th><td>{{status_form.status}}</td></tr>
+<tr>
+	<th>Status</th>
+	<td>
+		<form>
+			{% form form=status_form %}{% part form.status label %}{% endpart %}{% endform %}
+		</form>
+	</td>
+</tr>
 {% else %}
 <tr><th>Status</th><td>{{order.status.name}}</td></tr>
 {% endif %}
@@ -170,7 +181,7 @@ $(document).ready(function(){
 	    });
 	});
 	$('select[name=status]').change(function(data){
-		$.post('/api/orders/{{order.id}}/update_status/',{status:this.value},function(data){$.toast({text:data.message,position:'top-center'})});
+		$.post('/api/orders/{{order.id}}/update_status/',{status:this.value,email:$('[name=send_email]').is(":checked")?true:null},function(data){$.toast({text:data.message,position:'top-center'})});
 	});
 	function delete_file(id){
 		$.ajax('/api/submission_files/'+id+'/',{type: 'DELETE'})

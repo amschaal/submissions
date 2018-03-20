@@ -9,9 +9,13 @@ from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
 
 class SubmissionStatusForm(forms.ModelForm):
+    send_email = forms.BooleanField(required=True,initial=True)
     class Meta:
         model = Submission
-        fields = ['status']
+        fields = ['status','send_email']
+    layout = material.base.Layout(
+        material.base.Row('status', 'send_email')
+    )
 class SubmissionForm(forms.ModelForm):
     class Meta:
         model = Submission
