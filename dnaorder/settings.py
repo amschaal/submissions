@@ -67,7 +67,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'django.template.context_processors.media'
+                'django.template.context_processors.media',
+                'dnaorder.context_processors.url_processor',
             ],
         },
     },
@@ -144,5 +145,7 @@ REST_FRAMEWORK = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+BASE_URI = 'https://orders.dnatech.ucdavis.edu'
 
 from config import *

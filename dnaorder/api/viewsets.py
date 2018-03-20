@@ -7,6 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from dnaorder.api.permissions import SubmissionFilePermissions
 from django.core.mail import send_mail
+from dnaorder import emails
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
@@ -18,14 +19,8 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission = self.get_object()
         submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
         submission.save()
-        if request.data.get('email',False):
-            send_mail(
-                'Order Status Updated',
-                'Your order status has been updated',
-                'dnatech@ucdavis.edu',
-                [submission.email],
-                fail_silently=False,
-            )
+        if request.data.get('email',True):
+            emails.status_update(submission,request=request)
         return response.Response({'status':'success','message':'Status updated.'})
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):
