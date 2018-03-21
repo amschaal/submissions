@@ -33,6 +33,7 @@
 <table ng-table="orders.orderTable" class="table striped" ng-cloak>
    <tr ng-repeat="order in $data">
        <td data-title="'Id'" filter="{ id__icontains: 'text'}"><a href="/orders/{{order.id}}/">{{order.id}}</a></td>
+       <td data-title="'Internal Id'" filter="{ internal_id__icontains: 'text'}" sortable="'internal_id'"><a href="/orders/{{order.id}}/">{{order.internal_id}}</a></td>
        <td data-title="'Status'" filter="{ status__name__icontains: 'text'}" sortable="'status__order'">{{order.status.name}}</td>
        <td data-title="'Submitted'" sortable="'submitted'">{{order.submitted|date}}</td>
        <td data-title="'Name'" filter="{ name__icontains: 'text'}" sortable="'name'">{{order.name}}</td>

@@ -11,6 +11,7 @@ import datetime
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
+    prefix = models.CharField(max_length=15,null=True,blank=True)
     form = models.FileField(upload_to='submission_forms/')
     header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
     skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
@@ -71,6 +72,7 @@ class Submission(models.Model):
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    internal_id = models.CharField(max_length=25, unique=True)
     status = models.ForeignKey(SubmissionStatus,null=True)
     submitted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -87,6 +89,19 @@ class Submission(models.Model):
     sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True)
     biocore = models.BooleanField(default=False)
+    def save(self, *args, **kwargs):
+        if not self.internal_id:
+            self.internal_id = self.generate_internal_id()
+        super(Submission, self).save(*args, **kwargs)
+    def generate_internal_id(self):
+        prefix = self.type.prefix or ''
+        print prefix
+        base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
+        for i in range(1,100):#that's a lot of submissions per day!
+            id = '{base_id}_{i}'.format(base_id=base_id,i=i)
+            if not Submission.objects.filter(internal_id=id).exists():
+                return id
+#         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
