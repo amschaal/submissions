@@ -21,7 +21,7 @@ class SubmissionForm(forms.ModelForm):
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id']
         help_texts = {
-                      'sra_form':'If you are planning to submit sequences to SRA, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
+                      'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
                       'notes':'Please enter any additional notes necessary here'
                       }

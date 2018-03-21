@@ -24,7 +24,7 @@ background-color:#cc0000;
 }
 </style>
 {% if submitted %}
-<h3>Submission {{submission.id}} submitted! {% if editable %}<a class="btn right" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</h3>
+<h3>Submission {{submission.id}} complete! {% if editable %}<a class="btn right" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</h3>
 <p>Communications regarding the submission will be sent to {{submission.email}}.  Please check your email and click the link to confirm the submission.  To inquire on the status of the submission, contact dnatech@ucdavis.edu.</p>
 <p>You may now upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
 {% else %}
