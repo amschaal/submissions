@@ -12,10 +12,10 @@
   <body class="valign-wrapper2">
   <nav>
     <div class="nav-wrapper">
-      <a href="#" class="brand-logo">DNA Technologies Core Ordering System</a>
+      <a href="#" class="brand-logo">DNA Technologies Core Submission System</a>
       <ul id="nav-mobile" class="right hide-on-med-and-down">
-        {% if request.user.is_authenticated %}<li><a href="{% url 'orders' %}">Orders</a></li>{% endif %}
-        <li><a href="{% url 'submission' %}">Submit order</a></li>
+        {% if request.user.is_authenticated %}<li><a href="{% url 'submissions' %}">Submissions</a></li>{% endif %}
+        <li><a href="{% url 'submit' %}">Submit</a></li>
       </ul>
     </div>
   </nav>              

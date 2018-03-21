@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+   <!--  <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+     -->
+    <!--[if lt IE 9]>
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <![endif]-->
+    <script src="/static/vendor/angular/angular.min.js"></script>
+    <script src="/static/vendor/ng-table/ng-table.min.js"></script>
+    <script src="/static/js/services/ng-table-services.js"></script>
+    <link rel="stylesheet" href="/static/vendor/ng-table/ng-table.min.css">
+    <style>
+    .ng-table-counts{
+    	float:right;
+    	display:inline-block;
+    	margin-top: 10px;
+    }
+    .ng-table-pagination{
+    	float:left;
+    	display:inline-block;
+    	margin-top: 10px;
+    }
+    </style>
+<div ng-app="main">
+
+
+<div ng-controller="SubmissionsCtrl as submissions">
+<h3>Submissions</h3>
+{% verbatim %}
+<table ng-table="submissions.submissionTable" class="table striped" ng-cloak>
+   <tr ng-repeat="submission in $data">
+       <td data-title="'Id'" filter="{ id__icontains: 'text'}"><a href="/submissions/{{submission.id}}/">{{submission.id}}</a></td>
+       <td data-title="'Internal Id'" filter="{ internal_id__icontains: 'text'}" sortable="'internal_id'"><a href="/submissions/{{submission.id}}/">{{submission.internal_id}}</a></td>
+       <td data-title="'Status'" filter="{ status__name__icontains: 'text'}" sortable="'status__order'">{{submission.status.name}}</td>
+       <td data-title="'Submitted'" sortable="'submitted'">{{submission.submitted|date}}</td>
+       <td data-title="'Name'" filter="{ name__icontains: 'text'}" sortable="'name'">{{submission.name}}</td>
+       <td data-title="'Email'" filter="{ email__icontains: 'text'}" sortable="'email'">{{submission.email}}</td>
+       <td data-title="'PI'" filter="{ pi_name__icontains: 'text'}" sortable="'pi_name'">{{submission.pi_name}}</td>
+       <td data-title="'Type'" filter="{ type__name__icontains: 'text'}" sortable="'type__name'">{{submission.type.name}}</td>
+       <td data-title="'#Samples'"><span ng-if="submission.sample_data" title="{{submissions.get_sample_names(submission.sample_data)}}">{{submission.sample_data.length}}</span></td>
+       <td data-title="'#SRA'"><span ng-if="submission.sample_data" title="{{submissions.get_sample_names(submission.sra_data)}}">{{submission.sra_data.length}}</span></td>
+   </tr>
+</table>
+{% endverbatim %}
+
+    <script>
+        var app = angular.module('main', ['ngTable']).
+                controller('SubmissionsCtrl', function($scope, NgTableParams,DRFNgTableParams,$http) {
+                    var self = this;
+                self.submissionTable = DRFNgTableParams('/api/submissions',{sorting: { submitted: "desc" }});
+                self.get_sample_names = function(samples,field){
+                	field = field ? field : 'sample_name';
+                	if (samples)
+                		return samples.map(function(sample){return sample[field]}).join(', ');
+                }
+                });
+       app.run(['$templateCache',
+          function($templateCache) {
+      $templateCache.put('ng-table/filters/text.html', '<input placeholder="Filter..." type="text" name="{{name}}" ng-disabled="$filterRow.disabled" ng-model="params.filter()[name]" ng-if="filter == \'text\'" class="input-filter form-control" />');
+         }
+        ]);
+        		
+    </script>
+    </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Submissions</h3>
+<table>
+<thead>
+<tr><th>ID</th><th>Submitted</th><th>Name</th><th>Email</th><th>PI</th><th>Type</th><th>#Samples</th><th>SRA?</th></tr>
+</thead>
+<tbody>
+{% for s in submissions %}
+<tr><td><a title="{{s.id}}" href="{% url 'submission' id=s.id %}">{{s.id|truncatechars:10}}</a></td><td>{{s.submitted}}</td><td>{{s.name}}</td><td>{{s.email}}</td><td>{{s.pi_name}}</td><td>{{s.type}}</td><td><span title="{% for s in s.sample_ids %}{{s}}{% if not forloop.last %}, {% endif %}{% endfor %}">{{s.sample_ids|length}}</span></td><td>{% if s.sra_form %}<i class="small material-icons" style="color:green">check_circle</i>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}

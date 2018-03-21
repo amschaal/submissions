@@ -1,6 +1,6 @@
 Dear {{submission.name}},
 
-The status for your order placed on {{submission.submitted|date}} has been updated to "{{submission.status.name}}".  You may view your order details and the status details at the following URL:
+The status for your submission placed on {{submission.submitted|date}} has been updated to "{{submission.status.name}}".  You may view your submission details and the status details at the following URL:
 {{BASE_URI}}{{submission.get_absolute_url}}
 
 Thank you,

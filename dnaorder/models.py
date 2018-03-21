@@ -24,15 +24,15 @@ class SubmissionType(models.Model):
 def sra_samples_path(instance, filename):
     ext = os.path.splitext(filename)[1]
     filename = '%s.sra%s'%(instance.id,ext)
-    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
+    return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
 #     return 'user_{0}/{1}'.format(instance.user.id, filename)
 def sample_form_path(instance, filename):
     ext = os.path.splitext(filename)[1]
     filename = '%s.samples%s'%(instance.id,ext)
-    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=timezone.now(),order_id=instance.id,filename=filename)
+    return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
 
 def submission_file_path(instance, filename):
-    return 'submissions/{date:%Y}/{date:%m}/{order_id}/{filename}'.format(date=instance.submission.submitted,order_id=instance.submission.id,filename=filename)
+    return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
 
 def generate_id():
     while True:
@@ -126,7 +126,7 @@ class Submission(models.Model):
         return True if not self.status or self.status.default else False
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('order', args=[str(self.id)])
+        return reverse('submission', args=[str(self.id)])
 
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)

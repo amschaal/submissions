@@ -7,7 +7,7 @@ import os
 import json
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-def submission(request):
+def submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
         form = SubmissionForm()
@@ -15,7 +15,7 @@ def submission(request):
         form = SubmissionForm(request.POST,request.FILES)
         if form.is_valid():
             submission = form.save(commit=True)
-            return render(request,'order.html',{'order':submission,'editable':submission.editable(request.user),'submitted':True})
+            return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def update_submission(request,id):
@@ -29,42 +29,42 @@ def update_submission(request,id):
         form = SubmissionForm(request.POST,request.FILES,instance=submission)
         if form.is_valid():
             submission = form.save(commit=True)
-            return redirect('order',id=id)
+            return redirect('submission',id=id)
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 @login_required
-def orders(request):
-    return render(request,'orders.html',{})
+def submissions(request):
+    return render(request,'submissions.html',{})
 
-def order(request,id):
-    order = Submission.objects.get(id=id)
-    status_form = SubmissionStatusForm(instance=order) if request.user.is_authenticated else None
-    return render(request,'order.html',{'order':order,'status_form':status_form,'editable':order.editable(request.user)})
+def submission(request,id):
+    submission = Submission.objects.get(id=id)
+    status_form = SubmissionStatusForm(instance=submission) if request.user.is_authenticated else None
+    return render(request,'submission.html',{'submission':submission,'status_form':status_form,'editable':submission.editable(request.user)})
 
 def download(request,id):
     from django.http import HttpResponse
     from wsgiref.util import FileWrapper
 
-    order = Submission.objects.get(id=id)
+    submission = Submission.objects.get(id=id)
     data = request.GET.get('data','samples')#samples, sra, or combined
     format = request.GET.get('format','original')
     filename = None
     if format == 'original':
         if data == 'sra':
-            file_path = order.sra_form.file.name
+            file_path = submission.sra_form.file.name
         else:
-            file_path = order.sample_form.file.name
+            file_path = submission.sample_form.file.name
     else:
         tmpfile = tempfile.NamedTemporaryFile()
         if data == 'sra':
-            df = order.sra_samplesheet.df
-            filename = "%s.sra"%order.id
+            df = submission.sra_samplesheet.df
+            filename = "%s.sra"%submission.id
         elif data == 'combined':
-            df = order.samplesheet.join(order.sra_samplesheet)
-            filename = "%s.combined"%order.id
+            df = submission.samplesheet.join(submission.sra_samplesheet)
+            filename = "%s.combined"%submission.id
         else:
-            df = order.samplesheet.df
-            filename = "%s.samples"%order.id
+            df = submission.samplesheet.df
+            filename = "%s.samples"%submission.id
 #         print samplesheet
         #Make it all lower case.  Maybe this should be an option in the interface?
         df = df.apply(lambda x: x.str.lower(),axis='columns')
