@@ -26,6 +26,7 @@ urlpatterns = [
     url(r'^$', views.submit, name='submit'),
     url(r'^submissions/$', views.submissions, name='submissions'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/$', views.submission, name='submission'),
+    url(r'^submissions/(?P<id>[0-9a-f-]+)/confirm/$', views.confirm_submission, name='confirm_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),

@@ -43,8 +43,8 @@ class SubmissionForm(forms.ModelForm):
             submission.sample_data = self._sample_data
         if hasattr(self, '_sra_data'):
             submission.sra_data = self._sra_data
-        if not submission.status:
-            submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
+#         if not submission.status:
+#             submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
         if commit:
             submission.save()
         return submission

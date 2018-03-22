@@ -1,0 +1,10 @@
+Dear {{submission.name}},
+
+Your submission from {{submission.submitted|date}} has been confirmed and is awaiting approval.  You may view your submission details and status at the following URL:
+{{BASE_URI}}{{submission.get_absolute_url}}
+
+If you wish to make any changes, or would like to upload any additional files, you will need to do so at the above URL before the submission is approved.
+
+Thank you,
+
+The DNA Technologies Core

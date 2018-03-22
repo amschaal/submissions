@@ -1,12 +1,13 @@
 from dnaorder.forms import SubmissionForm, SubmissionStatusForm
 from django.shortcuts import render, redirect
-from dnaorder.models import SubmissionType, Submission
+from dnaorder.models import SubmissionType, Submission, SubmissionStatus
 from sendfile import sendfile
 import tempfile
 import os
 import json
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from dnaorder import emails
 def submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
@@ -15,6 +16,7 @@ def submit(request):
         form = SubmissionForm(request.POST,request.FILES)
         if form.is_valid():
             submission = form.save(commit=True)
+            emails.confirm_order(submission, request)
             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
@@ -40,6 +42,15 @@ def submission(request,id):
     submission = Submission.objects.get(id=id)
     status_form = SubmissionStatusForm(instance=submission) if request.user.is_authenticated else None
     return render(request,'submission.html',{'submission':submission,'status_form':status_form,'editable':submission.editable(request.user)})
+
+def confirm_submission(request,id):
+    submission = Submission.objects.get(id=id)
+    if submission.status:
+        return redirect('submission',id=id)
+    submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
+    submission.save()
+    emails.order_confirmed(submission, request)
+    return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'confirmed':True})
 
 def download(request,id):
     from django.http import HttpResponse

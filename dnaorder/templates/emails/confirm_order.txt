@@ -1,0 +1,10 @@
+Dear {{submission.name}},
+
+We have received your sample submission on {{submission.submitted|date}}.  In order to process your submission, we require that you first validate the submission by clicking on the following link:
+{{BASE_URI}}{% url 'confirm_submission' id=submission.id %}
+
+If you do not click on the link within the next 72 hours, your submission will be cancelled.
+
+Thank you,
+
+The DNA Technologies Core
