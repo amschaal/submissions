@@ -7,6 +7,10 @@ import re
 import os
 from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
+from dnaorder.fields import EmailListField
+from django.contrib.auth.models import User
+from django.db.models import signals
+from django.dispatch.dispatcher import receiver
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -170,4 +174,20 @@ class Validator(models.Model):
             except:
                 return False
         return True
-            
+
+class Note(models.Model):
+    TYPE_LOG = 'LOG'
+    TYPE_NOTE = 'NOTE'
+    TYPES = ((TYPE_LOG,TYPE_LOG),(TYPE_NOTE,TYPE_NOTE))
+    submission = models.ForeignKey(Submission)
+    text = models.TextField()
+    type = models.CharField(max_length=20,choices=TYPES)
+    created = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User)
+    emails = EmailListField(null=True)
+    sent = models.NullBooleanField()
+    public = models.BooleanField(default=False)
+@receiver(signals.post_save, sender=Note)
+def send_note_email(sender, instance, **kwargs):
+    if instance.emails:
+        print instance.emails
