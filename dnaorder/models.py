@@ -11,6 +11,7 @@ from dnaorder.fields import EmailListField
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver
+from dnaorder import emails
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -184,10 +185,21 @@ class Note(models.Model):
     type = models.CharField(max_length=20,choices=TYPES)
     created = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User)
-    emails = EmailListField(null=True)
+    emails = EmailListField(max_length=200,null=True)
     sent = models.NullBooleanField()
     public = models.BooleanField(default=False)
 @receiver(signals.post_save, sender=Note)
-def send_note_email(sender, instance, **kwargs):
-    if instance.emails:
+def send_note_email(sender, instance, created, **kwargs):
+    'Note created'
+    if created and instance.emails:
         print instance.emails
+        emails.note_email(instance)
+        instance.sent = True
+        instance.save()
+
+def user_string(self):
+    if self.first_name or self.last_name:
+        return "{first} {last}".format(first=self.first_name, last=self.last_name)
+    else:
+        return self.user
+User.__str__ = user_string

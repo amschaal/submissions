@@ -22,6 +22,13 @@
 .toast.error{
 background-color:#cc0000;
 }
+.card .card-title{
+  line-height: 24px;
+  font-size: 16px;
+}
+.card .card-content{
+  padding: 12px;
+}
 </style>
 {% if confirmed %}
 <h3>Submission confirmed!</h3>
@@ -124,6 +131,26 @@ background-color:#cc0000;
         </div>
     </div>
 {% endif %}
+<div style="clear:both"></div>
+<h4>Notes</h4>
+<ul>
+{% for n in submission.note_set.all %}
+<div class="card blue-grey darken-1 horizontal">
+	<div class="card-stacked">
+        <div class="card-content white-text">
+          <span class="card-title">{{n.created|date:"SHORT_DATETIME_FORMAT"}}<span class="right"><i class="material-icons tiny">person</i> {{n.created_by}}</span></span>
+          <p>{{n.text}}</p>
+        </div>
+        {% if 0 and request.user.is_authenticated %}
+        <div class="card-action">
+          <a href="#">This is a link</a>
+          <a href="#">This is a link</a>
+        </div>
+        {% endif %}
+	</div>
+</div>
+{% endfor %}
+</ul>
 {% include 'partials/modal.html'%}
 <script src="/static/vendor/jquery-file-upload/vendor/jquery.ui.widget.js"></script>
 <script src="/static/vendor/jquery-file-upload/jquery.iframe-transport.js"></script>

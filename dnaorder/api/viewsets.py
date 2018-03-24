@@ -1,7 +1,7 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer
-from dnaorder.models import Submission, SubmissionFile, SubmissionStatus
+from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -19,6 +19,8 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission = self.get_object()
         submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
         submission.save()
+        text = 'Submission status updated to "{status}".'.format(status=submission.status.name)
+        Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         if request.data.get('email',False):
             emails.status_update(submission,request=request)
             return response.Response({'status':'success','message':'Status updated. Email sent to "{0}".'.format(submission.email)})
