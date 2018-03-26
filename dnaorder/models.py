@@ -188,6 +188,8 @@ class Note(models.Model):
     emails = EmailListField(max_length=200,null=True)
     sent = models.NullBooleanField()
     public = models.BooleanField(default=False)
+    class Meta:
+        ordering = ['id']
 @receiver(signals.post_save, sender=Note)
 def send_note_email(sender, instance, created, **kwargs):
     'Note created'
@@ -201,5 +203,5 @@ def user_string(self):
     if self.first_name or self.last_name:
         return "{first} {last}".format(first=self.first_name, last=self.last_name)
     else:
-        return self.user
+        return self.username
 User.__str__ = user_string

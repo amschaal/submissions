@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus
+    SubmissionStatus, Note
 import os
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
@@ -32,4 +32,9 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         return instance.formatted_date()
     class Meta:
         model = SubmissionFile
+        exclude = []
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
         exclude = []

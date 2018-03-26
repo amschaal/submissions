@@ -1,6 +1,6 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
-    SubmissionFileSerializer
+    SubmissionFileSerializer, NoteSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
@@ -40,3 +40,18 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         if not instance.submission.editable(request.user):
             raise PermissionDenied('Only authenticated users may delete files once a submission is final.')
         return super(SubmissionFileViewSet, self).destroy(request,*args,**kwargs)
+
+class NoteViewSet(viewsets.ModelViewSet):
+    queryset = Note.objects.all()
+    serializer_class = NoteSerializer
+    filter_fields = {'submission':['exact']}
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+        submission = self.request.query_params.get('submission',None)
+        if self.request.user.is_authenticated:
+            return queryset
+        else:
+            if not submission:
+                raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
+            return queryset.filter(public=True)
+        
