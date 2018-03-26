@@ -151,6 +151,25 @@ background-color:#cc0000;
 </div>
 {% endfor %}
 </ul>
+{% verbatim %}
+<div ng-controller="NotesCtrl as notes">
+	<div class="card blue-grey darken-1 horizontal" ng-repeat="n in notes.notes">
+	<div class="card-stacked">
+        <div class="card-content white-text" ng-if="n.id">
+          <span class="card-title">{{n.created|date:"short"}}<span class="right"><i class="material-icons tiny">person</i> {{n.created_by}}</span></span>
+          <p>{{n.text}}</p>
+        </div>
+        <div class="card-content white-text" ng-if="!n.id">
+          <form>
+          <p><textarea ng-model="n.text"></textarea></p>
+          <button class="btn" ng-click="notes.saveNote(n)">Save</button>
+          </form>
+        </div>
+	</div>
+	</div>
+	<button class="btn" ng-click="notes.newNote();">Add Note</button>
+</div>
+{% endverbatim %}
 {% include 'partials/modal.html'%}
 <script src="/static/vendor/jquery-file-upload/vendor/jquery.ui.widget.js"></script>
 <script src="/static/vendor/jquery-file-upload/jquery.iframe-transport.js"></script>
@@ -251,5 +270,30 @@ $(document).ready(function(){
 
 </script>
 
+<script>
+var app = angular.module('main', ['Models']).
+        controller('NotesCtrl', function($scope, Note,$http) {
+            var self = this;
+        	self.notes = Note.query({submission:'{{submission.id}}'});
+        	self.newNote = function(){
+        				self.notes.push(
+	        				new Note({
+		        					type:'NOTE',
+		        					submission:'{{submission.id}}',
+		        					created_by:{{request.user.id}}
+	        					})
+        				);
+        	};
+        	self.saveNote = function(note){note.$create()};
+        });
+app.config(function($resourceProvider) {
+	  $resourceProvider.defaults.stripTrailingSlashes = false;
+	});
+app.config(['$httpProvider', function($httpProvider) {
+    $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
+}]);
+    		
+</script>
 
 {% endblock %}

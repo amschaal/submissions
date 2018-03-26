@@ -4,7 +4,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions
 from django.core.mail import send_mail
 from dnaorder import emails
@@ -45,6 +45,7 @@ class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
     filter_fields = {'submission':['exact']}
+    permission_classes = (AllowAny,)
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
@@ -53,5 +54,14 @@ class NoteViewSet(viewsets.ModelViewSet):
         else:
             if not submission:
                 raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
-            return queryset.filter(public=True)
+            return queryset.filter(submission=submission,public=True)
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+# 
+#     def perform_create(self, serializer):
+#         serializer.save()
         

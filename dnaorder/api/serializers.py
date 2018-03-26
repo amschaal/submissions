@@ -35,6 +35,9 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         exclude = []
 
 class NoteSerializer(serializers.ModelSerializer):
+    created_by = serializers.SerializerMethodField()
+    def get_created_by(self,instance):
+        return str(instance.created_by)
     class Meta:
         model = Note
         exclude = []
