@@ -35,9 +35,14 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         exclude = []
 
 class NoteSerializer(serializers.ModelSerializer):
-    created_by = serializers.SerializerMethodField()
-    def get_created_by(self,instance):
+    user = serializers.SerializerMethodField()
+    can_modify = serializers.SerializerMethodField()
+    def get_user(self,instance):
         return str(instance.created_by)
+    def get_can_modify(self,instance):
+        request = self._context.get('request')
+        if request:
+            return instance.type == Note.TYPE_NOTE and instance.created_by == request.user
     class Meta:
         model = Note
         exclude = []

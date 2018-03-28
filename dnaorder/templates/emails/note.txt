@@ -1,0 +1,8 @@
+A new note has been added to submission {{note.submission.id}}:
+
+You can view submission details and any other notes on the submission page:
+{{BASE_URI}}{{note.submission.get_absolute_url}}
+
+Thank you,
+
+The DNA Technologies Core
