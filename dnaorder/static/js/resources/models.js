@@ -16,5 +16,13 @@ angular.module('Models', ['ngResource'])
     create : { method : 'POST'},
     remove : { method : 'DELETE' }
   });
+}])
+.factory('Submission', ['$resource', function ($resource) {
+  return $resource('/api/submissions/:id/', {id:'@id'}, {
+    query: { method: 'GET', isArray:true, transformResponse:transformDjangoRestResponse }, //, transformResponse:transformDjangoRestResponse
+    save : { method : 'PUT'},
+    create : { method : 'POST'},
+    remove : { method : 'DELETE' }
+  });
 }]);
 

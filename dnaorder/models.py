@@ -7,11 +7,12 @@ import re
 import os
 from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
-from dnaorder.fields import EmailListField
+from dnaorder.fields import EmailListField, EmailArrayField
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
+from django.contrib.postgres.fields.array import ArrayField
 
 class SubmissionType(models.Model):
     name = models.CharField(max_length=50)
@@ -185,7 +186,7 @@ class Note(models.Model):
     type = models.CharField(max_length=20,choices=TYPES)
     created = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User)
-    emails = EmailListField(max_length=200,null=True)
+    emails = ArrayField(models.CharField(max_length=50),blank=True,null=True)
     sent = models.NullBooleanField()
     public = models.BooleanField(default=False)
     class Meta:

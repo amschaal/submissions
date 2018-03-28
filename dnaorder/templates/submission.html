@@ -32,6 +32,9 @@ background-color:#cc0000;
 .note textarea{
   background-color: white;
 }
+.note label{
+color: white;
+}
 </style>
 {% if confirmed %}
 <h3>Submission confirmed!</h3>
@@ -141,14 +144,14 @@ background-color:#cc0000;
 	<div class="{{notes.getClasses(n)}} card horizontal note" ng-repeat="n in notes.notes | orderBy:'-id'">
 	<div class="card-stacked">
         <div class="card-content white-text" ng-if="n.id && !n.edit">
-          <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
+          <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{notes.getTypeText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
           <p>{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
         </div>
         <div class="card-content white-text" ng-if="!n.id">
           <form>
-          <p><textarea ng-model="n.text"></textarea></p>
+          <p><textarea ng-model="n.text"></textarea>{{n}}</p>
           <div class="left">
-          	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label>
+          	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public"><input type="checkbox" ng-model="n.emails" ng-true-value="['{{notes.submission.email}}']" ng-false-value=""/><span>Email</span></label>
           </div>
       	<div class="right"><button class="btn red lighten-1 btn-small" ng-click="notes.deleteNote(n)">Delete</button> <button class="btn btn-small" ng-click="notes.saveNote(n)">Save</button></div>
           </form>
@@ -268,15 +271,17 @@ $(document).ready(function(){
 
 <script>
 var app = angular.module('main', ['Models']).
-        controller('NotesCtrl', function($scope, Note,$http) {
+        controller('NotesCtrl', function($scope, Note, Submission,$http) {
             var self = this;
         	self.notes = Note.query({submission:'{{submission.id}}'});
+        	self.submission = Submission.get({id:'{{submission.id}}'});
         	self.newNote = function(){
         				self.notes.push(
 	        				new Note({
 		        					type:'NOTE',
 		        					submission:'{{submission.id}}',
 		        					created_by:{{request.user.id}},
+		        					emails: null,
 		        					public: true
 	        					})
         				);
@@ -295,9 +300,17 @@ var app = angular.module('main', ['Models']).
         		if (!note.public)
         			return 'red lighten-1';
         		if (note.type == 'NOTE')
-        			return 'blue-grey darken-1';
+        			return 'green darken-1';
         		if (note.type == 'LOG')
-        			return 'green';
+        			return 'blue-grey';
+        	};
+        	self.getTypeText = function(note){
+        		if (!note.public)
+        			return 'Note (private)';
+        		if (note.type == 'NOTE')
+        			return 'Note';
+        		if (note.type == 'LOG')
+        			return 'Log';
         	}
         });
 app.config(function($resourceProvider) {
