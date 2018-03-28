@@ -26,10 +26,9 @@
     	display:inline-block;
     }
     </style>
-<div>
 
 
-<div ng-controller="SubmissionsCtrl as submissions">
+<div ng-controller="SubmissionsCtrl as submissions" class="card-panel">
 <h3>Submissions</h3>
 {% verbatim %}
 <table ng-table="submissions.submissionTable" class="table striped" ng-cloak>
@@ -68,6 +67,6 @@
         ]);
         		
     </script>
-    </div>
+    <div style="clear:both"></div>
     </div>
 {% endblock %}

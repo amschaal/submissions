@@ -38,7 +38,17 @@ background-color:#cc0000;
 .note .controls{
   margin-top: 10px;
 }
+.note-text{
+  white-space: pre-wrap;
+}
+.note .card-title{
+  font-weight: bold;
+  color: #444;
+}
 </style>
+
+<div class="card-panel">
+
 {% if confirmed %}
 <h3>Submission confirmed!</h3>
 <h5>The DNA Technologies Core has been notified and will be reviewing it shortly.  You may upload any additional files below, or <a  href="{% url 'update_submission' id=submission.id %}">Modify</a> the submission details.  Once the submission is being processed, you will no longer be able to make any changes.  For future reference, you can view your order at the followign URL:</h5>
@@ -120,6 +130,10 @@ background-color:#cc0000;
 {% endif %}
 <tr><th>Analysis by<br>Bioinformatics Core</th><td>{% if submission.biocore %}<i class="material-icons" style="color:green">check_circle</i>{% else %}<i class="material-icons" style="color:red">close</i>{% endif %}</td></tr>
 </table>
+
+</div>
+
+<div class="card-panel">
 <h4>File attachments</h4>
 
 <div id="progress">
@@ -140,15 +154,18 @@ background-color:#cc0000;
         </div>
     </div>
 {% endif %}
+</div>
+
 <div style="clear:both"></div>
+</div>
 {% verbatim %}
-<div ng-controller="NotesCtrl as notes">
-<h4>Notes<button class="btn right" ng-click="notes.newNote();">Add Note</button></h4>
+<div ng-controller="NotesCtrl as notes" class="card-panel">
+<h4>Notes<button class="btn right" ng-click="notes.newNote();" ng-if="notes.authenticated">Add Note</button></h4>
 	<div class="{{notes.getClasses(n)}} card horizontal note" ng-repeat="n in notes.notes | orderBy:'-id'">
 	<div class="card-stacked">
         <div class="card-content" ng-if="n.id && !n.edit">
           <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{notes.getTypeText(n)}} {{notes.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
-          <p>{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
+          <p class="note-text">{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
         </div>
         <div class="card-content" ng-if="!n.id">
           <form>
@@ -276,6 +293,9 @@ $(document).ready(function(){
 var app = angular.module('main', ['Models']).
         controller('NotesCtrl', function($scope, Note, Submission,$http) {
             var self = this;
+            {% if request.user.is_authenticated %}
+            self.authenticated = true;
+            {% endif %}
         	self.notes = Note.query({submission:'{{submission.id}}',page_size:100});
         	self.submission = Submission.get({id:'{{submission.id}}'});
         	self.newNote = function(){
@@ -291,6 +311,8 @@ var app = angular.module('main', ['Models']).
         	};
         	self.saveNote = function(note){
         		var method = note.id ? '$save' : '$create';
+        		if (!note.id && !note.public)
+        			note.emails = null;
         		note[method](function(){Materialize.toast('Note saved',5000)},function(){Materialize.toast('Error saving note',5000)})
         	};
         	self.deleteNote = function(note){

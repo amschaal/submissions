@@ -20,10 +20,12 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
         submission.save()
         text = 'Submission status updated to "{status}".'.format(status=submission.status.name)
-        Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         if request.data.get('email',False):
-            emails.status_update(submission,request=request)
+#             emails.status_update(submission,request=request)
+            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
             return response.Response({'status':'success','message':'Status updated. Email sent to "{0}".'.format(submission.email)})
+        else:
+            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','message':'Status updated.'})
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):

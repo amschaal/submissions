@@ -1,4 +1,5 @@
 A new note has been added to submission {{note.submission.id}}:
+{{note.text}}
 
 You can view submission details and any other notes on the submission page:
 {{BASE_URI}}{{note.submission.get_absolute_url}}
