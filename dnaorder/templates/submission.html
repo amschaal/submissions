@@ -33,7 +33,10 @@ background-color:#cc0000;
   background-color: white;
 }
 .note label{
-color: white;
+  color: #5a5a5a;
+}
+.note .controls{
+  margin-top: 10px;
 }
 </style>
 {% if confirmed %}
@@ -143,26 +146,26 @@ color: white;
 <h4>Notes<button class="btn right" ng-click="notes.newNote();">Add Note</button></h4>
 	<div class="{{notes.getClasses(n)}} card horizontal note" ng-repeat="n in notes.notes | orderBy:'-id'">
 	<div class="card-stacked">
-        <div class="card-content white-text" ng-if="n.id && !n.edit">
-          <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{notes.getTypeText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
+        <div class="card-content" ng-if="n.id && !n.edit">
+          <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{notes.getTypeText(n)}} {{notes.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
           <p>{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
         </div>
-        <div class="card-content white-text" ng-if="!n.id">
-          <form>
-          <p><textarea ng-model="n.text"></textarea>{{n}}</p>
-          <div class="left">
-          	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public"><input type="checkbox" ng-model="n.emails" ng-true-value="['{{notes.submission.email}}']" ng-false-value=""/><span>Email</span></label>
-          </div>
-      	<div class="right"><button class="btn red lighten-1 btn-small" ng-click="notes.deleteNote(n)">Delete</button> <button class="btn btn-small" ng-click="notes.saveNote(n)">Save</button></div>
-          </form>
-        </div>
-        <div class="card-content white-text" ng-if="n.edit">
+        <div class="card-content" ng-if="!n.id">
           <form>
           <p><textarea ng-model="n.text"></textarea></p>
-          <div class="left">
+          <div class="left controls">
+          	<label title="Select if you only want internal users to see this note."><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public" title="Select if you want to email the submitter."><input type="checkbox" ng-model="n.emails" ng-true-value="['{{notes.submission.email}}']" ng-false-value=""/><span>Email Submitter</span></label>
+          </div>
+      	<div class="right controls"><button class="btn red btn-small" ng-click="notes.deleteNote(n)">Delete</button> <button class="btn  green darken-1 btn-small" ng-click="notes.saveNote(n)">Save</button></div>
+          </form>
+        </div>
+        <div class="card-content" ng-if="n.edit">
+          <form>
+          <p><textarea ng-model="n.text"></textarea></p>
+          <div class="left controls">
           	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label>
           </div>
-          <div class="right"><button class="btn" ng-click="notes.saveNote(n)">Save</button></div>
+          <div class="right controls"><button class="btn green darken-1" ng-click="notes.saveNote(n)">Save</button></div>
           </form>
         </div>
 	</div>
@@ -273,7 +276,7 @@ $(document).ready(function(){
 var app = angular.module('main', ['Models']).
         controller('NotesCtrl', function($scope, Note, Submission,$http) {
             var self = this;
-        	self.notes = Note.query({submission:'{{submission.id}}'});
+        	self.notes = Note.query({submission:'{{submission.id}}',page_size:100});
         	self.submission = Submission.get({id:'{{submission.id}}'});
         	self.newNote = function(){
         				self.notes.push(
@@ -288,7 +291,7 @@ var app = angular.module('main', ['Models']).
         	};
         	self.saveNote = function(note){
         		var method = note.id ? '$save' : '$create';
-        		note[method]()
+        		note[method](function(){Materialize.toast('Note saved',5000)},function(){Materialize.toast('Error saving note',5000)})
         	};
         	self.deleteNote = function(note){
         		if (!note.id)
@@ -298,11 +301,11 @@ var app = angular.module('main', ['Models']).
         	};
         	self.getClasses= function(note){
         		if (!note.public)
-        			return 'red lighten-1';
+        			return 'red lighten-4';
         		if (note.type == 'NOTE')
-        			return 'green darken-1';
+        			return 'green lighten-4';
         		if (note.type == 'LOG')
-        			return 'blue-grey';
+        			return 'orange lighten-5';
         	};
         	self.getTypeText = function(note){
         		if (!note.public)
@@ -311,6 +314,10 @@ var app = angular.module('main', ['Models']).
         			return 'Note';
         		if (note.type == 'LOG')
         			return 'Log';
+        	}
+        	self.getEmailsText = function(note){
+        		if (note.emails)
+        			return 'Emailed: '+note.emails.join(', ');
         	}
         });
 app.config(function($resourceProvider) {
