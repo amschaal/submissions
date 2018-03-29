@@ -1,5 +1,6 @@
 from django import forms
-from dnaorder.models import Submission, Validator, SubmissionStatus
+from dnaorder.models import Submission, Validator, SubmissionStatus,\
+    SubmissionType
 from __builtin__ import file
 import tablib
 from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet
@@ -129,4 +130,16 @@ class ValidatorForm(forms.ModelForm):
         cleaned_data = super(ValidatorForm, self).clean()
         if not cleaned_data.get('regex') and not cleaned_data.get('choices') and not cleaned_data.get('range'):
             raise forms.ValidationError('Please enter at least 1 validation method (regex, choices, range).')
-        
+
+class SubmissionTypeForm(forms.ModelForm):
+    class Meta:
+        model = SubmissionType
+        exclude = []
+        help_texts = {
+                      'prefix':"This will be prepended to the submission's internal id.",
+                      'header_index':'Which row are the headers on?',
+                      'skip_rows':'The number of rows after the headers to ignore.  This is useful if providing examples.',
+                      'start_column':'What column do headers start on. Leave blank to start at first column.',
+                      'end_column':'What column do headers end on?  Leave blank to use all column headers found in header row.',
+                      'sample_identifier': 'What is in the header for the sample name/id column?'
+                      }

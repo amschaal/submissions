@@ -17,7 +17,10 @@
     <div class="nav-wrapper">
       <a href="#" class="brand-logo">DNA Technologies Core Submission System</a>
       <ul id="nav-mobile" class="right hide-on-med-and-down">
-        {% if request.user.is_authenticated %}<li><a href="{% url 'submissions' %}">Submissions</a></li>{% endif %}
+        {% if request.user.is_authenticated %}
+        <li><a href="{% url 'submissions' %}">Submissions</a></li>
+        <li><a href="{% url 'submission_types' %}">Submission Types</a></li>
+        {% endif %}
         <li><a href="{% url 'submit' %}">Submit</a></li>
       </ul>
     </div>

@@ -1,4 +1,5 @@
-from dnaorder.forms import SubmissionForm, SubmissionStatusForm
+from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
+    SubmissionTypeForm
 from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission, SubmissionStatus
 from sendfile import sendfile
@@ -33,6 +34,21 @@ def update_submission(request,id):
             submission = form.save(commit=True)
             return redirect('submission',id=id)
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+
+def submission_types(request):
+    submission_types = SubmissionType.objects.all()
+    return render(request,'submission_types.html',{'submission_types':submission_types})
+
+def create_update_submission_type(request,id=None):
+    submission_type = SubmissionType.objects.get(id=id) if id else None
+    if request.method == 'GET':
+        form = SubmissionTypeForm(instance=submission_type)
+    elif request.method == 'POST':
+        form = SubmissionTypeForm(request.POST,request.FILES,instance=submission_type)
+        if form.is_valid():
+            submission_type = form.save(commit=True)
+            return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type,'valid':True})
+    return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type})
 
 @login_required
 def submissions(request):

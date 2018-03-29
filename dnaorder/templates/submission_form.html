@@ -35,15 +35,13 @@
   max-height:90%;
 }
 </style>
-<div class="card">
+<div class="card-panel">
 
 <form enctype="multipart/form-data" method="POST">
-<div class="card-content">
 <h4>Submission Form</h4>
 {% csrf_token %}
 {% form form=form %}{% endform %}
 <button class="btn waves-effect waves-teal">Submit</button>
-</div>
 </form>
 <h5>*You will be able to upload Bioanalyzer traces and other files once the form is submitted.</h5>
 </div>

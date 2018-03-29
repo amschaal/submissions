@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Submission Types <a class="btn right" href="{% url 'create_submission_type' %}">Create</a></h3>
+<table>
+<thead>
+<tr><th>Name</th><th>Description</th></tr>
+</thead>
+<tbody>
+{% for t in submission_types %}
+<tr><td><a href="{% url 'update_submission_type' id=t.id %}">{{t.name}}</a></td><td>{{s.description}}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}
