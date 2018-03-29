@@ -58,13 +58,13 @@ background-color:#cc0000;
 <p>Communications regarding the submission will be sent to {{submission.email}}.  Please check your email and click the link to confirm the submission.  To inquire on the status of the submission, contact dnatech@ucdavis.edu.</p>
 <p>You may now upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
 {% else %}
-<h3>Submission {{submission.id}} {% if editable %}<a class="btn right" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</h3>
+<h3>Submission {{submission.id}} <span class="right"><a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>{% if editable %}<a class="btn" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</span></h3>
 {% endif %}
 
 
 
 <table>
-
+<tr><th>Internal ID</th><td>{{submission.internal_id}}</td></tr>
 {% if status_form %}
 <tr>
 	<th>Status</th>
@@ -339,7 +339,7 @@ var app = angular.module('main', ['Models']).
         	}
         	self.getEmailsText = function(note){
         		if (note.emails)
-        			return 'Emailed: '+note.emails.join(', ');
+        			return '- Emailed to: '+note.emails.join(', ');
         	}
         });
 app.config(function($resourceProvider) {

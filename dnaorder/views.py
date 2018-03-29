@@ -43,6 +43,10 @@ def submission(request,id):
     status_form = SubmissionStatusForm(instance=submission) if request.user.is_authenticated else None
     return render(request,'submission.html',{'submission':submission,'status_form':status_form,'editable':submission.editable(request.user)})
 
+def print_submission(request,id):
+    submission = Submission.objects.get(id=id)
+    return render(request,'print_submission.html',{'submission':submission})
+
 def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)
     if submission.status:
