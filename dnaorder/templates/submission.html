@@ -47,6 +47,7 @@ background-color:#cc0000;
 }
 </style>
 
+<div ng-controller="SubmissionCtrl as ctrl">
 <div class="card-panel">
 
 {% if confirmed %}
@@ -58,7 +59,18 @@ background-color:#cc0000;
 <p>Communications regarding the submission will be sent to {{submission.email}}.  Please check your email and click the link to confirm the submission.  To inquire on the status of the submission, contact dnatech@ucdavis.edu.</p>
 <p>You may now upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
 {% else %}
-<h3>Submission {{submission.id}} <span class="right"><a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>{% if editable %}<a class="btn" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</span></h3>
+<h3>
+Submission {{submission.id}} 
+<span class="right"><a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>
+	{% if editable %}
+		<a class="btn" href="{% url 'update_submission' id=submission.id %}">Modify</a>
+	{% endif%}
+	{% if request.user.is_authenticated %}
+		<a class="btn green" ng-if="!ctrl.submission.locked" title="Click to lock" ng-click="ctrl.lock()"><i class="material-icons left">lock_open</i>Unlocked</a>
+		<a class="btn red" ng-if="ctrl.submission.locked" title="Click to unlock" ng-click="ctrl.unlock()"><i class="material-icons left">lock</i>Locked</a>
+	{% endif %}
+</span>
+</h3>
 {% endif %}
 
 
@@ -159,21 +171,21 @@ background-color:#cc0000;
 <div style="clear:both"></div>
 </div>
 {% verbatim %}
-<div ng-controller="NotesCtrl as notes" class="card-panel">
-<h4>Notes<button class="btn right" ng-click="notes.newNote();" ng-if="notes.authenticated">Add Note</button></h4>
-	<div class="{{notes.getClasses(n)}} card horizontal note" ng-repeat="n in notes.notes | orderBy:'-id'">
+<div  class="card-panel">
+<h4>Notes<button class="btn right" ng-click="ctrl.newNote();" ng-if="ctrl.authenticated">Add Note</button></h4>
+	<div class="{{ctrl.getClasses(n)}} card horizontal note" ng-repeat="n in ctrl.notes | orderBy:'-id'">
 	<div class="card-stacked">
         <div class="card-content" ng-if="n.id && !n.edit">
-          <span class="card-title"><i ng-if="n.can_modify" ng-click="notes.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{notes.getTypeText(n)}} {{notes.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
+          <span class="card-title"><i ng-if="n.can_modify" ng-click="ctrl.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{ctrl.getTypeText(n)}} {{ctrl.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
           <p class="note-text">{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
         </div>
         <div class="card-content" ng-if="!n.id">
           <form>
           <p><textarea ng-model="n.text"></textarea></p>
           <div class="left controls">
-          	<label title="Select if you only want internal users to see this note."><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public" title="Select if you want to email the submitter."><input type="checkbox" ng-model="n.emails" ng-true-value="['{{notes.submission.email}}']" ng-false-value=""/><span>Email Submitter</span></label>
+          	<label title="Select if you only want internal users to see this note."><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public" title="Select if you want to email the submitter."><input type="checkbox" ng-model="n.emails" ng-true-value="['{{ctrl.submission.email}}']" ng-false-value=""/><span>Email Submitter</span></label>
           </div>
-      	<div class="right controls"><button class="btn red btn-small" ng-click="notes.deleteNote(n)">Delete</button> <button class="btn  green darken-1 btn-small" ng-click="notes.saveNote(n)">Save</button></div>
+      	<div class="right controls"><button class="btn red btn-small" ng-click="ctrl.deleteNote(n)">Delete</button> <button class="btn  green darken-1 btn-small" ng-click="ctrl.saveNote(n)">Save</button></div>
           </form>
         </div>
         <div class="card-content" ng-if="n.edit">
@@ -182,11 +194,12 @@ background-color:#cc0000;
           <div class="left controls">
           	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label>
           </div>
-          <div class="right controls"><button class="btn green darken-1" ng-click="notes.saveNote(n)">Save</button></div>
+          <div class="right controls"><button class="btn green darken-1" ng-click="ctrl.saveNote(n)">Save</button></div>
           </form>
         </div>
 	</div>
 	</div>
+</div>
 </div>
 {% endverbatim %}
 {% include 'partials/modal.html'%}
@@ -252,9 +265,7 @@ $(document).ready(function(){
             }
 	    });
 	});
-	$('select[name=status]').change(function(data){
-		$.post('/api/submissions/{{submission.id}}/update_status/',{status:this.value,email:$('[name=send_email]').is(":checked")?true:null},function(data){Materialize.toast(data.message,5000);});
-	});
+	
 	function delete_file(id){
 		$.ajax('/api/submission_files/'+id+'/',{type: 'DELETE'})
 		.done(function(){
@@ -291,13 +302,42 @@ $(document).ready(function(){
 
 <script>
 var app = angular.module('main', ['Models']).
-        controller('NotesCtrl', function($scope, Note, Submission,$http) {
+        controller('SubmissionCtrl', function($scope, Note, Submission,$http) {
             var self = this;
             {% if request.user.is_authenticated %}
             self.authenticated = true;
             {% endif %}
         	self.notes = Note.query({submission:'{{submission.id}}',page_size:100});
         	self.submission = Submission.get({id:'{{submission.id}}'});
+        	
+        	$('select[name=status]').change(function(data){
+        		$.post('/api/submissions/{{submission.id}}/update_status/',
+        				{status:this.value,email:$('[name=send_email]').is(":checked")?true:null},
+        				function(data){
+        					console.log(self.submission,data);
+        					self.submission.locked=data.locked;
+        					$scope.$apply();
+        					Materialize.toast(data.message,5000);
+        				}
+        		);
+        	});
+        	
+        	self.lock = function(){
+        		$http.post('/api/submissions/{{submission.id}}/lock/')
+        			.then(
+        					function(){Materialize.toast('Submission locked.',5000);self.submission.locked=true;},
+        					function(){Materialize.toast('Error locking submission!',5000)},
+       				);
+        	}
+        	self.unlock = function(){
+        		$http.post('/api/submissions/{{submission.id}}/unlock/')
+        			.then(
+        					function(){Materialize.toast('Submission unlocked.',5000);self.submission.locked=false;},
+        					function(){Materialize.toast('Error unlocking submission!',5000)},
+       				);
+        	}
+        	
+        	
         	self.newNote = function(){
         				self.notes.push(
 	        				new Note({

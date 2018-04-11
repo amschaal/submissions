@@ -55,7 +55,7 @@ def generate_file_id():
 class SubmissionStatus(models.Model):
     order = models.PositiveSmallIntegerField()
     name = models.CharField(max_length=40)
-    default = models.BooleanField(default=False)
+    auto_lock = models.BooleanField(default=False)
     def __unicode__(self):
         return self.name
     class Meta:
@@ -79,7 +79,8 @@ class Submission(models.Model):
 #         )
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     internal_id = models.CharField(max_length=25, unique=True)
-    status = models.ForeignKey(SubmissionStatus,null=True)
+    status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
+    locked = models.BooleanField(default=False)
     submitted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=50)
@@ -129,10 +130,16 @@ class Submission(models.Model):
     def editable(self,user=None):
         if user and user.is_authenticated:
             return True
-        return True if not self.status or self.status.default else False
+        return not self.locked
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse('submission', args=[str(self.id)])
+    def set_status(self,status,commit=True):
+        self.status = status
+        if status.auto_lock:
+            self.locked = True
+        if commit:
+            self.save()
 
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)

@@ -67,8 +67,8 @@ def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)
     if submission.status:
         return redirect('submission',id=id)
-    submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
-    submission.save()
+    status = SubmissionStatus.objects.order_by('order').first()
+    submission.set_status(status,commit=True)
     emails.order_confirmed(submission, request)
     return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'confirmed':True})
 

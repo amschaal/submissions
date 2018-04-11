@@ -17,16 +17,28 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     @detail_route(methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
-        submission.status = SubmissionStatus.objects.get(id=request.data.get('status'))
-        submission.save()
+        status = SubmissionStatus.objects.get(id=request.data.get('status'))
+        submission.set_status(status,commit=True)
         text = 'Submission status updated to "{status}".'.format(status=submission.status.name)
         if request.data.get('email',False):
 #             emails.status_update(submission,request=request)
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
-            return response.Response({'status':'success','message':'Status updated. Email sent to "{0}".'.format(submission.email)})
+            return response.Response({'status':'success','locked':submission.locked,'message':'Status updated. Email sent to "{0}".'.format(submission.email)})
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
-        return response.Response({'status':'success','message':'Status updated.'})
+        return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
+    @detail_route(methods=['post'])
+    def lock(self,request,pk):
+        submission = self.get_object()
+        submission.locked = True
+        submission.save()
+        return response.Response({'status':'success','locked':True,'message':'Submission locked.'})
+    @detail_route(methods=['post'])
+    def unlock(self,request,pk):
+        submission = self.get_object()
+        submission.locked = False
+        submission.save()
+        return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
