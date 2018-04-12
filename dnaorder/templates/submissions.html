@@ -43,7 +43,8 @@
        <td data-title="'Type'" filter="{ type__name__icontains: 'text'}" sortable="'type__name'">{{submission.type.name}}</td>
        <td data-title="'#Samples'"><span ng-if="submission.sample_data" title="{{submissions.get_sample_names(submission.sample_data)}}">{{submission.sample_data.length}}</span></td>
        <td data-title="'#SRA'"><span ng-if="submission.sample_data" title="{{submissions.get_sample_names(submission.sra_data)}}">{{submission.sra_data.length}}</span></td>
-       <td data-title="'Biocore'" filter="{ biocore: 'select'}" filter-data="submissions.biocore_options" sortable="'biocore'"><i class="material-icons" style="color:green" ng-if="submission.biocore">check_circle</i><i class="material-icons" style="color:red" ng-if="!submission.biocore">close</i></td>
+       <td data-title="'Biocore'" filter="{ biocore: 'select'}" filter-data="submissions.yes_no_options" sortable="'biocore'"><i class="material-icons" style="color:green" ng-if="submission.biocore">check_circle</i><i class="material-icons" style="color:red" ng-if="!submission.biocore">close</i></td>
+       <td data-title="'Locked'" filter="{ locked: 'select'}" filter-data="submissions.yes_no_options" sortable="'locked'"><i style="color:green" class="material-icons left" ng-if="!submission.locked" title="unlocked">lock_open</i><i style="color:red" class="material-icons" ng-if="submission.locked" title="locked">lock</i></td>
    </tr>
 </table>
 {% endverbatim %}
@@ -58,7 +59,7 @@
                 	if (samples)
                 		return samples.map(function(sample){return sample[field]}).join(', ');
                 }
-                self.biocore_options = [{ id: true, title: "YES"}, { id: false, title: "NO"}];
+                self.yes_no_options = [{ id: true, title: "YES"}, { id: false, title: "NO"}];
                 });
        app.run(['$templateCache',
           function($templateCache) {
