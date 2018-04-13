@@ -54,7 +54,7 @@ class NoteSerializer(serializers.ModelSerializer):
     def get_can_modify(self,instance):
         request = self._context.get('request')
         if request:
-            return instance.type == Note.TYPE_NOTE and instance.created_by == request.user
+            return instance.can_modify(request.user)
     class Meta:
         model = Note
         exclude = []

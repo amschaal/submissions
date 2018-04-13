@@ -199,6 +199,8 @@ class Note(models.Model):
     public = models.BooleanField(default=False)
     class Meta:
         ordering = ['id']
+    def can_modify(self,user):
+        return not user.is_anonymous and self.type == Note.TYPE_NOTE and self.created_by == user# or not self.created_by
 @receiver(signals.post_save, sender=Note)
 def send_note_email(sender, instance, created, **kwargs):
     'Note created'
