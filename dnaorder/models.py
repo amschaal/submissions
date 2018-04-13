@@ -193,7 +193,7 @@ class Note(models.Model):
     text = models.TextField()
     type = models.CharField(max_length=20,choices=TYPES)
     created = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User)
+    created_by = models.ForeignKey(User,null=True)
     emails = ArrayField(models.CharField(max_length=50),blank=True,null=True)
     sent = models.NullBooleanField()
     public = models.BooleanField(default=False)

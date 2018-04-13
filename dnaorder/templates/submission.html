@@ -45,6 +45,9 @@ background-color:#cc0000;
   font-weight: bold;
   color: #444;
 }
+.note-wrapper{
+  margin-left:15px;
+}
 </style>
 
 <div ng-controller="SubmissionCtrl as ctrl">
@@ -170,43 +173,13 @@ Submission {{submission.id}}
 
 <div style="clear:both"></div>
 </div>
-{% verbatim %}
 <div  class="card-panel">
-<!-- 
-<h4>Notes<button class="btn right" ng-click="ctrl.newNote();" ng-if="ctrl.authenticated">Add Note</button></h4>
-	<div class="{{ctrl.getClasses(n)}} card horizontal note" ng-repeat="n in ctrl.notes | orderBy:'-id'">
-	<div class="card-stacked">
-        <div class="card-content" ng-if="n.id && !n.edit">
-          <span class="card-title">{{n.created|date:"short"}} - {{ctrl.getTypeText(n)}} {{ctrl.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
-          <p class="note-text">{{n.text}} <span class="right"><i ng-if="n.can_modify" title="reply" class="material-icons tiny action" ng-click="replyTo(n)">reply</i> <i ng-if="n.can_modify" title="edit" class="material-icons tiny action" ng-click="n.edit=true;">edit</i> <i ng-if="n.can_modify" title="delete" ng-click="ctrl.deleteNote(n)" class="material-icons tiny action">delete</i></span></p>
-        </div>
-        <div class="card-content" ng-if="!n.id">
-          <form>
-          <p><textarea ng-model="n.text"></textarea></p>
-          <div class="left controls">
-          	<label title="Select if you only want internal users to see this note."><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="n.public" title="Select if you want to email the submitter."><input type="checkbox" ng-model="n.emails" ng-true-value="['{{ctrl.submission.email}}']" ng-false-value=""/><span>Email Submitter</span></label>
-          </div>
-      	<div class="right controls"><button class="btn red btn-small" ng-click="ctrl.deleteNote(n)">Delete</button> <button class="btn  green darken-1 btn-small" ng-click="ctrl.saveNote(n)">Save</button></div>
-          </form>
-        </div>
-        <div class="card-content" ng-if="n.edit">
-          <form>
-          <p><textarea ng-model="n.text"></textarea></p>
-          <div class="left controls">
-          	<label><input type="checkbox" ng-model="n.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label>
-          </div>
-          <div class="right controls"><button class="btn green darken-1" ng-click="ctrl.saveNote(n)">Save</button></div>
-          </form>
-        </div>
-	</div>
-	</div>
-	 -->
+
 	
-	<submission-notes submission-id="submission.id"></submission-notes>
+	<submission-notes submission-id="{{submission.id}}"></submission-notes>
 	
 </div>
 </div>
-{% endverbatim %}
 {% include 'partials/modal.html'%}
 <script src="/static/vendor/jquery-file-upload/vendor/jquery.ui.widget.js"></script>
 <script src="/static/vendor/jquery-file-upload/jquery.iframe-transport.js"></script>

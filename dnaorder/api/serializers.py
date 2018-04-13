@@ -35,6 +35,18 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         exclude = []
 
 class NoteSerializer(serializers.ModelSerializer):
+    def __init__(self,*args,**kwargs):
+        data = kwargs.get('data')
+        if data:
+            request = kwargs['context'].get('request')
+            data.update({'created_by':request.user.id})
+            if data.get('send_email'):
+                if request.user.is_authenticated:
+                    submission = Submission.objects.get(id=kwargs['data'].get('submission'))
+                    data.update({'emails':[submission.email]})
+                else:
+                    data.update({'emails':['dnatech@ucdavis.edu']})
+        return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()
     def get_user(self,instance):
