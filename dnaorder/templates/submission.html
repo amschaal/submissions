@@ -172,12 +172,13 @@ Submission {{submission.id}}
 </div>
 {% verbatim %}
 <div  class="card-panel">
+<!-- 
 <h4>Notes<button class="btn right" ng-click="ctrl.newNote();" ng-if="ctrl.authenticated">Add Note</button></h4>
 	<div class="{{ctrl.getClasses(n)}} card horizontal note" ng-repeat="n in ctrl.notes | orderBy:'-id'">
 	<div class="card-stacked">
         <div class="card-content" ng-if="n.id && !n.edit">
-          <span class="card-title"><i ng-if="n.can_modify" ng-click="ctrl.deleteNote(n)" class="material-icons tiny action">delete</i> {{n.created|date:"short"}} - {{ctrl.getTypeText(n)}} {{ctrl.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
-          <p class="note-text">{{n.text}} <i ng-if="n.can_modify" class="material-icons tiny action" ng-click="n.edit=true;">edit</i></p>
+          <span class="card-title">{{n.created|date:"short"}} - {{ctrl.getTypeText(n)}} {{ctrl.getEmailsText(n)}}<span class="right"><i class="material-icons tiny">person</i> {{n.user}}</span></span>
+          <p class="note-text">{{n.text}} <span class="right"><i ng-if="n.can_modify" title="reply" class="material-icons tiny action" ng-click="replyTo(n)">reply</i> <i ng-if="n.can_modify" title="edit" class="material-icons tiny action" ng-click="n.edit=true;">edit</i> <i ng-if="n.can_modify" title="delete" ng-click="ctrl.deleteNote(n)" class="material-icons tiny action">delete</i></span></p>
         </div>
         <div class="card-content" ng-if="!n.id">
           <form>
@@ -199,6 +200,10 @@ Submission {{submission.id}}
         </div>
 	</div>
 	</div>
+	 -->
+	
+	<submission-notes submission-id="submission.id"></submission-notes>
+	
 </div>
 </div>
 {% endverbatim %}
@@ -391,5 +396,5 @@ app.config(['$httpProvider', function($httpProvider) {
 }]);
     		
 </script>
-
+<script src="/static/js/directives/notes.js"></script>
 {% endblock %}
