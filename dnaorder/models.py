@@ -189,6 +189,7 @@ class Note(models.Model):
     TYPE_NOTE = 'NOTE'
     TYPES = ((TYPE_LOG,TYPE_LOG),(TYPE_NOTE,TYPE_NOTE))
     submission = models.ForeignKey(Submission)
+    parent = models.ForeignKey('Note',null=True)
     text = models.TextField()
     type = models.CharField(max_length=20,choices=TYPES)
     created = models.DateTimeField(auto_now_add=True)
