@@ -137,9 +137,12 @@ class SubmissionTypeForm(forms.ModelForm):
         exclude = []
         help_texts = {
                       'prefix':"This will be prepended to the submission's internal id.",
-                      'header_index':'Which row are the headers on?',
-                      'skip_rows':'The number of rows after the headers to ignore.  This is useful if providing examples.',
+                      'header_index':'Which row are the variables on?',
+                      'skip_rows':'The number of rows after the variables to ignore.  This is useful if providing examples.',
                       'start_column':'What column do headers start on. Leave blank to start at first column.',
                       'end_column':'What column do headers end on?  Leave blank to use all column headers found in header row.',
                       'sample_identifier': 'What is in the header for the sample name/id column?'
                       }
+        labels = {
+            'header_index': 'Variable row'
+            }

@@ -52,19 +52,10 @@ background-color:#cc0000;
 
 <div ng-controller="SubmissionCtrl as ctrl">
 <div class="card-panel">
-
-{% if confirmed %}
-<h3>Submission confirmed!</h3>
-<h5>The DNA Technologies Core has been notified and will be reviewing it shortly.  You may upload any additional files below, or <a  href="{% url 'update_submission' id=submission.id %}">Modify</a> the submission details.  Once the submission is being processed, you will no longer be able to make any changes.  For future reference, you can view your order at the followign URL:</h5>
-{{BASE_URI}}{{submission.get_absolute_url}}
-{% elif submitted %}
-<h3>Submission complete! {% if editable %}<a class="btn right" href="{% url 'update_submission' id=submission.id %}">Modify</a>{% endif%}</h3>
-<p>Communications regarding the submission will be sent to {{submission.email}}.  Please check your email and click the link to confirm the submission.  To inquire on the status of the submission, contact dnatech@ucdavis.edu.</p>
-<p>You may now upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
-{% else %}
-<h3>
-Submission {{submission.id}} 
-<span class="right"><a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>
+<span class="right">
+	{% if submission.status %}
+		<a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>
+	{% endif %}
 	{% if editable %}
 		<a class="btn" href="{% url 'update_submission' id=submission.id %}">Modify</a>
 	{% endif%}
@@ -73,7 +64,25 @@ Submission {{submission.id}}
 		<a class="btn red" ng-if="ctrl.submission.locked" title="Click to unlock" ng-click="ctrl.unlock()"><i class="material-icons left">lock</i>Locked</a>
 	{% endif %}
 </span>
-</h3>
+{% if not submission.status %}
+	<h3>Submission pending.</h3>  
+	<p>Please confirm using the link emailed to {{submission.email}}.  <b>If you do not confirm within 72 hours, your submission will be cancelled!</b></p>
+{% elif confirmed %}
+	<h3>Submission confirmed!</h3>
+	<p>
+		Please print submission details using the print button and package them with your samples.  For delivery instructions, please visit:<br>
+		http://dnatech.genomecenter.ucdavis.edu/sample-submission-scheduling/
+	</p>
+	<p>If you need to make any modifications to your submission, please do so before printing out the submission details.</p>
+	<p>You may also upload Bioanalyzer traces, or any other required files <a href="#files">below</a>.</p>
+	<p>
+		For future reference, you can view your order at the followign URL:<br>
+		{{BASE_URI}}{{submission.get_absolute_url}}
+	</p>
+{% else %}
+	<h3>
+		Submission {{submission.id}}
+	</h3>
 {% endif %}
 
 
@@ -147,7 +156,7 @@ Submission {{submission.id}}
 </table>
 
 </div>
-
+{% if submission.status %}
 <div class="card-panel">
 <h4>File attachments</h4>
 
@@ -176,6 +185,7 @@ Submission {{submission.id}}
 <div  class="card-panel">
 	<submission-notes submission-id="{{submission.id}}"></submission-notes>
 </div>
+{% endif %}
 </div>
 {% include 'partials/modal.html'%}
 <script src="/static/vendor/jquery-file-upload/vendor/jquery.ui.widget.js"></script>
