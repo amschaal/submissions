@@ -43,9 +43,14 @@ class SampleSheetTablib(object):
 
 class SampleSheet(object):
     _SAMPLE_ID = '*sample_name'
-    def __init__(self,file,header_index=0,skip_rows=None,end_column=None,sample_id=None,to_lower=True):
+    def __init__(self,file,header_index=0,skip_rows=None,start_column=None,end_column=None,sample_id=None,to_lower=True):
         self._file = file
-        self.df = pandas.read_excel(file,header=header_index,usecols=end_column)
+        usecols = None
+        if start_column and end_column:
+            usecols = '{0}:{1}'.format(start_column,end_column)
+        elif end_column:
+            usecols = end_column
+        self.df = pandas.read_excel(file,header=header_index,usecols=usecols)
         file.seek(0)
         
         if skip_rows:
@@ -142,13 +147,13 @@ class SRASampleSheet(SampleSheet):
 class CoreSampleSheetTemplate(SampleSheet):
     def __init__(self,submission_type):
         self.submission_type = submission_type
-        super(CoreSampleSheetTemplate, self).__init__(self.submission_type.form.file,submission_type.header_index,submission_type.skip_rows,submission_type.end_column,submission_type.sample_identifier)
+        super(CoreSampleSheetTemplate, self).__init__(self.submission_type.form.file,submission_type.header_index - 1,submission_type.skip_rows,submission_type.start_column,submission_type.end_column,submission_type.sample_identifier)
 
 class CoreSampleSheet(SampleSheet):
     def __init__(self,file,submission_type):
         self.submission_type = submission_type
         self.template_samplesheet = CoreSampleSheetTemplate(self.submission_type)
-        super(CoreSampleSheet, self).__init__(file,submission_type.header_index,submission_type.skip_rows,submission_type.end_column,submission_type.sample_identifier)
+        super(CoreSampleSheet, self).__init__(file,submission_type.header_index - 1,submission_type.skip_rows,submission_type.start_column,submission_type.end_column,submission_type.sample_identifier)
     @property
     def headers_modified(self):
         if self.headers != self.template_samplesheet.headers:

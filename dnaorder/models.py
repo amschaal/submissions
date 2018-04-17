@@ -21,8 +21,8 @@ class SubmissionType(models.Model):
     form = models.FileField(upload_to='submission_forms/')
     header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
     skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
-    start_column = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-    end_column = models.PositiveSmallIntegerField(null=True,blank=True)
+    start_column = models.CharField(max_length=2,default='A')
+    end_column = models.CharField(max_length=2,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     def __unicode__(self):
         return self.name
