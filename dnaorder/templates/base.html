@@ -20,6 +20,7 @@
         {% if request.user.is_authenticated %}
         <li><a href="{% url 'submissions' %}">Submissions</a></li>
         <li><a href="{% url 'submission_types' %}">Submission Types</a></li>
+        <li><a href="{% url 'validators' %}">Validators</a></li>
         {% endif %}
         <li><a href="{% url 'submit' %}">Submit</a></li>
       </ul>

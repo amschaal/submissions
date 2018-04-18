@@ -116,7 +116,7 @@ class ValidatorForm(forms.ModelForm):
         help_texts = {
                       'regex':'Enter a valid regular expression to validate against. Example for matching values such as "20.3 ul": ^\d+(\.{1}\d+)? ul$',
                       'choices':'Enter comma delimited choices.',
-                      'choices':'Enter a numeric range.  You may enter a min, max, or both.'
+                      'range':'Enter a numeric range.  You may enter a min, max, or both.'
                       }
     def clean_regex(self):
         regex = self.cleaned_data.get('regex')

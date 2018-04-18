@@ -28,6 +28,9 @@ urlpatterns = [
     url(r'^submission_types/$', views.submission_types, name='submission_types'),
     url(r'^submission_types/create/$', views.create_update_submission_type, name='create_submission_type'),
     url(r'^submission_types/(?P<id>\d+)/update/$', views.create_update_submission_type, name='update_submission_type'),
+    url(r'^validators/$', views.validators, name='validators'),
+    url(r'^validators/create/$', views.create_update_validator, name='create_validator'),
+    url(r'^validators/(?P<id>\d+)/update/$', views.create_update_validator, name='update_validator'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/$', views.submission, name='submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/print/$', views.print_submission, name='print_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/confirm/$', views.confirm_submission, name='confirm_submission'),
@@ -35,4 +38,3 @@ urlpatterns = [
     url(r'^submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-

@@ -1,7 +1,8 @@
 from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
-    SubmissionTypeForm
+    SubmissionTypeForm, ValidatorForm
 from django.shortcuts import render, redirect
-from dnaorder.models import SubmissionType, Submission, SubmissionStatus
+from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
+    Validator
 from sendfile import sendfile
 import tempfile
 import os
@@ -49,6 +50,21 @@ def create_update_submission_type(request,id=None):
             submission_type = form.save(commit=True)
             return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type,'valid':True})
     return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type})
+
+def validators(request):
+    validators = Validator.objects.all().order_by('field_id')
+    return render(request,'validators.html',{'validators':validators})
+
+def create_update_validator(request,id=None):
+    validator = Validator.objects.get(id=id) if id else None
+    if request.method == 'GET':
+        form = ValidatorForm(instance=validator)
+    elif request.method == 'POST':
+        form = ValidatorForm(request.POST,request.FILES,instance=validator)
+        if form.is_valid():
+            validator = form.save(commit=True)
+            return render(request,'validator_form.html',{'form':form,'validator':validator,'valid':True})
+    return render(request,'validator_form.html',{'form':form,'validator':validator})
 
 @login_required
 def submissions(request):
