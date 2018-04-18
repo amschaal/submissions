@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% if valid%}
+<div class="green lighten-4 card-panel">
+	<h5>Validator successfully {% if validator %}updated{% else %}created{% endif %}.  Go back to <a href="{% url 'validators' %}">validators</a>.</h5>
+</div>
+{% endif %}
+
+<div class="card-panel">
+{% if validator %}
+<h3>Edit Validator</h3>
+{% else %}
+<h3>Create Validator</h3>
+{% endif %}
+<form method="POST">
+<div class="card-content">
+{% csrf_token %}
+<table>
+{{form}}
+</table>
+<button class="btn waves-effect waves-teal">Submit</button>
+</div>
+</form>
+</div>
+{% endblock %}
