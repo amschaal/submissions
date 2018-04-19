@@ -40,12 +40,12 @@ class NoteSerializer(serializers.ModelSerializer):
         if data:
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
-            if data.get('send_email'):
-                if request.user.is_authenticated:
+            if request.user.is_authenticated:
+                if data.get('send_email'):
                     submission = Submission.objects.get(id=kwargs['data'].get('submission'))
                     data.update({'emails':[submission.email]})
-                else:
-                    data.update({'emails':['dnatech@ucdavis.edu']})
+            else:
+                data.update({'emails':['dnatech@ucdavis.edu']})
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()

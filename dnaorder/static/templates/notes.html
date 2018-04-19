@@ -1,30 +1,3 @@
-<!-- <div class="note-wrapper" ng-class="note.tags" ng-repeat="note in getResponses(note)|orderBy:created">
-	<div class="alert note" >
-	<div ng-if="note.editing">
-		<button type="button" class="close" data-dismiss="alert" ng-click="note.editing=false"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
-		<textarea ng-model="note.content" placeholder="Enter text here..." class="form-control">{[note.content]}</textarea>
-		<span class="pull-left"><label ng-repeat="(tag,label) in tags"><input type="checkbox" ng-checked="note.tags.indexOf(tag) != -1" ng-click="toggleTag(note,tag)"> {[label]} </label></span>
-		<button class="btn btn-success btn-sm pull-right" ng-click="save(note)">Save</button>
-		<div style="clear:both"></div>
-	</div>
-	<div ng-if="!note.editing">
-		<p>
-		<small class="details">Created {[note.created|date:"short"]} by {[note.created_by]}</small>
-		<small ng-if="note.modified && note.modified_by" class="details"> Last modified {[note.modified|date:"short"]} by {[note.modified_by]}</small>
-		<small class="pull-right" ng-if="note.tags.length"> <i class="glyphicon glyphicon-tags"></i> <span ng-repeat="tag in note.tags"> {[getTagLabel(tag)]}{[$last ? "" : ", "]}</span></small>
-		</p>
-		<div class="content">{[note.content]}</div>
-		<p>
-		<i style="margin-left:5px" class="glyphicon glyphicon-share-alt pull-right" ng-click="respond(note)" ng-if="note.id"></i>
-		<i style="margin-left:5px" class="glyphicon glyphicon-pencil pull-right" ng-click="note.editing=true"></i>
-		<i class="glyphicon glyphicon-remove pull-right" ng-click="deleteNote(note)"></i>
-		</p>
-	</div>
-</div>
-<ng-include src="'/static/templates/notes.html'"></ng-include>
-</div>
-
- -->
 <div class="note-wrapper" ng-repeat="note in getResponses(note)|orderBy:'-id'">
 	<div class="{{getClasses(note)}} card horizontal note" ng-if="note" id="note-{{note.id}}">
 		<div class="card-stacked">
@@ -35,7 +8,7 @@
 	        <div class="card-content" ng-if="!note.id">
 	          <form>
 	          <p><textarea ng-model="note.text"></textarea></p>
-	          <div class="left controls">
+	          <div class="left controls" ng-if="user">
 	          	<label title="Select if you only want internal users to see this note."><input type="checkbox" ng-model="note.public" ng-true-value="false" ng-false-value="true"/><span>Private</span></label> <label ng-if="note.public" title="Select if you want to email the submitter."><input type="checkbox" ng-model="note.send_email"/><span>Email Submitter</span></label>
 	          </div>
 	      	<div class="right controls"><button class="btn red btn-small" ng-click="deleteNote(note)">Delete</button> <button class="btn  green darken-1 btn-small" ng-click="save(note)">Save</button></div>

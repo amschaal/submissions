@@ -183,7 +183,7 @@ background-color:#cc0000;
 <div style="clear:both"></div>
 </div>
 <div  class="card-panel">
-	<submission-notes submission-id="{{submission.id}}"></submission-notes>
+	<submission-notes submission-id="{{submission.id}}" {% if request.user.is_authenticated %}user="{{request.user.id}}"{% endif %}></submission-notes>
 </div>
 {% endif %}
 </div>

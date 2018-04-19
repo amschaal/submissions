@@ -110,6 +110,9 @@ class SubmissionForm(forms.ModelForm):
 
 
 class ValidatorForm(forms.ModelForm):
+    def __init__(self,*args,**kwargs):
+        super(ValidatorForm, self).__init__(*args,**kwargs)
+        print self.fields['range'].widget.get_context()
     class Meta:
         model = Validator
         exclude = []

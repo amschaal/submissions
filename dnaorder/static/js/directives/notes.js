@@ -6,7 +6,8 @@ notes.directive('submissionNotes', function(Note) {
 		templateUrl: '/static/templates/notes_container.html',
 		scope: {
 			submission: '=',
-			submissionId:'@'
+			submissionId:'@',
+			user:'@',
 		},
 		controller: function ($scope,$rootScope) {
 			var noteHash={};
