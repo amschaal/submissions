@@ -8,6 +8,7 @@ import material
 import re
 from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
+from django.forms.widgets import ClearableFileInput
 
 class SubmissionStatusForm(forms.ModelForm):
     send_email = forms.BooleanField(required=True,initial=True)
@@ -110,9 +111,6 @@ class SubmissionForm(forms.ModelForm):
 
 
 class ValidatorForm(forms.ModelForm):
-    def __init__(self,*args,**kwargs):
-        super(ValidatorForm, self).__init__(*args,**kwargs)
-        print self.fields['range'].widget.get_context()
     class Meta:
         model = Validator
         exclude = []
@@ -142,10 +140,14 @@ class SubmissionTypeForm(forms.ModelForm):
                       'prefix':"This will be prepended to the submission's internal id.",
                       'header_index':'Which row are the variables on?',
                       'skip_rows':'The number of rows after the variables to ignore.  This is useful if providing examples.',
-                      'start_column':'What column (A-Z) do headers start on. Leave blank to start at first column.',
-                      'end_column':'What column (A-Z) do headers end on?  Leave blank to use all column headers found in header row.',
-                      'sample_identifier': 'What is in the header for the sample name/id column?'
+                      'start_column':'What column (A-Z) do variables start on.',
+                      'end_column':'What column (A-Z) do variables end on?',
+                      'sample_identifier': 'What is in the header for the sample name/id column?',
+                      'form': 'Please upload a template in XLSX format, minimally containing variable names in one row.'
                       }
         labels = {
-            'header_index': 'Variable row'
+                'header_index': 'Variable row'
+            }
+        widgets = {
+                'form':ClearableFileInput
             }
