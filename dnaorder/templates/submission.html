@@ -89,6 +89,7 @@ background-color:#cc0000;
 
 <table>
 <tr><th>Internal ID</th><td>{{submission.internal_id}}</td></tr>
+<tr><th>Participants</th><td>{% for u in submission.participants.all %}{{u}}{% if not forloop.last %}, {% endif %}{% empty %}<b>Not assigned</b>{% endfor %}</td></tr>
 {% if status_form %}
 <tr>
 	<th>Status</th>

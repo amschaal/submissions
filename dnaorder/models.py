@@ -96,6 +96,7 @@ class Submission(models.Model):
     sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True)
     biocore = models.BooleanField(default=False)
+    participants = models.ManyToManyField(User,blank=True)
     def save(self, *args, **kwargs):
         if not self.internal_id:
             self.internal_id = self.generate_internal_id()
@@ -140,7 +141,14 @@ class Submission(models.Model):
             self.locked = True
         if commit:
             self.save()
-
+    @property
+    def participant_emails(self):
+        participants = [u.email for u in self.participants.all()]
+        if len(participants) == 0:
+            participants = ['dnatech@ucdavis.edu']
+        return participants
+    
+    
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
     submission = models.ForeignKey(Submission,related_name="files")
@@ -215,4 +223,5 @@ def user_string(self):
         return "{first} {last}".format(first=self.first_name, last=self.last_name)
     else:
         return self.username
+User.__unicode__ = user_string
 User.__str__ = user_string

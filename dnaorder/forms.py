@@ -21,7 +21,7 @@ class SubmissionStatusForm(forms.ModelForm):
 class SubmissionForm(forms.ModelForm):
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id']
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants']
         help_texts = {
                       'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
@@ -108,7 +108,22 @@ class SubmissionForm(forms.ModelForm):
 #                     self._errors['sra_form'].insert(0,forms.ValidationError('The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))))
 #                 else:
 #                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
-
+class AdminSubmissionForm(SubmissionForm):
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sample_data','sra_data','status','internal_id']
+    layout = material.base.Layout(
+        'participants',
+        'name',
+        material.base.Row('email', 'phone'),
+        material.base.Row('pi_name', 'pi_email'),
+        'institute',
+        'notes',
+        'type',
+        'sample_form',
+        'sra_form',
+        'biocore',
+    )
 
 class ValidatorForm(forms.ModelForm):
     class Meta:

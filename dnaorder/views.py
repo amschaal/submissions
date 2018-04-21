@@ -1,5 +1,5 @@
 from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
-    SubmissionTypeForm, ValidatorForm
+    SubmissionTypeForm, ValidatorForm, AdminSubmissionForm
 from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
     Validator
@@ -23,14 +23,15 @@ def submit(request):
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def update_submission(request,id):
+    form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
     submission = Submission.objects.get(id=id)
     if not request.user.is_authenticated and not submission.editable():
         raise PermissionDenied
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
-        form = SubmissionForm(instance=submission)
+        form = form_class(instance=submission)
     elif request.method == 'POST':
-        form = SubmissionForm(request.POST,request.FILES,instance=submission)
+        form = form_class(request.POST,request.FILES,instance=submission)
         if form.is_valid():
             submission = form.save(commit=True)
             return redirect('submission',id=id)
