@@ -1,5 +1,6 @@
 from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
-    SubmissionTypeForm, ValidatorForm, AdminSubmissionForm
+    SubmissionTypeForm, ValidatorForm, AdminSubmissionForm,\
+    AnonSubmissionFormUpdate
 from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
     Validator
@@ -23,7 +24,7 @@ def submit(request):
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def update_submission(request,id):
-    form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
+    form_class = AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate
     submission = Submission.objects.get(id=id)
     if not request.user.is_authenticated and not submission.editable():
         raise PermissionDenied

@@ -108,6 +108,32 @@ class SubmissionForm(forms.ModelForm):
 #                     self._errors['sra_form'].insert(0,forms.ValidationError('The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))))
 #                 else:
 #                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
+class AnonSubmissionFormUpdate(SubmissionForm):
+    def __init__(self, *args, **kwargs):
+        super(AnonSubmissionFormUpdate, self).__init__(*args, **kwargs)
+        instance = getattr(self, 'instance', None)
+        if instance and instance.pk:
+            self.fields['email'].widget.attrs['readonly'] = True
+    def clean_email(self):
+        instance = getattr(self, 'instance', None)
+        if instance and instance.pk:
+            return instance.email
+        else:
+            return self.cleaned_data['email']
+#     class Meta:
+#         model = Submission
+#         exclude = ['submitted','sample_data','sra_data','status','internal_id','email']
+#     layout = material.base.Layout(
+#         'participants',
+#         material.base.Row('name','phone'),
+#         material.base.Row('pi_name', 'pi_email'),
+#         'institute',
+#         'notes',
+#         'type',
+#         'sample_form',
+#         'sra_form',
+#         'biocore',
+#     )
 class AdminSubmissionForm(SubmissionForm):
     class Meta:
         model = Submission
