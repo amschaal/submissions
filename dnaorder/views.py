@@ -79,7 +79,8 @@ def submission(request,id):
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
-    return render(request,'print_submission.html',{'submission':submission})
+    variables = submission.samplesheet.headers
+    return render(request,'print_submission.html',{'submission':submission,'variables':variables})
 
 def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)
