@@ -7,13 +7,28 @@
     body {
     	width: 10in;
     }
+    .full {
+    	width:100%;
+    }
 </style>
 <style>
     .full {
     	width:100%;
     }
-    .bordered{
+    td,th{
+    	text-align: center;
+    }
+    .bordered td, .bordered th{
     	border: thin solid grey;
+    	margin: 0px;
+    	padding: 1px;
+    }
+    .bordered{
+    	border-spacing: 0;
+		border-collapse: collapse;
+    }
+    .compact th td{
+    	word-wrap:break-word;
     }
 </style>
 </head>
@@ -26,8 +41,17 @@
 <tr><th>PI</th><td>{{submission.pi_name}}</td><th>PI email</th><td>{{submission.pi_email}}</td><th>Institute</th><td>{{submission.institute}}</td></tr>
 {% if submission.notes %}<tr><th>Notes</th><td colspan="5">{{submission.notes}}</td></tr>{% endif %}
 </table>
-<table class="full bordered">
+<br>
+<table class="full bordered compact">
+<tr><th colspan="{{variables|length}}">Samples</th></tr>
 <tr>{% for variable in variables%}<th>{{variable}}</th>{%endfor%}</tr>
+{% for row in submission.samplesheet.data %}
+<tr>
+{% for key,val in row.items %}
+<td>{{val}}</td>
+{% endfor %}
+</tr>
+{% endfor %}
 </table>
 </body>
 </html>
