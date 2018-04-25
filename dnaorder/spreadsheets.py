@@ -79,6 +79,10 @@ class SampleSheet(object):
     def data(self):
         df1 = self.df.where((pandas.notnull(self.df)), None)
         return df1.to_dict(orient='records',into=OrderedDict)
+    @property
+    def transposed(self,transpose=False):
+        df1 = self.df.where((pandas.notnull(self.df)), None).transpose()
+        return df1.to_dict(orient='records',into=OrderedDict)
     def sample_ids(self):
         return self.df[self._SAMPLE_ID]
 #     @property

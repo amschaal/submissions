@@ -30,6 +30,12 @@
     .compact th td{
     	word-wrap:break-word;
     }
+    .compact td{
+    	font-size:11pt;
+    }
+    .centered{
+    	text-align:center;
+    }
 </style>
 </head>
 <body>
@@ -41,17 +47,36 @@
 <tr><th>PI</th><td>{{submission.pi_name}}</td><th>PI email</th><td>{{submission.pi_email}}</td><th>Institute</th><td>{{submission.institute}}</td></tr>
 {% if submission.notes %}<tr><th>Notes</th><td colspan="5">{{submission.notes}}</td></tr>{% endif %}
 </table>
-<br>
-<table class="full bordered compact">
-<tr><th colspan="{{variables|length}}">Samples</th></tr>
-<tr>{% for variable in variables%}<th>{{variable}}</th>{%endfor%}</tr>
-{% for row in submission.samplesheet.data %}
-<tr>
-{% for key,val in row.items %}
-<td>{{val}}</td>
-{% endfor %}
-</tr>
-{% endfor %}
-</table>
+
+
+<h2 class="centered">Samples</h2>
+
+{% if vertical %}
+	<table class="full bordered compact">
+	{% for variable,row in vertical.items %}
+	<tr><th>{{variable}}</th>
+		{% for i,val in row.items %}
+			{% if forloop.parentloop.first	%}<th>{{val}}</th>{% else %}<td>{{val}}</td>{% endif %}
+		{% endfor %}
+	</tr>
+	{% endfor %}
+	</table>
+{% else %}
+
+	<table class="full bordered compact">
+		<tr>
+		{% for variable in variables%}<th>{{variable}}</th>{%endfor%}
+		</tr>
+		{% for row in submission.samplesheet.data %}
+			<tr>
+			{% for key,val in row.items %}
+				{% if forloop.first	%}<th>{{val}}</th>{% else %}<td>{{val}}</td>{% endif %}
+			{% endfor %}
+			</tr>
+		{% endfor %}
+	</table>
+
+{% endif %}
+
 </body>
 </html>

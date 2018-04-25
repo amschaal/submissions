@@ -11,6 +11,7 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
+from collections import OrderedDict
 def submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
@@ -80,7 +81,8 @@ def submission(request,id):
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
     variables = submission.samplesheet.headers
-    return render(request,'print_submission.html',{'submission':submission,'variables':variables})
+    vertical = OrderedDict(zip(submission.samplesheet.headers,submission.samplesheet.transposed)) if request.GET.get('vertical') else None
+    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'vertical':vertical})
 
 def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)
