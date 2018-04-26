@@ -1,12 +1,16 @@
 {% extends 'base.html' %}
+{% load material_form %}
 {% block content %}
 
 <div ng-controller="PrintCtrl as ctrl">
 <div class="card-panel">
 	<h3>Customize print</h3>
 	<h4>Submission {{submission.id}}</h4>
-	{{submission.samplesheet.headers}}
-		{{submission.type.excluded_fields}}
+	<form method="get" action="{% url 'print_submission' submission.id %}">
+		{% csrf_token %}
+		{% form form=form %}{% endform %}
+		<button class="btn">Print</button>
+	</form>		
 </div>
 </div>
 

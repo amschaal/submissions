@@ -42,7 +42,7 @@
     }
 </style>
 </head>
-<body>
+<body onload="window.print()">
 <table class="full bordered">
 <tr><th colspan="6">Submission Details</th></tr>
 <tr><th>ID</th><td>{{submission.id}}</td><th>Internal ID</th><td>{{submission.internal_id}}</td><th>Type</th><td>{{submission.type}}</td></tr>
@@ -54,10 +54,10 @@
 
 
 <h2 class="centered">Samples</h2>
+{{pages}}
+{% if max_samples and forloop.counter|divisibleby:"1"%}{% endif %}
 
 {% if vertical %}
-{{data}}
-{% for i in '123' %}
 	<table class="full bordered compact page-break">
 	{% for variable, row in data.items %}
 	<tr><th>{{variable}}</th>
@@ -67,7 +67,6 @@
 	</tr>
 	{% endfor %}
 	</table>
-{% endfor %}
 {% else %}
 
 	<table class="full bordered compact">

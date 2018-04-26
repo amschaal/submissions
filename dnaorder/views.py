@@ -1,6 +1,6 @@
 from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
     SubmissionTypeForm, ValidatorForm, AdminSubmissionForm,\
-    AnonSubmissionFormUpdate
+    AnonSubmissionFormUpdate, CustomPrintForm
 from django.shortcuts import render, redirect
 from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
     Validator
@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
+from django.core.paginator import Paginator
 def submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
@@ -80,19 +81,20 @@ def submission(request,id):
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
-    exclude = submission.type.excluded_fields
+    exclude = submission.type.excluded_fields if not request.GET.has_key('exclude') else request.GET.getlist('exclude')
+    max_samples = request.GET.get('max_samples',500)
     variables = [v for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
     vertical = request.GET.has_key('vertical')
     data = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude)
     if vertical:
         data = OrderedDict(zip(variables,data))
-    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'data':data,'vertical':vertical})
+    pages = Paginator(data,max_samples)
+    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'data':data,'pages':pages,'vertical':vertical})
 
 def customize_print(request,id):
     submission = Submission.objects.get(id=id)
-    exclude = submission.type.excluded_fields
-    variables = submission.samplesheet.headers 
-    return render(request,'customize_print.html',{'submission':submission})
+    form = CustomPrintForm(submission,initial={'exclude':submission.type.excluded_fields})
+    return render(request,'customize_print.html',{'submission':submission,'form':form})
 
 def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)
