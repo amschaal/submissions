@@ -6,6 +6,7 @@
     }
     body {
     	width: 10in;
+		font-size: 11pt;
     }
     .full {
     	width:100%;
@@ -31,10 +32,13 @@
     	word-wrap:break-word;
     }
     .compact td{
-    	font-size:11pt;
+    	font-size:10pt;
     }
     .centered{
     	text-align:center;
+    }
+    .page-break{
+    	page-break-after : always;
     }
 </style>
 </head>
@@ -52,7 +56,8 @@
 <h2 class="centered">Samples</h2>
 
 {% if vertical %}
-	<table class="full bordered compact">
+{% for i in '123' %}
+	<table class="full bordered compact page-break">
 	{% for variable,row in vertical.items %}
 	<tr><th>{{variable}}</th>
 		{% for i,val in row.items %}
@@ -61,6 +66,7 @@
 	</tr>
 	{% endfor %}
 	</table>
+{% endfor %}
 {% else %}
 
 	<table class="full bordered compact">

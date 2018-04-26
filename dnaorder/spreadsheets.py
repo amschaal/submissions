@@ -76,13 +76,29 @@ class SampleSheet(object):
     def headers(self):
         return list(self.df.columns)
     @property
+    def not_null(self):
+        return self.df.where((pandas.notnull(self.df)), None)
+    @property
     def data(self):
-        df1 = self.df.where((pandas.notnull(self.df)), None)
-        return df1.to_dict(orient='records',into=OrderedDict)
+#         df1 = self.df.where((pandas.notnull(self.df)), None)
+        return self.to_dict(self.not_null)
+    def get_data(self,exclude_columns=None,transpose=False,to_dict=True):
+        df = self.df
+        if exclude_columns:
+            df = self.remove_cols(df, exclude_columns)
+        if transpose:
+            df = df.transpose()
+        return self.to_dict(df) if to_dict else df
     @property
     def transposed(self,transpose=False):
-        df1 = self.df.where((pandas.notnull(self.df)), None).transpose()
-        return df1.to_dict(orient='records',into=OrderedDict)
+#         df1 = self.df.where((pandas.notnull(self.df)), None).transpose()
+        return self.to_dict(self.not_null.transpose())
+    @staticmethod
+    def remove_cols(df,cols=[]):
+        return df[df.columns.difference(cols)]
+    @staticmethod
+    def to_dict(df):
+        return df.to_dict(orient='records',into=OrderedDict)
     def sample_ids(self):
         return self.df[self._SAMPLE_ID]
 #     @property

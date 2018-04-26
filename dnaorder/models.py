@@ -24,8 +24,15 @@ class SubmissionType(models.Model):
     start_column = models.CharField(max_length=2,default='A')
     end_column = models.CharField(max_length=2,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
+    exclude_fields = models.TextField(blank=True)
     def __unicode__(self):
         return self.name
+    @property
+    def samplesheet(self):
+        if not self.form or not self.id:
+            return None
+        from dnaorder.spreadsheets import CoreSampleSheet
+        return CoreSampleSheet(self.form.file,self)
 
 def sra_samples_path(instance, filename):
     ext = os.path.splitext(filename)[1]

@@ -174,6 +174,11 @@ class ValidatorForm(forms.ModelForm):
             raise forms.ValidationError('Please enter at least 1 validation method (regex, choices, range).')
 
 class SubmissionTypeForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SubmissionTypeForm, self).__init__(*args, **kwargs)
+        instance = getattr(self, 'instance', None)
+        if instance:
+            self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType
         exclude = []
@@ -184,7 +189,8 @@ class SubmissionTypeForm(forms.ModelForm):
                       'start_column':'What column (A-Z) do variables start on.',
                       'end_column':'What column (A-Z) do variables end on?',
                       'sample_identifier': 'What is in the header for the sample name/id column?',
-                      'form': 'Please upload a template in XLSX format, minimally containing variable names in one row.'
+                      'form': 'Please upload a template in XLSX format, minimally containing variable names in one row.',
+                      'exclude_fields': 'Comma delimited list of variables that should not be printed out by default.'
                       }
         labels = {
                 'header_index': 'Variable row'

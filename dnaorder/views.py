@@ -81,7 +81,7 @@ def submission(request,id):
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
     variables = submission.samplesheet.headers
-    vertical = OrderedDict(zip(submission.samplesheet.headers,submission.samplesheet.transposed)) if request.GET.get('vertical') else None
+    vertical = OrderedDict(zip(submission.samplesheet.headers,submission.samplesheet.transposed)) if request.GET.has_key('vertical') else None
     return render(request,'print_submission.html',{'submission':submission,'variables':variables,'vertical':vertical})
 
 def confirm_submission(request,id):
