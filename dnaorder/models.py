@@ -33,6 +33,9 @@ class SubmissionType(models.Model):
             return None
         from dnaorder.spreadsheets import CoreSampleSheet
         return CoreSampleSheet(self.form.file,self)
+    @property
+    def excluded_fields(self):
+        return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
 
 def sra_samples_path(instance, filename):
     ext = os.path.splitext(filename)[1]

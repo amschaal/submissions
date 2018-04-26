@@ -80,8 +80,7 @@ class SampleSheet(object):
         return self.df.where((pandas.notnull(self.df)), None)
     @property
     def data(self):
-#         df1 = self.df.where((pandas.notnull(self.df)), None)
-        return self.to_dict(self.not_null)
+        return self.get_data()
     def get_data(self,exclude_columns=None,transpose=False,to_dict=True):
         df = self.df
         if exclude_columns:
@@ -90,12 +89,12 @@ class SampleSheet(object):
             df = df.transpose()
         return self.to_dict(df) if to_dict else df
     @property
-    def transposed(self,transpose=False):
-#         df1 = self.df.where((pandas.notnull(self.df)), None).transpose()
-        return self.to_dict(self.not_null.transpose())
+    def transposed(self):
+        return self.get_data(transpose=True)
     @staticmethod
     def remove_cols(df,cols=[]):
-        return df[df.columns.difference(cols)]
+        keep = [c for c in list(df) if c not in cols]
+        return df[keep]
     @staticmethod
     def to_dict(df):
         return df.to_dict(orient='records',into=OrderedDict)

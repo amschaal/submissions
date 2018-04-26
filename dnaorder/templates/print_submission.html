@@ -56,9 +56,10 @@
 <h2 class="centered">Samples</h2>
 
 {% if vertical %}
+{{data}}
 {% for i in '123' %}
 	<table class="full bordered compact page-break">
-	{% for variable,row in vertical.items %}
+	{% for variable, row in data.items %}
 	<tr><th>{{variable}}</th>
 		{% for i,val in row.items %}
 			{% if forloop.parentloop.first	%}<th>{{val}}</th>{% else %}<td>{{val}}</td>{% endif %}
@@ -73,7 +74,7 @@
 		<tr>
 		{% for variable in variables%}<th>{{variable}}</th>{%endfor%}
 		</tr>
-		{% for row in submission.samplesheet.data %}
+		{% for row in data %}
 			<tr>
 			{% for key,val in row.items %}
 				{% if forloop.first	%}<th>{{val}}</th>{% else %}<td>{{val}}</td>{% endif %}

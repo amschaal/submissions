@@ -80,9 +80,19 @@ def submission(request,id):
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
-    variables = submission.samplesheet.headers
-    vertical = OrderedDict(zip(submission.samplesheet.headers,submission.samplesheet.transposed)) if request.GET.has_key('vertical') else None
-    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'vertical':vertical})
+    exclude = submission.type.excluded_fields
+    variables = [v for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
+    vertical = request.GET.has_key('vertical')
+    data = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude)
+    if vertical:
+        data = OrderedDict(zip(variables,data))
+    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'data':data,'vertical':vertical})
+
+def customize_print(request,id):
+    submission = Submission.objects.get(id=id)
+    exclude = submission.type.excluded_fields
+    variables = submission.samplesheet.headers 
+    return render(request,'customize_print.html',{'submission':submission})
 
 def confirm_submission(request,id):
     submission = Submission.objects.get(id=id)

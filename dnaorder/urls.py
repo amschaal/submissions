@@ -33,6 +33,7 @@ urlpatterns = [
     url(r'^validators/(?P<id>\d+)/update/$', views.create_update_validator, name='update_validator'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/$', views.submission, name='submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/print/$', views.print_submission, name='print_submission'),
+    url(r'^submissions/(?P<id>[0-9a-f-]+)/print/custom/$', views.customize_print, name='customize_print'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/confirm/$', views.confirm_submission, name='confirm_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
