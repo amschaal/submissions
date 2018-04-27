@@ -84,7 +84,7 @@ def print_submission(request,id):
     max_samples = request.GET.get('max_samples')
     if not max_samples:
         max_samples = 1000
-    variables = [v for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
+    variables = [v.replace('_',' ') for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
     vertical = request.GET.has_key('vertical')
     pages = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude,page_size=int(max_samples))
     

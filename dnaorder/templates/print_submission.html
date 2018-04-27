@@ -40,6 +40,11 @@
     .page-break{
     	page-break-after : always;
     }
+    /*
+    .horizontal.compact th{
+    	word-break: break-word;
+    }
+    */
 </style>
 </head>
 <body onload="window.print()">
@@ -59,7 +64,7 @@
 
 {% if vertical %}
 {% for page in pages %}
-	<table class="full bordered compact page-break">
+	<table class="vertical full bordered compact page-break">
 	{% for variable, row in page.items %}
 	<tr><th>{{variable}}</th>
 		{% for i,val in row.items %}
@@ -71,7 +76,7 @@
 {% endfor %}
 {% else %}
 {% for page in pages %}
-	<table class="full bordered compact page-break">
+	<table class="horizontal full bordered compact page-break">
 		<tr>
 		{% for variable in variables%}<th>{{variable}}</th>{%endfor%}
 		</tr>
