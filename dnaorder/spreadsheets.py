@@ -6,6 +6,7 @@ from psycopg2.tests.testutils import skip_after_libpq
 from collections import OrderedDict
 from dnaorder.models import Validator
 import json
+from django.conf.urls.static import static
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -76,15 +77,29 @@ class SampleSheet(object):
     def headers(self):
         return list(self.df.columns)
     @property
+    def num_samples(self):
+        return len(self.df)
+    @property
     def not_null(self):
         return self.df.where((pandas.notnull(self.df)), None)
     @property
     def data(self):
         return self.get_data()
-    def get_data(self,exclude_columns=None,transpose=False,to_dict=True):
+    @staticmethod
+    def pages(df, page_size):
+        """Yield successive paged dataframes from df."""
+        for i in xrange(0, len(df), page_size):
+            yield df.iloc[i:i + page_size]
+    def get_data(self,exclude_columns=None,transpose=False,to_dict=True,page_size=0): #if page_size > 0, paginate
         df = self.df
+        pages = None
         if exclude_columns:
             df = self.remove_cols(df, exclude_columns)
+        if page_size > 0:
+            pages = self.pages(df, page_size)
+            if transpose:
+                pages = [p.transpose() for p in pages]
+            return [self.to_dict(page) for page in pages] if to_dict else pages
         if transpose:
             df = df.transpose()
         return self.to_dict(df) if to_dict else df

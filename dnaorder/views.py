@@ -12,7 +12,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
-from django.core.paginator import Paginator
 def submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
@@ -82,14 +81,16 @@ def submission(request,id):
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
     exclude = submission.type.excluded_fields if not request.GET.has_key('exclude') else request.GET.getlist('exclude')
-    max_samples = request.GET.get('max_samples',500)
+    max_samples = request.GET.get('max_samples')
+    if not max_samples:
+        max_samples = 1000
     variables = [v for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
     vertical = request.GET.has_key('vertical')
-    data = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude)
+    pages = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude,page_size=int(max_samples))
+    
     if vertical:
-        data = OrderedDict(zip(variables,data))
-    pages = Paginator(data,max_samples)
-    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'data':data,'pages':pages,'vertical':vertical})
+        pages = [OrderedDict(zip(variables,page)) for page in pages]
+    return render(request,'print_submission.html',{'submission':submission,'variables':variables,'pages':pages,'vertical':vertical})
 
 def customize_print(request,id):
     submission = Submission.objects.get(id=id)

@@ -52,9 +52,21 @@ background-color:#cc0000;
 
 <div ng-controller="SubmissionCtrl as ctrl">
 <div class="card-panel">
+
 <span class="right">
 	{% if submission.status %}
-		<a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>
+		{% if request.user.is_authenticated %}
+			<!-- Dropdown Trigger -->
+			<a class='dropdown-trigger btn' href='#' data-activates='print-button'>Print</a>
+			<!-- Dropdown Structure -->
+			<ul id='print-button' class='dropdown-content'>
+			  <li><a href="{% url 'print_submission' id=submission.id %}">Default</a></li>
+			  <li><a href="{% url 'print_submission' id=submission.id %}?vertical">Vertical</a></li>
+			  <li><a href="{% url 'customize_print' id=submission.id %}">Custom</a></li>
+			</ul>
+		{% else %}
+			<a class="btn" href="{% url 'print_submission' id=submission.id %}">Print</a>
+		{% endif %}
 	{% endif %}
 	{% if editable %}
 		<a class="btn" href="{% url 'update_submission' id=submission.id %}">Modify</a>
@@ -198,6 +210,8 @@ background-color:#cc0000;
 
 
 $(document).ready(function(){
+	$('.dropdown-trigger').dropdown();
+	console.log('print',$('.dropdown-trigger'));
 	$.ajaxPrefilter(function( options ) {
 	    if ( !options.beforeSend) {
 	        options.beforeSend = function (xhr) { 
