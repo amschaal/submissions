@@ -27,7 +27,7 @@ class SubmissionForm(forms.ModelForm):
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
                       'notes':'Please enter any additional notes necessary here'
                       }
-        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Do you want the Bioinformatics Core to analyze the data?'}
+        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
     layout = material.base.Layout(
         'name',
         material.base.Row('email', 'phone'),
