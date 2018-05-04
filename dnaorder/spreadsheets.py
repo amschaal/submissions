@@ -90,8 +90,11 @@ class SampleSheet(object):
         """Yield successive paged dataframes from df."""
         for i in xrange(0, len(df), page_size):
             yield df.iloc[i:i + page_size]
-    def get_data(self,exclude_columns=None,transpose=False,to_dict=True,page_size=0): #if page_size > 0, paginate
-        df = self.df
+    def get_data(self,exclude_columns=None,transpose=False,to_dict=True,page_size=0,not_null=True): #if page_size > 0, paginate
+        if not_null:
+            df = self.not_null
+        else:
+            df = self.df
         pages = None
         if exclude_columns:
             df = self.remove_cols(df, exclude_columns)
