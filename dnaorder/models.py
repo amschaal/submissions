@@ -25,6 +25,12 @@ class SubmissionType(models.Model):
     end_column = models.CharField(max_length=2,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
+    #Submission level form definitions below
+    has_submission_fields = models.BooleanField(default=False)
+    submission_header_row = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
+    submission_value_row = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
+    submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
+    submission_end_column = models.CharField(max_length=2,null=True,blank=True)
     def __unicode__(self):
         return self.name
     @property

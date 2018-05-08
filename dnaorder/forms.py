@@ -177,7 +177,7 @@ class SubmissionTypeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(SubmissionTypeForm, self).__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
-        if instance:
+        if instance and instance.samplesheet:
             self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType

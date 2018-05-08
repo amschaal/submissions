@@ -7,6 +7,8 @@ from collections import OrderedDict
 from dnaorder.models import Validator
 import json
 from django.conf.urls.static import static
+import string
+from material.base import Column
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -164,6 +166,13 @@ class SampleSheet(object):
         return json.dumps(data) if stringify else data
     def join(self,df):
         return self.sample_df.join(df.sample_df,how='left',rsuffix='_sra')
+    @staticmethod
+    def get_column_index(column_name=None):
+        if not column_name:
+            return None
+        index = string.ascii_uppercase.find(column_name)
+        return index if index > -1 else None
+
 class SRASampleSheet(SampleSheet):
     def __init__(self,file,sample_id=None,main_samplesheet=None):
         #find header row based on sample id column name
@@ -191,6 +200,22 @@ class CoreSampleSheet(SampleSheet):
         self.submission_type = submission_type
         self.template_samplesheet = CoreSampleSheetTemplate(self.submission_type)
         super(CoreSampleSheet, self).__init__(file,submission_type.header_index - 1,submission_type.skip_rows,submission_type.start_column,submission_type.end_column,submission_type.sample_identifier)
+#         print file
+#         file.seek(0)
+        self._raw_data = tablib.Dataset().load(file.read())
+        file.seek(0)#       
+        print self._raw_data._data
+        print 'SUBMISSION DATA'
+        print self.submission_data
+    @property
+    def submission_data(self):
+        if self.submission_type.has_submission_fields and self.submission_type.submission_header_row is not None and self.submission_type.submission_value_row:
+            return dict(
+                        zip(
+                            self._raw_data[self.submission_type.submission_header_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1],
+                            self._raw_data[self.submission_type.submission_value_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1]
+                        )
+                    )
     @property
     def headers_modified(self):
         if self.headers != self.template_samplesheet.headers:
