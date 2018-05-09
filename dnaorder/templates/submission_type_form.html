@@ -14,7 +14,7 @@
 {% else %}
 <h3>Create Submission Type</h3>
 {% endif %}
-<form enctype="multipart/form-data" method="POST">
+<form enctype="multipart/form-data" novalidate method="POST"  action=".">
 <div class="card-content">
 {% csrf_token %}
 {% form form=form %}{% endform %}

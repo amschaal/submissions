@@ -42,7 +42,7 @@
 </style>
 <div class="card-panel">
 
-<form enctype="multipart/form-data" method="POST">
+<form enctype="multipart/form-data" novalidate method="POST" action=".">
 <h4>Submission Form</h4>
 {% csrf_token %}
 {% form form=form %}{% endform %}

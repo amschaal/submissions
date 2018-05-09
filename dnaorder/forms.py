@@ -20,6 +20,7 @@ class SubmissionStatusForm(forms.ModelForm):
         material.base.Row('status', 'send_email')
     )
 class SubmissionForm(forms.ModelForm):
+    type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','participants']

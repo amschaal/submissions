@@ -13,11 +13,12 @@ from django.db.models import signals
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
+from django.db.models.signals import post_save
 
 class SubmissionType(models.Model):
-    original = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='descendants')
+    original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
-    version = models.PositiveIntegerField(default=0)
+    version = models.PositiveIntegerField(default=1)
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
     show = models.BooleanField(default=False)
@@ -53,7 +54,10 @@ class SubmissionType(models.Model):
         if self.original:
             return SubmissionType.objects.filter(original=self.original)
         return SubmissionType.objects.filter(original=self)
-            
+def set_original(sender,instance,**kwargs):
+    if not instance.original and not instance.parent:
+        SubmissionType.objects.filter(id=instance.id).update(original=instance)
+post_save.connect(set_original, SubmissionType)
 
 def sra_samples_path(instance, filename):
     ext = os.path.splitext(filename)[1]
