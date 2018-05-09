@@ -207,7 +207,7 @@ class SubmissionTypeForm(forms.ModelForm):
             self.instance.pk = None
             self.instance.version = SubmissionType.objects.filter(original=self.instance.original).aggregate(Max('version'))['version__max'] + 1
             SubmissionType.objects.filter(original=self.instance.original).update(show=False)
-        self.instance.user = user
+        self.instance.updated_by = user
         self.instance.show = True
         return super(SubmissionTypeForm, self).save(commit=commit)
 #         self.instance.parent = self.instance.id
