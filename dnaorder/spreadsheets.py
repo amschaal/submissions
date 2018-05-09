@@ -9,7 +9,6 @@ import json
 from django.conf.urls.static import static
 import string
 from material.base import Column
-from numpy import str
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'

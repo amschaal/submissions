@@ -3,7 +3,7 @@ from dnaorder.models import Submission, Validator, SubmissionStatus,\
     SubmissionType
 from __builtin__ import file
 import tablib
-from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet
+from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet
 import material
 import re
 from django.utils.safestring import mark_safe
@@ -177,8 +177,8 @@ class SubmissionTypeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(SubmissionTypeForm, self).__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
-        if instance and instance.samplesheet:
-            self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
+#         if instance and instance.samplesheet:
+#             self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType
         exclude = ['version','parent','updated','updated_by']
@@ -198,7 +198,7 @@ class SubmissionTypeForm(forms.ModelForm):
         widgets = {
                 'form':ClearableFileInput
             }
-    def save(self,user,commit=True):
+    def save(self,user=None,commit=True):
         if self.instance.id and Submission.objects.filter(type=self.instance).count() > 0:
             self.instance.parent_id = self.instance.id
             self.instance.pk = None
@@ -208,8 +208,15 @@ class SubmissionTypeForm(forms.ModelForm):
 #         self.instance.parent = self.instance.id
 #         
 #         self.instance.parent = self.instance.id
-#         
-        
+    def clean(self):
+        cleaned_data = super(SubmissionTypeForm, self).clean()
+        #Try to parse a samplesheet from the form/metadata.  If it fails, raise a validation error.
+        try:
+            SampleSheet(cleaned_data['form'],cleaned_data.get('header_index') - 1,cleaned_data.get('skip_rows'),cleaned_data.get('start_column'),cleaned_data.get('end_column'),cleaned_data.get('sample_identifier'))
+#             CoreSampleSheet(,self.save(commit=False))
+#             self.instance.samplesheet
+        except:
+            raise forms.ValidationError('Something went wrong parsing the template.  Please ensure that the form configuration parameters match up with the template rows and columns')
 
 class CustomPrintForm(forms.Form):
     exclude = forms.MultipleChoiceField(label="Exclude variables")#widget=forms.CheckboxSelectMultiple

@@ -15,10 +15,10 @@ from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 
 class SubmissionType(models.Model):
-    parent = models.ForeignKey('self',null=True)
+    parent = models.ForeignKey('self',null=True,blank=True)
     version = models.PositiveIntegerField(default=0)
     updated = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(User,null=True)
+    updated_by = models.ForeignKey(User,null=True,blank=True)
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
     prefix = models.CharField(max_length=15,null=True,blank=True)
