@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+[type="radio"]:not(:checked), [type="radio"]:checked {
+visibility: visible !important;
+opacity:1;
+position:relative;
+}
+tr.actual{
+background-color: yellow;
+}
+</style>
+<div class="card-panel">
+<h3>Versions</h3>
+<table>
+<thead>
+<tr><th>Show</th><th>Version</th><th>Parent Version</th><th>Updated</th><th>Updated by</th><th>Template</th><th>Submissions</th><th>Modify</th></tr>
+</thead>
+<tbody>
+{% for t in submission_type.versions %}
+<tr {% if t.id == submission_type.id %}class="actual"{% endif %}><td><label for="show_{{t.id}}"><input type="radio" value="{{t.id}}" id="show_{{t.id}}" name="type_id" {% if t.show %}checked{% endif %} /></label></td><td>{{t.version}}</td><td>{{t.parent.version}}</td><td>{{t.updated|date}}</td><td>{{t.updated_by}}</td><td><a href="{{t.form.url}}">Download</a></td><td>{{t.submissions.count}}</td><td><a href="{% url 'update_submission_type' id=t.id %}">Modify</a></td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+{% endblock %}

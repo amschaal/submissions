@@ -10,7 +10,7 @@
 
 <div class="card-panel">
 {% if submission_type %}
-<h3>Edit Submission Type</h3>
+<h3>Edit Submission Type (<a href="{% url 'submission_type_versions' id=submission_type.id %}">version {{submission_type.version}}</a>)</h3>
 {% else %}
 <h3>Create Submission Type</h3>
 {% endif %}
@@ -22,7 +22,5 @@
 </div>
 </form>
 </div>
-<div class="card-panel">
-<h3>Versions</h3>
-</div>
+
 {% endblock %}

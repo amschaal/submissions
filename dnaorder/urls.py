@@ -28,6 +28,7 @@ urlpatterns = [
     url(r'^submission_types/$', views.submission_types, name='submission_types'),
     url(r'^submission_types/create/$', views.create_update_submission_type, name='create_submission_type'),
     url(r'^submission_types/(?P<id>\d+)/update/$', views.create_update_submission_type, name='update_submission_type'),
+    url(r'^submission_types/(?P<id>\d+)/versions/$', views.submission_type_versions, name='submission_type_versions'),
     url(r'^validators/$', views.validators, name='validators'),
     url(r'^validators/create/$', views.create_update_validator, name='create_validator'),
     url(r'^validators/(?P<id>\d+)/update/$', views.create_update_validator, name='update_validator'),

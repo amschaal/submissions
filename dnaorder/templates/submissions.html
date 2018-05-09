@@ -50,8 +50,9 @@
 {% endverbatim %}
 
     <script>
-        var app = angular.module('main', ['ngTable']).
-                controller('SubmissionsCtrl', function($scope, NgTableParams,DRFNgTableParams,$http) {
+        var app = angular.module('main')
+        app.requires.push('ngTable');
+        app.controller('SubmissionsCtrl', function($scope, NgTableParams,DRFNgTableParams,$http) {
                     var self = this;
                 self.submissionTable = DRFNgTableParams('/api/submissions',{sorting: { submitted: "desc" }});
                 self.get_sample_names = function(samples,field){

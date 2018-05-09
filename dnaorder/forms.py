@@ -9,6 +9,7 @@ import re
 from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
 from django.forms.widgets import ClearableFileInput
+from django.db.models.aggregates import Max
 
 class SubmissionStatusForm(forms.ModelForm):
     send_email = forms.BooleanField(required=True,initial=True)
@@ -181,7 +182,7 @@ class SubmissionTypeForm(forms.ModelForm):
 #             self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType
-        exclude = ['version','parent','updated','updated_by']
+        exclude = ['version','parent','updated','updated_by','original','show']
         help_texts = {
                       'prefix':"This will be prepended to the submission's internal id.",
                       'header_index':'Which row are the variables on?',
@@ -201,9 +202,12 @@ class SubmissionTypeForm(forms.ModelForm):
     def save(self,user=None,commit=True):
         if self.instance.id and Submission.objects.filter(type=self.instance).count() > 0:
             self.instance.parent_id = self.instance.id
+            self.instance.original_id = self.instance.original_id
             self.instance.pk = None
-            self.instance.version += 1
+            self.instance.version = SubmissionType.objects.filter(original=self.instance.original).aggregate(Max('version'))['version__max'] + 1
+            SubmissionType.objects.filter(original=self.instance.original).update(show=False)
         self.instance.user = user
+        self.instance.show = True
         return super(SubmissionTypeForm, self).save(commit=commit)
 #         self.instance.parent = self.instance.id
 #         

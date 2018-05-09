@@ -15,10 +15,12 @@ from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 
 class SubmissionType(models.Model):
-    parent = models.ForeignKey('self',null=True,blank=True)
+    original = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='descendants')
+    parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
     version = models.PositiveIntegerField(default=0)
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
+    show = models.BooleanField(default=False)
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
     prefix = models.CharField(max_length=15,null=True,blank=True)
@@ -47,12 +49,10 @@ class SubmissionType(models.Model):
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
     @property
-    def past_versions(self):
-        versions = []
-        version = self
-        while True:
-            versions += SubmissionType.objects.filter(parent=self)
-            
+    def versions(self):
+        if self.original:
+            return SubmissionType.objects.filter(original=self.original)
+        return SubmissionType.objects.filter(original=self)
             
 
 def sra_samples_path(instance, filename):
@@ -117,7 +117,7 @@ class Submission(models.Model):
     pi_name = models.CharField(max_length=50)
     pi_email = models.EmailField(max_length=75)
     institute = models.CharField(max_length=75)
-    type = models.ForeignKey(SubmissionType)
+    type = models.ForeignKey(SubmissionType,related_name="submissions")
     sample_form = models.FileField(upload_to=sample_form_path)
     sample_data = JSONField(null=True,blank=True)
     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)

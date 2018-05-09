@@ -40,8 +40,12 @@ def update_submission(request,id):
     return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
 
 def submission_types(request):
-    submission_types = SubmissionType.objects.all()
+    submission_types = SubmissionType.objects.filter(show=True)
     return render(request,'submission_types.html',{'submission_types':submission_types})
+
+def submission_type_versions(request,id):
+    submission_type = SubmissionType.objects.get(id=id)
+    return render(request,'submission_type_versions.html',{'submission_type':submission_type})
 
 def create_update_submission_type(request,id=None):
     submission_type = SubmissionType.objects.get(id=id) if id else None
