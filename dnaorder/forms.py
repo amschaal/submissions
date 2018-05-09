@@ -181,7 +181,7 @@ class SubmissionTypeForm(forms.ModelForm):
             self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType
-        exclude = []
+        exclude = ['version','parent','updated','updated_by']
         help_texts = {
                       'prefix':"This will be prepended to the submission's internal id.",
                       'header_index':'Which row are the variables on?',
@@ -198,6 +198,18 @@ class SubmissionTypeForm(forms.ModelForm):
         widgets = {
                 'form':ClearableFileInput
             }
+    def save(self,user,commit=True):
+        if self.instance.id and Submission.objects.filter(type=self.instance).count() > 0:
+            self.instance.parent_id = self.instance.id
+            self.instance.pk = None
+            self.instance.version += 1
+        self.instance.user = user
+        return super(SubmissionTypeForm, self).save(commit=commit)
+#         self.instance.parent = self.instance.id
+#         
+#         self.instance.parent = self.instance.id
+#         
+        
 
 class CustomPrintForm(forms.Form):
     exclude = forms.MultipleChoiceField(label="Exclude variables")#widget=forms.CheckboxSelectMultiple

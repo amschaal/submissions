@@ -9,6 +9,7 @@ import json
 from django.conf.urls.static import static
 import string
 from material.base import Column
+from numpy import str
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -53,7 +54,7 @@ class SampleSheet(object):
             usecols = '{0}:{1}'.format(start_column,end_column)
         elif end_column:
             usecols = end_column
-        self.df = pandas.read_excel(file,header=header_index,usecols=usecols)
+        self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={sample_id:str})
         file.seek(0)
         
         if skip_rows:
@@ -70,6 +71,8 @@ class SampleSheet(object):
         self.df.rename(columns=rename, inplace=True)
         if self._SAMPLE_ID in self.required_columns:
             self.required_columns.remove(self._SAMPLE_ID)
+        print self._SAMPLE_ID
+        print self.df[self._SAMPLE_ID]
         if to_lower:
             self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
         
@@ -200,8 +203,8 @@ class CoreSampleSheet(SampleSheet):
         self.submission_type = submission_type
         self.template_samplesheet = CoreSampleSheetTemplate(self.submission_type)
         super(CoreSampleSheet, self).__init__(file,submission_type.header_index - 1,submission_type.skip_rows,submission_type.start_column,submission_type.end_column,submission_type.sample_identifier)
-#         print file
-#         file.seek(0)
+        print file
+        file.seek(0)
         self._raw_data = tablib.Dataset().load(file.read())
         file.seek(0)#       
         print self._raw_data._data

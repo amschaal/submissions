@@ -50,7 +50,9 @@ def create_update_submission_type(request,id=None):
     elif request.method == 'POST':
         form = SubmissionTypeForm(request.POST,request.FILES,instance=submission_type)
         if form.is_valid():
-            submission_type = form.save(commit=True)
+            submission_type = form.save(request.user,commit=True)
+            if id and int(id) != submission_type.id:
+                return redirect('update_submission_type',id=submission_type.id)
             return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type,'valid':True})
     return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type})
 
