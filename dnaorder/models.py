@@ -54,6 +54,9 @@ class SubmissionType(models.Model):
         if self.original:
             return SubmissionType.objects.filter(original=self.original)
         return SubmissionType.objects.filter(original=self)
+    @property
+    def related_submissions(self):
+        return Submission.objects.filter(type__in=self.versions)
 def set_original(sender,instance,**kwargs):
     if not instance.original and not instance.parent:
         SubmissionType.objects.filter(id=instance.id).update(original=instance)
