@@ -52,8 +52,6 @@ background-color:#cc0000;
 
 <div ng-controller="SubmissionCtrl as ctrl">
 <div class="card-panel">
-{{submission.submission_samplesheet.data}}
-{{submission.submission_samplesheet.validate}}
 <span class="right">
 	{% if submission.status %}
 		{% if request.user.is_authenticated %}
