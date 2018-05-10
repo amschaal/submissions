@@ -48,6 +48,8 @@ class SubmissionForm(forms.ModelForm):
             submission.sample_data = self._sample_data
         if hasattr(self, '_sra_data'):
             submission.sra_data = self._sra_data
+        if hasattr(self, '_submission_data'):
+            submission.submission_data = self._submission_data
 #         if not submission.status:
 #             submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
         if commit:
@@ -104,6 +106,7 @@ class SubmissionForm(forms.ModelForm):
                 errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
         if self.instance.type and self.instance.type.has_submission_fields:
             self.submission_samplesheet = SubmissionData(file,type)
+            self._submission_data = self.submission_samplesheet.data
             for column,error in self.submission_samplesheet.validate().items():
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>Message:</b> {message}".format(message=error,column=column))))
         if len(errors):

@@ -56,7 +56,12 @@
 <tr><th>PI</th><td>{{submission.pi_name}}</td><th>PI email</th><td>{{submission.pi_email}}</td><th>Institute</th><td>{{submission.institute}}</td></tr>
 {% if submission.notes %}<tr><th>Notes</th><td colspan="5">{{submission.notes}}</td></tr>{% endif %}
 </table>
-
+{% if submission.submission_data %}
+<table class="full bordered">
+<tr>{% for k in submission.submission_data.keys %}<th>{{k}}</th>{% endfor %}</tr>
+<tr>{% for k,v in submission.submission_data.items %}<th>{{v}}</th>{% endfor %}</tr>
+</table>
+{% endif %}
 
 <h2 class="centered">Total Number of Samples: {{submission.samplesheet.num_samples}}</h2>
 
