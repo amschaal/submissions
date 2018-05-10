@@ -35,7 +35,7 @@ class SubmissionType(models.Model):
     #Submission level form definitions below
     has_submission_fields = models.BooleanField(default=False)
     submission_header_row = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-    submission_value_row = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
+    submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
     def __unicode__(self):
@@ -126,6 +126,7 @@ class Submission(models.Model):
     institute = models.CharField(max_length=75)
     type = models.ForeignKey(SubmissionType,related_name="submissions")
     sample_form = models.FileField(upload_to=sample_form_path)
+    submission_data = JSONField(null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
@@ -156,6 +157,12 @@ class Submission(models.Model):
     def samplesheet(self):
         from dnaorder.spreadsheets import CoreSampleSheet
         return CoreSampleSheet(self.sample_form.file,self.type)
+    @property
+    def submission_samplesheet(self):
+        if not self.type.has_submission_fields:
+            return None
+        from dnaorder.spreadsheets import SubmissionData
+        return SubmissionData(self.sample_form.file,self.type)
     @property
     def sra_samplesheet(self):
         from dnaorder.spreadsheets import SRASampleSheet

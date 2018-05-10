@@ -46,7 +46,7 @@ class SampleSheetTablib(object):
 
 class SampleSheet(object):
     _SAMPLE_ID = '*sample_name'
-    def __init__(self,file,header_index=0,skip_rows=None,start_column=None,end_column=None,sample_id=None,to_lower=True):
+    def __init__(self,file,header_index=0,skip_rows=None,start_column=None,end_column=None,sample_id=None,to_lower=True,max_rows=None):
         self._file = file
         usecols = None
         if start_column and end_column:
@@ -56,8 +56,9 @@ class SampleSheet(object):
         self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={sample_id:str})
         file.seek(0)
         
-        if skip_rows:
-            self.df = self.df.drop(self.df.index[range(0,skip_rows)])#df.index[2]
+        if skip_rows or max_rows:
+#             self.df = self.df.drop(self.df.index[range(0,skip_rows)])#df.index[2]
+            self.df = self.df.iloc[skip_rows:max_rows]#df.index[2]
         if sample_id:
             self._SAMPLE_ID = sample_id
         self._SAMPLE_ID = self._SAMPLE_ID.lstrip('*')
@@ -70,8 +71,6 @@ class SampleSheet(object):
         self.df.rename(columns=rename, inplace=True)
         if self._SAMPLE_ID in self.required_columns:
             self.required_columns.remove(self._SAMPLE_ID)
-        print self._SAMPLE_ID
-        print self.df[self._SAMPLE_ID]
         if to_lower:
             self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
         
@@ -202,22 +201,22 @@ class CoreSampleSheet(SampleSheet):
         self.submission_type = submission_type
         self.template_samplesheet = CoreSampleSheetTemplate(self.submission_type)
         super(CoreSampleSheet, self).__init__(file,submission_type.header_index - 1,submission_type.skip_rows,submission_type.start_column,submission_type.end_column,submission_type.sample_identifier)
-        print file
-        file.seek(0)
-        self._raw_data = tablib.Dataset().load(file.read())
-        file.seek(0)#       
-        print self._raw_data._data
-        print 'SUBMISSION DATA'
-        print self.submission_data
-    @property
-    def submission_data(self):
-        if self.submission_type.has_submission_fields and self.submission_type.submission_header_row is not None and self.submission_type.submission_value_row:
-            return dict(
-                        zip(
-                            self._raw_data[self.submission_type.submission_header_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1],
-                            self._raw_data[self.submission_type.submission_value_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1]
-                        )
-                    )
+#         print file
+#         file.seek(0)
+#         self._raw_data = tablib.Dataset().load(file.read())
+#         file.seek(0)#       
+#         print self._raw_data._data
+#         print 'SUBMISSION DATA'
+#         print self.submission_data
+#     @property
+#     def submission_data(self):
+#         if self.submission_type.has_submission_fields and self.submission_type.submission_header_row is not None and self.submission_type.submission_value_row:
+#             return dict(
+#                         zip(
+#                             self._raw_data[self.submission_type.submission_header_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1],
+#                             self._raw_data[self.submission_type.submission_value_row][self.get_column_index(self.submission_type.submission_start_column):self.get_column_index(self.submission_type.submission_end_column)+1]
+#                         )
+#                     )
     @property
     def headers_modified(self):
         if self.headers != self.template_samplesheet.headers:
@@ -225,3 +224,45 @@ class CoreSampleSheet(SampleSheet):
         if self.required_columns != self.template_samplesheet.required_columns:
             return True
         return False
+
+class SubmissionData(object):
+    def __init__(self, file, submission_type):
+        self._file = file
+        usecols = None
+        if submission_type.submission_start_column and submission_type.submission_end_column:
+            usecols = '{0}:{1}'.format(submission_type.submission_start_column,submission_type.submission_end_column)
+        elif submission_type.submission_end_column:
+            usecols = submission_type.submission_end_column
+        self._file.seek(0)
+        self.df = pandas.read_excel(file,header=submission_type.submission_header_row-1,usecols=usecols,sheet_name=0)
+        file.seek(0)
+        self.df = self.df.iloc[submission_type.submission_skip_rows:1]#df.index[2]
+
+        rename = {}
+        for c in self.headers:
+            if c.startswith('*'):
+                rename[c]=c.lstrip('*')
+        self.required_columns = rename.values()
+        self.df.rename(columns=rename, inplace=True)
+    @property
+    def data(self):
+        return self.to_dict(self.df)
+    @staticmethod
+    def to_dict(df):
+        return df.to_dict(orient='records',into=OrderedDict)[0]
+    @property
+    def headers(self):
+        return list(self.df.columns)
+    def validate(self):
+        errors = {}
+        data = self.data
+        for id in self.required_columns:
+            val = data.get(id,None)
+            if pandas.isnull(val):
+                errors[id] = 'This field is required.'
+        validators = Validator.objects.filter(field_id__in=self.headers)
+        for v in validators:
+            val = data.get(v.field_id,None)
+            if not pandas.isnull(val) and not v.is_valid(val):
+                errors[v.field_id] = v.message
+        return errors

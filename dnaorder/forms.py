@@ -3,7 +3,8 @@ from dnaorder.models import Submission, Validator, SubmissionStatus,\
     SubmissionType
 from __builtin__ import file
 import tablib
-from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet
+from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
+    SubmissionData
 import material
 import re
 from django.utils.safestring import mark_safe
@@ -87,18 +88,25 @@ class SubmissionForm(forms.ModelForm):
         if not type:
             raise forms.ValidationError("You must choose a submission type.")
         self.samplesheet = CoreSampleSheet(file,type)
+        
         self._sample_data = self.samplesheet.data
         if self.samplesheet.headers_modified:
             errors.append(forms.ValidationError("Sample submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
         self._sample_ids = self.samplesheet.sample_ids()
         
         _errors = self.samplesheet.validate()
+        
         print self.samplesheet.error_lookup()
         if len(_errors):
             for e in _errors:
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
             if len(errors) > 0:
                 errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
+        if self.instance.type and self.instance.type.has_submission_fields:
+            self.submission_samplesheet = SubmissionData(file,type)
+            for column,error in self.submission_samplesheet.validate().items():
+                errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>Message:</b> {message}".format(message=error,column=column))))
+        if len(errors):
             raise forms.ValidationError(errors)
         return file
 #     def clean(self):

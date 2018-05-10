@@ -13,7 +13,7 @@
 {% else %}
 <h3>Create Validator</h3>
 {% endif %}
-<form method="POST">
+<form method="POST" action="." novalidate>
 <div class="card-content">
 {% csrf_token %}
 <table>
