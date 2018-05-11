@@ -48,7 +48,7 @@
 </style>
 </head>
 <body onload="window.print()">
-<h2 class="centered">Submission Details</h2>
+<h3 class="centered">Submission Details</h3>
 <table class="full bordered">
 <tr><th>ID</th><td>{{submission.id}}</td><th>Internal ID</th><td>{{submission.internal_id}}</td><th>Type</th><td>{{submission.type}}</td></tr>
 <tr><th>Status</th><td>{{submission.status.name}}</td><th>Submitted</th><td>{{submission.submitted}}</td><th>Updated</th><td>{{submission.updated}}</td></tr>
@@ -57,13 +57,14 @@
 {% if submission.notes %}<tr><th>Notes</th><td colspan="5">{{submission.notes}}</td></tr>{% endif %}
 </table>
 {% if submission.submission_data %}
+<h3 class="centered">Submission specific details</h3>
 <table class="full bordered">
 <tr>{% for k in submission.submission_data.keys %}<th>{{k}}</th>{% endfor %}</tr>
-<tr>{% for k,v in submission.submission_data.items %}<th>{{v}}</th>{% endfor %}</tr>
+<tr>{% for k,v in submission.submission_data.items %}<td>{{v}}</td>{% endfor %}</tr>
 </table>
 {% endif %}
 
-<h2 class="centered">Total Number of Samples: {{submission.samplesheet.num_samples}}</h2>
+<h3 class="centered">Total Number of Samples: {{submission.samplesheet.num_samples}}</h3>
 
 {% if max_samples and forloop.counter|divisibleby:"1"%}{% endif %}
 
