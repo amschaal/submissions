@@ -13,6 +13,19 @@
   <script src="/static/js/resources/models.js"></script>
   <script>
   	var app = angular.module('main', []);
+  	app.config(['$httpProvider', function($httpProvider) {
+  	    $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+  	    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
+  	}]);
+  	$(document).ready(function(){
+		$.ajaxPrefilter(function( options ) {
+		    if ( !options.beforeSend) {
+		        options.beforeSend = function (xhr) { 
+		            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+		        }
+		    }
+		});
+  	});
   </script>
 </head>
   <body class="valign-wrapper2" ng-app="main">

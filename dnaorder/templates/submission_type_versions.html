@@ -15,7 +15,7 @@ background-color: yellow;
 <h5>Versions</h4>
 <table>
 <thead>
-<tr><th>Show</th><th>Version</th><th>Parent Version</th><th>Updated</th><th>Updated by</th><th>Template</th><th>Submissions</th><th>Modify</th></tr>
+<tr><th>Default</th><th>Version</th><th>Parent Version</th><th>Updated</th><th>Updated by</th><th>Template</th><th>Submissions</th><th>Modify</th></tr>
 </thead>
 <tbody>
 {% for t in submission_type.versions %}
@@ -24,5 +24,12 @@ background-color: yellow;
 </tbody>
 </table>
 </div>
+<script>
+$(document).ready(function() {
+    $('input[type=radio][name=type_id]').change(function() {
+        $.post('/api/submission_types/'+this.value+'/show/',function(data){Materialize.toast(data.message,5000);});
+    });
+});
+</script>
 
 {% endblock %}

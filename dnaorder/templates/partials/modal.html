@@ -20,7 +20,7 @@ function getErrors(data,error_data){
 }
 function getColumnDefs(headers,tooltipFunc,styleFunc){
 	var cols = headers.map(function(header){return {headerName: header, field: header, tooltip:tooltipFunc,cellStyle:styleFunc};});
-	console.log('cols',cols);
+	//console.log('cols',cols);
 	return cols;
 };
 
@@ -56,7 +56,7 @@ function spreadsheet_modal(data, params){
 				self.grid = new agGrid.Grid(this.grid_el, {columnDefs:getColumnDefs(this.data.headers),rowData:this.data.data,domLayout: 'autoHeight'});
 			self.initialized = true;
 		}
-		console.log('this',this);
+		//console.log('this',this);
 		$(this.modal_el).modal('open');
 	}
 }

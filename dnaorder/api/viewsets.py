@@ -1,13 +1,15 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
-    SubmissionFileSerializer, NoteSerializer
-from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note
+    SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer
+from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
+    SubmissionType
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions
 from django.core.mail import send_mail
 from dnaorder import emails
+from dnaorder.views import submission
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
@@ -39,6 +41,18 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
+
+class SubmissionTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SubmissionType.objects.all().order_by('id')
+    serializer_class =SubmissionTypeSerializer
+    filter_fields = {'show':['exact']}
+    @detail_route(methods=['post'])
+    def show(self,request,pk):
+        submission_type = self.get_object()
+        SubmissionType.objects.filter(original=submission_type.original).update(show=False)
+        submission_type.show = True
+        submission_type.save()
+        return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()

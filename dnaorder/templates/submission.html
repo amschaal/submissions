@@ -52,6 +52,7 @@ background-color:#cc0000;
 
 <div ng-controller="SubmissionCtrl as ctrl">
 <div class="card-panel">
+{{submission.submission_samplesheet.to_json}}
 <span class="right">
 	{% if submission.status %}
 		{% if request.user.is_authenticated %}
@@ -211,13 +212,6 @@ background-color:#cc0000;
 $(document).ready(function(){
 	$('.dropdown-trigger').dropdown();
 	console.log('print',$('.dropdown-trigger'));
-	$.ajaxPrefilter(function( options ) {
-	    if ( !options.beforeSend) {
-	        options.beforeSend = function (xhr) { 
-	            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
-	        }
-	    }
-	});
 {% if editable %}
 	$(function () {
 	    $('#fileupload').fileupload({

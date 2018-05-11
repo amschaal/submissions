@@ -266,3 +266,6 @@ class SubmissionData(object):
             if not pandas.isnull(val) and not v.is_valid(val):
                 errors[v.field_id] = v.message
         return errors
+    def to_json(self,stringify=True):
+        data = {'headers':self.headers,'data':self.data,'errors':self.validate()}
+        return json.dumps(data) if stringify else data
