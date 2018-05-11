@@ -122,11 +122,32 @@ class SubmissionForm(forms.ModelForm):
 #                 else:
 #                     raise forms.ValidationError({'sra_form':'The following sample ids in the SRA form do not match any samples from the submission form: '+', '.join(list(sample_diff))})
 class AnonSubmissionFormUpdate(SubmissionForm):
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','type']
+        help_texts = {
+                      'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
+                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
+                      'notes':'Please enter any additional notes necessary here'
+                      }
+        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
+    layout = material.base.Layout(
+        'name',
+        material.base.Row('email', 'phone'),
+        material.base.Row('pi_name', 'pi_email'),
+        'institute',
+        'notes',
+        'sample_form',
+        'sra_form',
+        'biocore',
+    )
     def __init__(self, *args, **kwargs):
         super(AnonSubmissionFormUpdate, self).__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
         if instance and instance.pk:
             self.fields['email'].widget.attrs['readonly'] = True
+        self.fields['sample_form'].help_text = mark_safe('{0} <a href="{1}">Template</a>'.format(self.instance.type.name,self.instance.type.form.url))
+        
     def clean_email(self):
         instance = getattr(self, 'instance', None)
         if instance and instance.pk:
@@ -150,7 +171,7 @@ class AnonSubmissionFormUpdate(SubmissionForm):
 class AdminSubmissionForm(SubmissionForm):
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id']
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','type']
     layout = material.base.Layout(
         'participants',
         'name',
@@ -158,7 +179,6 @@ class AdminSubmissionForm(SubmissionForm):
         material.base.Row('pi_name', 'pi_email'),
         'institute',
         'notes',
-        'type',
         'sample_form',
         'sra_form',
         'biocore',

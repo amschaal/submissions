@@ -52,8 +52,8 @@ class SubmissionType(models.Model):
     @property
     def versions(self):
         if self.original:
-            return SubmissionType.objects.filter(original=self.original)
-        return SubmissionType.objects.filter(original=self)
+            return SubmissionType.objects.filter(original=self.original).order_by('-version')
+        return SubmissionType.objects.filter(original=self).order_by('-version')
     @property
     def related_submissions(self):
         return Submission.objects.filter(type__in=self.versions)
