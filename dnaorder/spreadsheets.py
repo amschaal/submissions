@@ -53,7 +53,7 @@ class SampleSheet(object):
             usecols = '{0}:{1}'.format(start_column,end_column)
         elif end_column:
             usecols = end_column
-        self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={sample_id:str})
+        self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={sample_id:str}).dropna(how='all')
         file.seek(0)
         
         if skip_rows or max_rows:
