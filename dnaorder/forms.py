@@ -104,7 +104,7 @@ class SubmissionForm(forms.ModelForm):
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>IDs:</b> {ids} <b>Message:</b> {message}".format(message=e['message'],column=e['column'],ids=', '.join(e['ids'])))))
             if len(errors) > 0:
                 errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
-        if self.instance.type and self.instance.type.has_submission_fields:
+        if type and type.has_submission_fields:
             self.submission_samplesheet = SubmissionData(file,type)
             self._submission_data = self.submission_samplesheet.data
             for column,error in self.submission_samplesheet.validate().items():
