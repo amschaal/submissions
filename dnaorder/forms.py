@@ -37,7 +37,7 @@ class SubmissionForm(forms.ModelForm):
         material.base.Row('pi_name', 'pi_email'),
         'institute',
         'payment_type',
-        'payment_information'
+        'payment_info',
         'notes',
         'type',
         'sample_form',
@@ -139,7 +139,7 @@ class AnonSubmissionFormUpdate(SubmissionForm):
         material.base.Row('pi_name', 'pi_email'),
         'institute',
         'payment_type',
-        'payment_information'
+        'payment_info',
         'notes',
         'sample_form',
         'sra_form',
