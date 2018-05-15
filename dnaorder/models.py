@@ -112,6 +112,9 @@ class Submission(models.Model):
 #         (STATUS_LIBRARIES_PREPPED,'Libraries prepped'),
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
+    PAYMENT_DAFIS = 'DaFIS'
+    PAYMENT_CREDIT_CARD = 'Credit Card'
+    PAYMENT_CHOICES = ((PAYMENT_DAFIS,PAYMENT_DAFIS),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     internal_id = models.CharField(max_length=25, unique=True)
     status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
@@ -124,6 +127,8 @@ class Submission(models.Model):
     pi_name = models.CharField(max_length=50)
     pi_email = models.EmailField(max_length=75)
     institute = models.CharField(max_length=75)
+    payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
+    payment_info = models.CharField(max_length=250,null=True,blank=True)
     type = models.ForeignKey(SubmissionType,related_name="submissions")
     sample_form = models.FileField(upload_to=sample_form_path)
     submission_data = JSONField(null=True,blank=True)
