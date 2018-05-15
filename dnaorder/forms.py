@@ -11,6 +11,8 @@ from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
 from django.forms.widgets import ClearableFileInput
 from django.db.models.aggregates import Max
+from material.base import Fieldset
+from dnaorder.dafis import validate_dafis
 
 class SubmissionStatusForm(forms.ModelForm):
     send_email = forms.BooleanField(required=True,initial=True)
@@ -20,29 +22,39 @@ class SubmissionStatusForm(forms.ModelForm):
     layout = material.base.Layout(
         material.base.Row('status', 'send_email')
     )
+
+submission_help_texts = {
+                      'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
+                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
+                      'notes':'Please enter any additional notes necessary here',
+                      'payment_info':'For DaFIS accounts, please format account as "chart-account", ie: 3-MOUSEACCOUNT.  For credit cards, DO NOT enter anything.  For all other accounts, enter as necessary.',
+                      }
+
 class SubmissionForm(forms.ModelForm):
     type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','participants']
-        help_texts = {
-                      'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
-                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
-                      'notes':'Please enter any additional notes necessary here'
-                      }
+        help_texts = submission_help_texts
         labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
     layout = material.base.Layout(
+        material.base.Fieldset('Submitter details',
         'name',
         material.base.Row('email', 'phone'),
         material.base.Row('pi_name', 'pi_email'),
-        'institute',
+        'institute'
+        ),
+        material.base.Fieldset('Payment',
         'payment_type',
-        'payment_info',
-        'notes',
+        'payment_info'
+        ),
+        material.base.Fieldset('Sample information',
         'type',
         'sample_form',
         'sra_form',
         'biocore',
+        'notes'
+        )
     )
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)
@@ -114,6 +126,15 @@ class SubmissionForm(forms.ModelForm):
         if len(errors):
             raise forms.ValidationError(errors)
         return file
+    def clean_payment_info(self):
+        payment_type = self.cleaned_data.get('payment_type')
+        payment_info = self.cleaned_data.get('payment_info')
+        if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
+            raise forms.ValidationError("Do not enter anything into payment info when choosing credit card!")
+        elif payment_type == Submission.PAYMENT_DAFIS:
+            if not validate_dafis(payment_info):
+                raise forms.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
+        return payment_info
 #     def clean(self):
 #         cleaned_data = super(SubmissionForm, self).clean()
 #         if hasattr(self, '_sample_ids') and hasattr(self, '_sra_samples'): 
@@ -127,23 +148,25 @@ class AnonSubmissionFormUpdate(SubmissionForm):
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','type']
-        help_texts = {
-                      'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
-                      'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
-                      'notes':'Please enter any additional notes necessary here'
-                      }
+        help_texts = submission_help_texts
         labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
     layout = material.base.Layout(
+        material.base.Fieldset('Submitter details',
         'name',
         material.base.Row('email', 'phone'),
         material.base.Row('pi_name', 'pi_email'),
-        'institute',
+        'institute'
+        ),
+        material.base.Fieldset('Payment',
         'payment_type',
-        'payment_info',
-        'notes',
+        'payment_info'
+        ),
+        material.base.Fieldset('Sample information',
         'sample_form',
         'sra_form',
         'biocore',
+        'notes'
+        )
     )
     def __init__(self, *args, **kwargs):
         super(AnonSubmissionFormUpdate, self).__init__(*args, **kwargs)
@@ -176,18 +199,26 @@ class AdminSubmissionForm(SubmissionForm):
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','type']
+        help_texts = submission_help_texts
     layout = material.base.Layout(
         'participants',
+        material.base.Fieldset('Submitter details',
         'name',
         material.base.Row('email', 'phone'),
         material.base.Row('pi_name', 'pi_email'),
-        'institute',
-        'notes',
+        'institute'
+        ),
+        material.base.Fieldset('Payment',
+        'payment_type',
+        'payment_info'
+        ),
+        material.base.Fieldset('Sample information',
         'sample_form',
         'sra_form',
         'biocore',
+        'notes'
+        )
     )
-
 class ValidatorForm(forms.ModelForm):
     class Meta:
         model = Validator
