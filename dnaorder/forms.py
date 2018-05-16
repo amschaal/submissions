@@ -100,6 +100,8 @@ class SubmissionForm(forms.ModelForm):
         if not file and self.instance:
             file = self.instance.sample_form.file
         type = self.cleaned_data.get('type')
+        if not type and self.instance:
+            type = self.instance.type
         errors = []
         if not type:
             raise forms.ValidationError("You must choose a submission type.")
@@ -176,7 +178,7 @@ class AnonSubmissionFormUpdate(SubmissionForm):
         if instance and instance.pk:
             self.fields['email'].widget.attrs['readonly'] = True
         self.fields['sample_form'].help_text = mark_safe('{0} <a href="{1}">Template</a>'.format(self.instance.type.name,self.instance.type.form.url))
-        
+        self.fields['type'].required = False
     def clean_email(self):
         instance = getattr(self, 'instance', None)
         if instance and instance.pk:
@@ -198,6 +200,9 @@ class AnonSubmissionFormUpdate(SubmissionForm):
 #         'biocore',
 #     )
 class AdminSubmissionForm(SubmissionForm):
+    def __init__(self, *args, **kwargs):
+        super(AdminSubmissionForm, self).__init__(*args, **kwargs)
+        self.fields['type'].required = False
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','type']

@@ -122,7 +122,8 @@ background-color:#cc0000;
 <tr><th>PI</th><td>{{submission.pi_name}}</td></tr>
 <tr><th>PI email</th><td>{{submission.pi_email}}</td></tr>
 <tr><th>Institute</th><td>{{submission.institute}}</td></tr>
-{% if submission.notes %}<tr><th>Notes</th><td>{{submission.notes}}</td></tr>{% endif %}
+<tr><th>Payment Type</th><td>{{submission.payment_type}}</td></tr>
+{% if submission.payment_info%}<tr><th>Payment Info</th><td>{{submission.payment_info}}</td></tr>{% endif %}
 <tr><th>Type</th><td>{{submission.type}}</td></tr>
 <tr><th># Samples</th><td><span title="{% for s in submission.sample_ids %}{{s}}{% if not forloop.last %}, {% endif %}{% endfor %}">{{submission.sample_ids|length}}</span> </td></tr>
 <tr>
@@ -166,6 +167,7 @@ background-color:#cc0000;
 </tr>
 {% endif %}
 <tr><th>Analysis by<br>Bioinformatics Core</th><td>{% if submission.biocore %}<i class="material-icons" style="color:green">check_circle</i>{% else %}<i class="material-icons" style="color:red">close</i>{% endif %}</td></tr>
+{% if submission.notes %}<tr><th>Notes</th><td>{{submission.notes}}</td></tr>{% endif %}
 </table>
 
 </div>
