@@ -113,8 +113,12 @@ class Submission(models.Model):
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
     PAYMENT_DAFIS = 'DaFIS'
+    PAYMENT_UC = 'UC Chart String'
     PAYMENT_CREDIT_CARD = 'Credit Card'
-    PAYMENT_CHOICES = ((PAYMENT_DAFIS,PAYMENT_DAFIS),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD))
+    PAYMENT_PO = 'Purchase Order'
+    PAYMENT_CHECK = 'Check'
+    PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
+    PAYMENT_CHOICES = ((PAYMENT_DAFIS,'DaFIS (UC Davis Account String)'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     internal_id = models.CharField(max_length=25, unique=True)
     status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)

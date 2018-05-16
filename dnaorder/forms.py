@@ -134,6 +134,8 @@ class SubmissionForm(forms.ModelForm):
         elif payment_type == Submission.PAYMENT_DAFIS:
             if not validate_dafis(payment_info):
                 raise forms.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
+        elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
+            raise forms.ValidationError("Please enter payment details.")
         return payment_info
 #     def clean(self):
 #         cleaned_data = super(SubmissionForm, self).clean()
