@@ -277,7 +277,15 @@ $(document).ready(function(){
 {% endif %}
 {% if submission.samplesheet %}
 	var samplesheet = {{submission.samplesheet.to_json|safe}};
-	var sample_modal = new spreadsheet_modal(samplesheet,{title:'Samplesheet'});
+{% if submission.submission_samplesheet %}
+	var submission_samplesheet = {{submission.submission_samplesheet.to_json|safe}};
+{% else %}
+	var submission_samplesheet = null;
+{% endif %}
+	if (submission_samplesheet)
+		var sample_modal = new spreadsheet_modal([{header:'Submission',data:submission_samplesheet,list:false},{header:'Samples',data:samplesheet}],{title:'Samplesheet Data'});
+	else
+		var sample_modal = new spreadsheet_modal([{header:'Samples',data:samplesheet}],{title:'Samplesheet Data'});
 	$('#view_samples').click(function(){
 		sample_modal.open();
 	});

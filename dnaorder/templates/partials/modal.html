@@ -24,19 +24,21 @@ function getColumnDefs(headers,tooltipFunc,styleFunc){
 	return cols;
 };
 
-function spreadsheet_modal(data, params){
-	this.data = data;
+function spreadsheet_modal(samplesheets,params){
+	this.samplesheets = samplesheets;
+	this.initialized = false;
+	//this.data = data;
 	this.params = params ? params : {};
 	function getCellErrors(cell_data){
 			return getErrors(cell_data,data.errors).join('\n');
-		}
+	}
 	function getCellStyle(cell_data){
 			var errors = getErrors(cell_data,data.errors);
 			if (errors.length > 0)
 				return {backgroundColor:'pink'};
 			else
 				return null;
-		}
+	}
 	if (!this.params.modal){
 		this.modal_el = $('#modal_base').clone().appendTo('body')[0];
 		//this.grid_el = $(this.modal_el).find('.samplesheet_grid')[0];
@@ -48,13 +50,22 @@ function spreadsheet_modal(data, params){
 		this.modal_el = $(this.params.modal);
 	$(this.modal_el).modal();
 	this.open = function(){
-		if (!this.grid_el){
-			this.grid_el = $('<div class="samplesheet_grid" style="height: 100%;width:100%"></div>').addClass('ag-theme-fresh').appendTo($(this.modal_el).find('.modal-body'))[0];
-			if (this.params.error)
-				self.grid = new agGrid.Grid(this.grid_el, {columnDefs:getColumnDefs(this.data.headers,getCellErrors,getCellStyle),rowData:this.data.data,domLayout: 'autoHeight'});
-			else
-				self.grid = new agGrid.Grid(this.grid_el, {columnDefs:getColumnDefs(this.data.headers),rowData:this.data.data,domLayout: 'autoHeight'});
-			self.initialized = true;
+		if (!this.initialized){
+			for (var i in this.samplesheets){
+				var samplesheet = this.samplesheets[i];
+				console.log(i,samplesheet);
+				var container = $('<div class="table_container" style="height: 100%;width:100%"><h5>'+samplesheet.header+'</h5></div>').appendTo($(this.modal_el).find('.modal-body'))[0];
+				var grid_el = $('<div class="samplesheet_grid" style="height: 100%;width:100%"></div>').addClass('ag-theme-fresh').appendTo(container)[0];
+				if (samplesheet.list === false)
+					var data = [samplesheet.data.data]
+				else
+					var data = samplesheet.data.data
+				if (samplesheet.error)
+					self.grid = new agGrid.Grid(grid_el, {columnDefs:getColumnDefs(samplesheet.data.headers,getCellErrors,getCellStyle),rowData:data,domLayout: 'autoHeight'});
+				else
+					self.grid = new agGrid.Grid(grid_el, {columnDefs:getColumnDefs(samplesheet.data.headers),rowData:data,domLayout: 'autoHeight'});	
+			}
+			this.initialized = true;
 		}
 		//console.log('this',this);
 		$(this.modal_el).modal('open');
