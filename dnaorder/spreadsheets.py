@@ -53,14 +53,21 @@ class SampleSheet(object):
             usecols = '{0}:{1}'.format(start_column,end_column)
         elif end_column:
             usecols = end_column
-        self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={sample_id:str}).dropna(how='all')
+#         if sample_id:
+#             self._SAMPLE_ID = sample_id
+        self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={self._SAMPLE_ID :str}).dropna(how='all')
         file.seek(0)
+#         print self.df
+#         print self._SAMPLE_ID
+        
+        self.df.drop(self.df[self.df[self._SAMPLE_ID]=='nan'].index,inplace=True) #apparently blank sample ids are converted to the string 'nan', and are not dropped with "dropna".  Drop them here.
+        #self.df.drop()
+        
         
         if skip_rows or max_rows:
 #             self.df = self.df.drop(self.df.index[range(0,skip_rows)])#df.index[2]
             self.df = self.df.iloc[skip_rows:max_rows]#df.index[2]
-        if sample_id:
-            self._SAMPLE_ID = sample_id
+        
         self._SAMPLE_ID = self._SAMPLE_ID.lstrip('*')
 
         rename = {}
@@ -73,8 +80,10 @@ class SampleSheet(object):
             self.required_columns.remove(self._SAMPLE_ID)
         if to_lower:
             self.df[self._SAMPLE_ID] = self.df[self._SAMPLE_ID].str.lower() 
-        
+#         print self.df
         self.sample_df = self.df.set_index(self._SAMPLE_ID)
+        
+#         print self.sample_df
         self._errors = []
     @property
     def headers(self):
@@ -246,7 +255,7 @@ class SubmissionData(object):
         self.df.rename(columns=rename, inplace=True)
     @property
     def data(self):
-        return self.to_dict(self.df)
+        return self.to_dict(self.df.where((pandas.notnull(self.df)), None))
     @staticmethod
     def to_dict(df):
         return df.to_dict(orient='records',into=OrderedDict)[0]
