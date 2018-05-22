@@ -3,7 +3,7 @@ Dear {{submission.name}},
 Your submission from {{submission.submitted|date}} has been confirmed.  You may view your submission details and status at the following URL:
 {{BASE_URI}}{{submission.get_absolute_url}}
 
-If you would like to make any changes to the submission, please do so before delivering samples.  When packaging samples, please include an up-to-date print out of the submission details.  More information on sample preperation and delivery can be found here:
+If you would like to make any changes to the submission, please do so before delivering samples.  When packaging samples, please include an up-to-date print out of the submission details.  More information on sample preparation and delivery can be found here:
 http://dnatech.genomecenter.ucdavis.edu/sample-submission-scheduling/
 
 Thank you,
