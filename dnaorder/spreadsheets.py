@@ -48,6 +48,7 @@ class SampleSheet(object):
     _SAMPLE_ID = '*sample_name'
     def __init__(self,file,header_index=0,skip_rows=None,start_column=None,end_column=None,sample_id=None,to_lower=True,max_rows=None):
         self._file = file
+        self._errors = []
         usecols = None
         if start_column and end_column:
             usecols = '{0}:{1}'.format(start_column,end_column)
@@ -59,7 +60,8 @@ class SampleSheet(object):
         file.seek(0)
 #         print self.df
 #         print self._SAMPLE_ID
-        
+        if not self.df.size or self._SAMPLE_ID not in list(self.df.columns):
+            return
         self.df.drop(self.df[self.df[self._SAMPLE_ID]=='nan'].index,inplace=True) #apparently blank sample ids are converted to the string 'nan', and are not dropped with "dropna".  Drop them here.
         #self.df.drop()
         
@@ -84,7 +86,6 @@ class SampleSheet(object):
         self.sample_df = self.df.set_index(self._SAMPLE_ID)
         
 #         print self.sample_df
-        self._errors = []
     @property
     def headers(self):
         return list(self.df.columns)
