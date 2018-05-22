@@ -123,7 +123,7 @@ background-color:#cc0000;
 <tr><th>Institute</th><td>{{submission.institute}}</td></tr>
 <tr><th>Payment Type</th><td>{{submission.payment_type}}</td></tr>
 {% if submission.payment_info%}<tr><th>Payment Info</th><td>{{submission.payment_info}}</td></tr>{% endif %}
-<tr><th>Type</th><td>{{submission.type}}</td></tr>
+<tr><th>Type</th><td><a href="{{submission.type.form.url}}">{{submission.type}}</a></td></tr>
 <tr><th># Samples</th><td><span title="{% for s in submission.sample_ids %}{{s}}{% if not forloop.last %}, {% endif %}{% endfor %}">{{submission.sample_ids|length}}</span> </td></tr>
 <tr>
 	<th>Samplesheet</th>
