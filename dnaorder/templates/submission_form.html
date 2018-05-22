@@ -87,7 +87,14 @@ $(document).ready(function(){
 	//$('#id_sample_form_container.has-error').parent().append('<a id="visualize_sample_errors" href="#samples_modal">Visualize Errors</a>');
 	//$('#id_sra_form_container.has-error').parent().append('<a id="visualize_sra_errors" href="#sra_modal">Visualize Errors</a>');
 	{% if form.samplesheet %}
-	var samples_modal = new spreadsheet_modal(samplesheet,{error:true,title:'Samplesheet errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
+	{% if form.submission_samplesheet %}
+	var samples_modal = new spreadsheet_modal([{header:'Submission',data:{{form.submission_samplesheet.to_json|safe}},list:false},{header:'Samples',data:samplesheet}],{error:true,title:'Samplesheet errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
+	{% else %}
+	var samples_modal = new spreadsheet_modal([{header:'Submission',data:submission_samplesheet,list:false},{header:'Samples',data:samplesheet}],{error:true,title:'Samplesheet errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
+	{% endif %}
+	
+	
+	//var samples_modal = new spreadsheet_modal(samplesheet,{error:true,title:'Samplesheet errors',body:'<p>Errors in <span style="color:red;">red</span>.  Hover over cells to view error details.</p>'});
 	$('input[name=sample_form]').parent().parent().find('.visualize_errors').click(function(){
 		samples_modal.open();
 	});
