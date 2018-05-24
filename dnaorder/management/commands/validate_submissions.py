@@ -10,10 +10,10 @@ class Command(BaseCommand):
             try:
                 errors = s.samplesheet.validate()
                 if len(errors) > 0:
-                    print s
                     print "**************ERRORS******************"
+                    print s
                     print errors
             except Exception, e:
-                print s
                 print '********Validation encountered an exception*********'
+                print s
                 print e
