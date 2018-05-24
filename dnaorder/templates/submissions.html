@@ -25,6 +25,9 @@
     table.ng-table select{
     	display:inline-block;
     }
+    tr.invalid td a{
+    	color:red;
+    }
     </style>
 
 
@@ -32,7 +35,7 @@
 <h3>Submissions</h3>
 {% verbatim %}
 <table ng-table="submissions.submissionTable" class="table striped" ng-cloak>
-   <tr ng-repeat="submission in $data">
+   <tr ng-repeat="submission in $data" ng-class="{'invalid':submission.data.validation}" title="{{ submissions.get_error_title(submission) }}">
        <td data-title="'Id'" filter="{ id__icontains: 'text'}"><a href="/submissions/{{submission.id}}/">{{submission.id}}</a></td>
        <td data-title="'Internal Id'" filter="{ internal_id__icontains: 'text'}" sortable="'internal_id'"><a href="/submissions/{{submission.id}}/">{{submission.internal_id}}</a></td>
        <td data-title="'Status'" filter="{ status__name__icontains: 'text'}" sortable="'status__order'">{{submission.status.name}}</td>
@@ -62,7 +65,15 @@
                 		return samples.map(function(sample){return sample[field]}).join(', ');
                 }
                 self.yes_no_options = [{ id: true, title: "YES"}, { id: false, title: "NO"}];
-                });
+                self.get_error_title = function (submission){
+        			console.log(submission);
+        			if (!submission.data.validation)
+        				return;
+        			else
+        				return 'As of '+submission.data.validation.updated+' this submission has samplesheet errors';
+        		};        
+        });
+        		
        app.run(['$templateCache',
           function($templateCache) {
       $templateCache.put('ng-table/filters/text.html', '<input placeholder="Filter..." type="text" name="{{name}}" ng-disabled="$filterRow.disabled" ng-model="params.filter()[name]" ng-if="filter == \'text\'" class="input-filter form-control" />');

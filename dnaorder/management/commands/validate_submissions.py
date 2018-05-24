@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from dnaorder.models import Submission
+from django.utils import timezone
 
 class Command(BaseCommand):
     help = 'Check submissions for validity.'
@@ -13,6 +14,12 @@ class Command(BaseCommand):
                     print "**************ERRORS******************"
                     print s
                     print errors
+                    s.data['validation']={'errors':errors,'updated':timezone.now().isoformat()}
+                    s.save()
+                elif hasattr(s.data, 'validation'):
+                    del s.data['validation']
+                    s.save()
+                    
             except Exception, e:
                 print '********Validation encountered an exception*********'
                 print s

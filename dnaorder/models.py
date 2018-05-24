@@ -142,6 +142,7 @@ class Submission(models.Model):
     notes = models.TextField(null=True,blank=True)
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)
+    data = JSONField(default=dict)
     def save(self, *args, **kwargs):
         if not self.internal_id:
             self.internal_id = self.generate_internal_id()
