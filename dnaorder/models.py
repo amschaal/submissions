@@ -159,7 +159,7 @@ class Submission(models.Model):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
     def __unicode__(self):
-        return '{submitted} - {type} - {pi}'.format(submitted=self.submitted,type=str(self.type),pi=self.pi_name)
+        return '{id}: {submitted} - {type} - {pi}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi=self.pi_name)
     class Meta:
         ordering = ['submitted']
     @property

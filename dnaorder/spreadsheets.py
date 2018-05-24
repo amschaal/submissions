@@ -41,7 +41,7 @@ class SampleSheetTablib(object):
     def data(self):
         return self._data.dict
     def sample_ids(self):
-        print 'sample_ids'
+#         print 'sample_ids'
         return self._data[self._SAMPLE_ID]
 
 class SampleSheet(object):
@@ -58,8 +58,8 @@ class SampleSheet(object):
 #             self._SAMPLE_ID = sample_id
         self.df = pandas.read_excel(file,header=header_index,usecols=usecols,sheet_name=0,dtype={self._SAMPLE_ID :str}).dropna(how='all')
         file.seek(0)
-        print 'DATA TABLE'
-        print self.df.columns
+#         print 'DATA TABLE'
+#         print self.df.columns
 #         print self.df
 #         print self._SAMPLE_ID
 
@@ -134,13 +134,14 @@ class SampleSheet(object):
     def to_dict(df):
         return df.to_dict(orient='records',into=OrderedDict)
     def sample_ids(self):
-        print self._SAMPLE_ID
-        print self.df.columns
+#         print self._SAMPLE_ID
+#         print self.df.columns
+        return self.df[self._SAMPLE_ID]
 #     @property
 #     def required_columns(self):
 #         return [c for c in list(self.df.columns) if c.startswith('*') and c != self._SAMPLE_ID]
     def missing_values(self):
-        print 'missing values'
+#         print 'missing values'
         missing = OrderedDict()
         for r in self.required_columns:
             ids = self.sample_df[self.sample_df[r].isnull()].index.values
