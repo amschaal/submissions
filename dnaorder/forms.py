@@ -27,16 +27,16 @@ submission_help_texts = {
                       'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
                       'sample_form':'<span id="sample_form_help">Please select a submission type in order to generate a template.</span>',
                       'notes':'Please enter any additional notes necessary here',
-                      'payment_info':'For DaFIS accounts, please format account as "chart-account", ie: 3-MOUSEACCOUNT.  For credit cards, DO NOT enter anything.  For all other accounts, enter as necessary.',
+                      'payment_info':'For DaFIS accounts, please format account as "chart-account", ie: 3-MYNSF.  For credit cards, leave blank.  For all other accounts, enter account number.',
                       }
 
 class SubmissionForm(forms.ModelForm):
     type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants']
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','data']
         help_texts = submission_help_texts
-        labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
+        labels = {'name':'Submitter Full Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Full Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
     layout = material.base.Layout(
         material.base.Fieldset('Submitter details',
         'name',
@@ -110,6 +110,7 @@ class SubmissionForm(forms.ModelForm):
         self._sample_data = self.samplesheet.data
         if self.samplesheet.headers_modified:
             errors.append(forms.ValidationError("Sample submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
+            raise forms.ValidationError(errors) #stop right here
         self._sample_ids = self.samplesheet.sample_ids()
         
         _errors = self.samplesheet.validate()
@@ -151,7 +152,7 @@ class SubmissionForm(forms.ModelForm):
 class AnonSubmissionFormUpdate(SubmissionForm):
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','type']
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','type','data']
         help_texts = submission_help_texts
         labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
     layout = material.base.Layout(
@@ -205,7 +206,7 @@ class AdminSubmissionForm(SubmissionForm):
         self.fields['type'].required = False
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','type']
+        exclude = ['submitted','sample_data','sra_data','status','internal_id','type','data']
         help_texts = submission_help_texts
     layout = material.base.Layout(
         'participants',

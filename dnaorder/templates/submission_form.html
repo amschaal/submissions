@@ -12,6 +12,7 @@
   animation-duration: 1s;
   animation-name: blowup;
   padding: 1px;
+  font-size: 16px;
 }
 
 @keyframes blowup {
@@ -51,7 +52,7 @@
 <h5>*You will be able to upload Bioanalyzer traces and other files once the form is submitted.</h5>
 </div>
 <div style="display:none">
-{% for type in submission_types %}<span id="form_{{type.id}}">Template: <a class="order_form" href="{{type.form.url}}" title="{{type.description}}">{{type.name}}</a></span>{% endfor %}
+{% for type in submission_types %}<span id="form_{{type.id}}">Download template: <a class="order_form" href="{{type.form.url}}" title="{{type.description}}">{{type.name}}</a></span>{% endfor %}
 </div>
 
 {% include 'partials/modal.html'%}
