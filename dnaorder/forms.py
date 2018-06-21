@@ -123,6 +123,10 @@ class SubmissionForm(forms.ModelForm):
                 errors.append(forms.ValidationError(mark_safe('<a class="visualize_errors" href="#"><i class="material-icons tiny">grid_on</i> Visualize Errors</a>')))
         if type and type.has_submission_fields:
             self.submission_samplesheet = SubmissionData(file,type)
+            print self.submission_samplesheet.headers
+            if self.submission_samplesheet.headers_modified:
+                errors.append(forms.ValidationError("Submission headers do not match the template headers.  Please ensure that you are using the selected submission template and that you have not modified the headers."))
+                raise forms.ValidationError(errors) #stop right here
             self._submission_data = self.submission_samplesheet.data
             for column,error in self.submission_samplesheet.validate().items():
                 errors.append(forms.ValidationError(mark_safe("<b>Column:</b> {column} <b>Message:</b> {message}".format(message=error,column=column))))

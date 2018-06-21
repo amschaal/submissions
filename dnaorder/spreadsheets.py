@@ -243,15 +243,15 @@ class CoreSampleSheet(SampleSheet):
 
 class SubmissionData(object):
     def __init__(self, file, submission_type):
-        self._file = file
+        self._file = file if file else submission_type.form.file
         usecols = None
         if submission_type.submission_start_column and submission_type.submission_end_column:
             usecols = '{0}:{1}'.format(submission_type.submission_start_column,submission_type.submission_end_column)
         elif submission_type.submission_end_column:
             usecols = submission_type.submission_end_column
         self._file.seek(0)
-        self.df = pandas.read_excel(file,header=submission_type.submission_header_row-1,usecols=usecols,sheet_name=0)
-        file.seek(0)
+        self.df = pandas.read_excel(self._file,header=submission_type.submission_header_row-1,usecols=usecols,sheet_name=0)
+        self._file.seek(0)
         self.df = self.df.iloc[submission_type.submission_skip_rows:1]#df.index[2]
 
         rename = {}
@@ -260,6 +260,8 @@ class SubmissionData(object):
                 rename[c]=c.lstrip('*')
         self.required_columns = rename.values()
         self.df.rename(columns=rename, inplace=True)
+        if file:
+            self.template = SubmissionData(None,submission_type) #kinda funky, but trying to use this class to get info about the template headers
     @property
     def data(self):
         return self.to_dict(self.df.where((pandas.notnull(self.df)), None))
@@ -269,6 +271,13 @@ class SubmissionData(object):
     @property
     def headers(self):
         return list(self.df.columns)
+    @property
+    def headers_modified(self):
+        if self.headers != self.template.headers:
+            return True
+        if self.required_columns != self.template.required_columns:
+            return True
+        return False
     def validate(self):
         errors = {}
         data = self.data
