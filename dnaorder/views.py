@@ -22,7 +22,7 @@ def submit(request):
             submission = form.save(commit=True)
             emails.confirm_order(submission, request)
             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
-    return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+    return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
 
 def update_submission(request,id):
     form_class = AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate

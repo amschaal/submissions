@@ -241,6 +241,8 @@ class CoreSampleSheet(SampleSheet):
             return True
         return False
 
+
+#Could probably leverage previous classes to do this.  Submission data is just a special case of only having 1 row of data and ignoring the rest.
 class SubmissionData(object):
     def __init__(self, file, submission_type):
         self._file = file if file else submission_type.form.file

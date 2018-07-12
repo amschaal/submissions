@@ -9,7 +9,7 @@ import material
 import re
 from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
-from django.forms.widgets import ClearableFileInput
+from django.forms.widgets import ClearableFileInput, HiddenInput
 from django.db.models.aggregates import Max
 from material.base import Fieldset
 from dnaorder.dafis import validate_dafis
@@ -31,6 +31,66 @@ submission_help_texts = {
                       }
 
 class SubmissionForm(forms.ModelForm):
+    type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
+#     sample_data = forms.HiddenInput(attrs={'hotschema':'1'})
+    def __init__(self,*args,**kwargs):
+        super(SubmissionForm, self).__init__(*args,**kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'ng-model':'submission.%s'%field})
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sample_form','sra_form','sra_data','status','internal_id','participants','data']
+        help_texts = submission_help_texts
+        labels = {'name':'Submitter Full Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Full Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
+        widgets = {
+            'sample_data': HiddenInput(attrs={'hot-schema-table': 1}),
+        }
+    layout = material.base.Layout(
+        material.base.Fieldset('Submitter details',
+        'name',
+        material.base.Row('email', 'phone'),
+        material.base.Row('pi_name', 'pi_email'),
+        'institute'
+        ),
+        material.base.Fieldset('Payment',
+        'payment_type',
+        'payment_info'
+        ),
+        material.base.Fieldset('Sample information',
+        'type',
+        'sample_data',
+        'biocore',
+        'notes'
+        )
+    )
+    def save(self, commit=True):
+        submission = super(SubmissionForm, self).save(commit=commit)
+        if hasattr(self, '_sample_data'):
+            submission.sample_data = self._sample_data
+        if hasattr(self, '_sra_data'):
+            submission.sra_data = self._sra_data
+        if hasattr(self, '_submission_data'):
+            submission.submission_data = self._submission_data
+#         if not submission.status:
+#             submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
+        if commit:
+            submission.save()
+        return submission
+
+    def clean_payment_info(self):
+        payment_type = self.cleaned_data.get('payment_type')
+        payment_info = self.cleaned_data.get('payment_info')
+        if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
+            raise forms.ValidationError("Do not enter anything into payment info when choosing credit card!")
+        elif payment_type == Submission.PAYMENT_DAFIS:
+            if not validate_dafis(payment_info):
+                raise forms.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
+        elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
+            raise forms.ValidationError("Please enter payment details.")
+        return payment_info
+
+
+class SubmissionFormOld(forms.ModelForm):
     type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
     class Meta:
         model = Submission
