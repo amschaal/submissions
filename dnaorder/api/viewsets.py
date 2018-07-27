@@ -10,6 +10,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.views import submission
+from dnaorder.validators import validate_samplesheet
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
@@ -42,7 +43,7 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
 
-class SubmissionTypeViewSet(viewsets.ReadOnlyModelViewSet):
+class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().order_by('id')
     serializer_class =SubmissionTypeSerializer
     filter_fields = {'show':['exact']}
@@ -53,6 +54,15 @@ class SubmissionTypeViewSet(viewsets.ReadOnlyModelViewSet):
         submission_type.show = True
         submission_type.save()
         return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
+    @detail_route(methods=['post'])
+    def validate_data(self,request, pk):
+        submission_type = self.get_object()
+        errors = validate_samplesheet(submission_type.schema,request.data.get('data'))
+        if len(errors) == 0:
+            return response.Response({'status':'success','message':'The data was succussfully validated'})
+        else:
+            return response.Response({'errors':errors},status=500)
+    
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()

@@ -12,7 +12,24 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
+from rest_framework.decorators import api_view
+from dnaorder.api.serializers import SubmissionSerializer
+from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from dnaorder.validators import validate_samplesheet
+
+@csrf_exempt
+@api_view(['POST'])
 def submit(request):
+    submission_types = SubmissionType.objects.all()
+    form = SubmissionForm(request.data)
+    if form.is_valid():
+        submission = form.save(commit=True)
+        submission_serializer = SubmissionSerializer(instance=submission)
+        return Response(submission_serializer.data)
+    return Response({'errors':form.errors},status=500)
+
+def static_submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
         form = SubmissionForm()
@@ -24,20 +41,19 @@ def submit(request):
             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
     return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
 
+@csrf_exempt
+@api_view(['PUT'])
 def update_submission(request,id):
-    form_class = AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate
+    form_class = SubmissionForm # AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate
     submission = Submission.objects.get(id=id)
-    if not request.user.is_authenticated and not submission.editable():
-        raise PermissionDenied
-    submission_types = SubmissionType.objects.all()
-    if request.method == 'GET':
-        form = form_class(instance=submission)
-    elif request.method == 'POST':
-        form = form_class(request.POST,request.FILES,instance=submission)
-        if form.is_valid():
-            submission = form.save(commit=True)
-            return redirect('submission',id=id)
-    return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+#     if not request.user.is_authenticated and not submission.editable():
+#         raise PermissionDenied
+    form = form_class(request.data,request.FILES,instance=submission)
+    if form.is_valid():
+        submission = form.save(commit=True)
+        submission_serializer = SubmissionSerializer(instance=submission)
+        return Response(submission_serializer.data)
+    return Response({'errors':form.errors},status=500)
 
 def submission_types(request):
     submission_types = SubmissionType.objects.filter(show=True)
@@ -156,3 +172,12 @@ def download(request,id):
     print file_path
     # generate the file
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
+
+@api_view(['POST'])
+def validate_data(request,type_id):
+    submission_type = SubmissionType.objects.get(id=type)
+    errors = validate_samplesheet(submission_type.schema,request.data.get('data'))
+    if len(errors) == 0:
+        return Response({'status':'success','message':'The data was succussfully validated'})
+    else:
+        return Response({'errors':errors},status=500)

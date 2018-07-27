@@ -13,6 +13,8 @@ from django.forms.widgets import ClearableFileInput, HiddenInput
 from django.db.models.aggregates import Max
 from material.base import Fieldset
 from dnaorder.dafis import validate_dafis
+from dnaorder.validators import validate_samplesheet
+
 
 class SubmissionStatusForm(forms.ModelForm):
     send_email = forms.BooleanField(required=True,initial=True)
@@ -45,24 +47,6 @@ class SubmissionForm(forms.ModelForm):
         widgets = {
             'sample_data': HiddenInput(attrs={'hot-schema-table': 1}),
         }
-    layout = material.base.Layout(
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-        'type',
-        'sample_data',
-        'biocore',
-        'notes'
-        )
-    )
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)
         if hasattr(self, '_sample_data'):
@@ -88,7 +72,19 @@ class SubmissionForm(forms.ModelForm):
         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
             raise forms.ValidationError("Please enter payment details.")
         return payment_info
-
+    def clean(self):
+        cleaned_data = super(SubmissionForm, self).clean()
+        sample_data = cleaned_data.get('sample_data')
+        type = cleaned_data.get('type')
+#         print 'sample_data'
+#         print sample_data
+        if type:
+            errors = validate_samplesheet(type.schema,sample_data)
+            print errors
+            if len(errors):
+                self.add_error('sample_data', 'Errors were found in the samplesheet')
+                self.errors['_sample_data'] = errors
+                
 
 class SubmissionFormOld(forms.ModelForm):
     type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
