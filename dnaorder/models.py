@@ -39,6 +39,7 @@ class SubmissionType(models.Model):
     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
     schema = JSONField(null=True,default=dict)
+    help = models.TextField(null=True,blank=True)
     def __unicode__(self):
         return "{name} (v{version})".format(name=self.name,version=self.version)
     @property

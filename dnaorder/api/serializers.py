@@ -6,7 +6,7 @@ import os
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionType
-        fields = ['id','name','version','show','description','schema']
+        fields = ['id','name','version','show','description','schema','help']
 
 class SubmissionStatusSerializer(serializers.ModelSerializer):
     class Meta:
