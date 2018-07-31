@@ -12,11 +12,31 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
-from rest_framework.decorators import api_view
-from dnaorder.api.serializers import SubmissionSerializer
+from rest_framework.decorators import api_view, permission_classes
+from dnaorder.api.serializers import SubmissionSerializer, UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import validate_samplesheet
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.permissions import AllowAny
+
+
+@api_view(['POST'])
+@csrf_exempt
+@permission_classes((AllowAny,))
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    user = authenticate(request._request, username=username, password=password)
+    if user is not None:
+        login(request._request, user)
+        return Response({'status':'success','user':UserSerializer(instance=user).data})
+    else:
+        return Response({'message':'Authentication failed.'},status=500)
+
+@api_view(['POST'])
+def logout_view(request):
+    logout(request)
 
 @csrf_exempt
 @api_view(['POST'])

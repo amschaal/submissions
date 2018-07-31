@@ -2,6 +2,7 @@ from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note
 import os
+from django.contrib.auth.models import User
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -58,3 +59,8 @@ class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
         exclude = []
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        exclude = ['password']
