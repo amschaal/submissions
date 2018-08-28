@@ -27,7 +27,10 @@ from rest_framework.permissions import AllowAny
 def login_view(request):
     username = request.data.get('username')
     password = request.data.get('password')
-    user = authenticate(request._request, username=username, password=password)
+    if request.user.is_authenticated and not username:
+        user = request.user
+    else:
+        user = authenticate(request._request, username=username, password=password)
     if user is not None:
         login(request._request, user)
         return Response({'status':'success','user':UserSerializer(instance=user).data})
@@ -37,6 +40,7 @@ def login_view(request):
 @api_view(['POST'])
 def logout_view(request):
     logout(request)
+    return Response({'status':'success'})
 
 @csrf_exempt
 @api_view(['POST'])

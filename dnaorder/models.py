@@ -14,6 +14,7 @@ from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
+from django.template.defaultfilters import default
 
 class SubmissionType(models.Model):
     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
@@ -138,6 +139,7 @@ class Submission(models.Model):
     type = models.ForeignKey(SubmissionType,related_name="submissions")
     sample_form = models.FileField(upload_to=sample_form_path)
     submission_data = JSONField(null=True,blank=True)
+    sample_schema = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)

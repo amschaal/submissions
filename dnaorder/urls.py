@@ -23,7 +23,7 @@ import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^$', views.submit, name='submit'),
+    url(r'^api/submit/$', views.submit, name='submit'),
     url(r'^submissions/$', views.submissions, name='submissions'),
     url(r'^submission_types/$', views.submission_types, name='submission_types'),
     url(r'^submission_types/create/$', views.create_update_submission_type, name='create_submission_type'),
