@@ -15,8 +15,8 @@ from dnaorder.validators import validate_samplesheet
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'type__version':['exact'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact']}
-    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','type__version','submitted','status__order','biocore','locked']
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact']}
+    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order','biocore','locked']
     @detail_route(methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
@@ -46,14 +46,13 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().order_by('id')
     serializer_class =SubmissionTypeSerializer
-    filter_fields = {'show':['exact']}
-    @detail_route(methods=['post'])
-    def show(self,request,pk):
-        submission_type = self.get_object()
-        SubmissionType.objects.filter(original=submission_type.original).update(show=False)
-        submission_type.show = True
-        submission_type.save()
-        return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
+#     @detail_route(methods=['post'])
+#     def show(self,request,pk):
+#         submission_type = self.get_object()
+#         SubmissionType.objects.filter(original=submission_type.original).update(show=False)
+#         submission_type.show = True
+#         submission_type.save()
+#         return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
     @detail_route(methods=['post'])
     def validate_data(self,request, pk):
         submission_type = self.get_object()
