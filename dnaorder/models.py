@@ -42,7 +42,7 @@ class SubmissionType(models.Model):
     schema = JSONField(null=True,default=dict)
     help = models.TextField(null=True,blank=True)
     def __unicode__(self):
-        return "{name} (v{version})".format(name=self.name,version=self.version)
+        return "{name}".format(name=self.name)
     @property
     def samplesheet(self):
         if not self.form or not self.id:

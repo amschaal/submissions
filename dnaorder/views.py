@@ -68,7 +68,7 @@ def static_submit(request):
 @csrf_exempt
 @api_view(['PUT'])
 def update_submission(request,id):
-    form_class = SubmissionForm # AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate
+    form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
     submission = Submission.objects.get(id=id)
 #     if not request.user.is_authenticated and not submission.editable():
 #         raise PermissionDenied

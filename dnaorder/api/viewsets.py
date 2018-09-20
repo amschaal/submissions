@@ -1,22 +1,26 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
-    SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer
+    SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
+    UserSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType
-from rest_framework.decorators import detail_route
+from rest_framework.decorators import detail_route, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from dnaorder.api.permissions import SubmissionFilePermissions
+from dnaorder.api.permissions import SubmissionFilePermissions,\
+    ReadOnlyPermissions, SubmissionPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.views import submission
 from dnaorder.validators import validate_samplesheet
+from django.contrib.auth.models import User
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact']}
     ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order','biocore','locked']
+    permission_classes = [SubmissionPermissions]
     @detail_route(methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
@@ -46,6 +50,15 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().order_by('id')
     serializer_class =SubmissionTypeSerializer
+    permission_classes = [ReadOnlyPermissions]
+    permission_classes_by_action = {'validate_data': [AllowAny]}
+    def get_permissions(self):
+        try:
+            # return permission_classes depending on `action` 
+            return [permission() for permission in self.permission_classes_by_action[self.action]]
+        except KeyError: 
+            # action is not set return default permission_classes
+            return [permission() for permission in self.permission_classes]
 #     @detail_route(methods=['post'])
 #     def show(self,request,pk):
 #         submission_type = self.get_object()
@@ -66,12 +79,23 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
     serializer_class = SubmissionFileSerializer
-    def get_permissions(self):
-        if self.action == 'list':
-            permission_classes = [IsAuthenticated]
+    filter_fields = {'submission':['exact']}
+    permission_classes = [SubmissionFilePermissions]
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+        submission = self.request.query_params.get('submission',None)
+        if self.request.user.is_authenticated:
+            return queryset
         else:
-            permission_classes = [SubmissionFilePermissions]
-        return [permission() for permission in permission_classes]
+            if not submission:
+                raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
+            return queryset.filter(submission=submission)
+#     def get_permissions(self):
+#         if self.action == 'list':
+#             permission_classes = [IsAuthenticated]
+#         else:
+#             permission_classes = [SubmissionFilePermissions]
+#         return [permission() for permission in permission_classes]
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if not instance.submission.editable(request.user):
@@ -101,4 +125,7 @@ class NoteViewSet(viewsets.ModelViewSet):
 # 
 #     def perform_create(self, serializer):
 #         serializer.save()
-        
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all().order_by('id')
+    serializer_class = UserSerializer
+    ordering_fields = ['name','first_name','last_name']

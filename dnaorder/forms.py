@@ -264,32 +264,14 @@ class AnonSubmissionFormUpdate(SubmissionForm):
 #         'biocore',
 #     )
 class AdminSubmissionForm(SubmissionForm):
-    def __init__(self, *args, **kwargs):
-        super(AdminSubmissionForm, self).__init__(*args, **kwargs)
-        self.fields['type'].required = False
+#     def __init__(self, *args, **kwargs):
+#         super(AdminSubmissionForm, self).__init__(*args, **kwargs)
+#         self.fields['type'].required = False
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','type','data']
+#         exclude = ['submitted','sample_data','sra_data','status','internal_id','data']
+        exclude = ['submitted','sample_form','sra_form','sra_data','status','internal_id','data']
         help_texts = submission_help_texts
-    layout = material.base.Layout(
-        'participants',
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-#         'sample_form',
-#         'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
 class ValidatorForm(forms.ModelForm):
     class Meta:
         model = Validator

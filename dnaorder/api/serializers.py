@@ -17,6 +17,11 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
 class SubmissionSerializer(serializers.ModelSerializer):
     type = SubmissionTypeSerializer(read_only=True)
     status = SubmissionStatusSerializer(read_only=True)
+    editable = serializers.SerializerMethodField()
+    def get_editable(self,instance):
+        request = self._context.get('request')
+        if request:
+            return instance.editable(request.user)
     class Meta:
         model = Submission
         exclude = []
