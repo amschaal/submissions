@@ -8,3 +8,5 @@ djangorestframework-filters==0.10.2
 jsonschema==3.0.0a1
 psycopg2==2.7.4
 tablib==0.12.1
+pandas==0.22.0
+

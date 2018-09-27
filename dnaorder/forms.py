@@ -5,7 +5,6 @@ from __builtin__ import file
 import tablib
 from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
     SubmissionData
-import material
 import re
 from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
@@ -21,9 +20,6 @@ class SubmissionStatusForm(forms.ModelForm):
     class Meta:
         model = Submission
         fields = ['status','send_email']
-    layout = material.base.Layout(
-        material.base.Row('status', 'send_email')
-    )
 
 submission_help_texts = {
                       'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
@@ -96,25 +92,6 @@ class SubmissionFormOld(forms.ModelForm):
         exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','data']
         help_texts = submission_help_texts
         labels = {'name':'Submitter Full Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Full Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
-    layout = material.base.Layout(
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-        'type',
-        'sample_form',
-        'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)
         if hasattr(self, '_sample_data'):
@@ -218,24 +195,6 @@ class AnonSubmissionFormUpdate(SubmissionForm):
         exclude = ['submitted','status','internal_id','participants','type','data']
         help_texts = submission_help_texts
         labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
-    layout = material.base.Layout(
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-#         'sample_form',
-#         'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
     def __init__(self, *args, **kwargs):
         super(AnonSubmissionFormUpdate, self).__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
