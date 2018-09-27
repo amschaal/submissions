@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_filters',
     'django_filters',
-    'material',
+#     'material',
     'dnaorder',
     'corsheaders',
 ]
