@@ -10,7 +10,6 @@ from django.utils.safestring import mark_safe
 from django.contrib.admin.widgets import AdminFileWidget
 from django.forms.widgets import ClearableFileInput, HiddenInput
 from django.db.models.aggregates import Max
-from material.base import Fieldset
 from dnaorder.dafis import validate_dafis
 from dnaorder.validators import validate_samplesheet
 
