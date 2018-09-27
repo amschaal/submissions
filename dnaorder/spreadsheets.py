@@ -2,13 +2,10 @@ from __builtin__ import file
 import tablib
 from django.utils.functional import cached_property
 import pandas
-from psycopg2.tests.testutils import skip_after_libpq
 from collections import OrderedDict
 from dnaorder.models import Validator
 import json
-from django.conf.urls.static import static
 import string
-from material.base import Column
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
