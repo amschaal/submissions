@@ -129,3 +129,4 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
+    permission_classes = (IsAuthenticated,)
