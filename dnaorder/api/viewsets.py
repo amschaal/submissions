@@ -19,6 +19,7 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact']}
+    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name')
     ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order','biocore','locked']
     permission_classes = [SubmissionPermissions]
     @detail_route(methods=['post'])
@@ -52,6 +53,7 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     serializer_class =SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
+    search_fields = ('name', 'description')
     def get_permissions(self):
         try:
             # return permission_classes depending on `action` 
