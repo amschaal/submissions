@@ -5,9 +5,10 @@ import os
 from django.contrib.auth.models import User
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
+    submission_count = serializers.IntegerField(read_only=True)
     class Meta:
         model = SubmissionType
-        fields = ['id','name','description','schema','help','updated']
+        fields = ['id','name','description','schema','help','updated','submission_count']
         read_only_fields = ('updated',)
 
 class SubmissionStatusSerializer(serializers.ModelSerializer):

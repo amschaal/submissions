@@ -136,7 +136,7 @@ class Submission(models.Model):
     institute = models.CharField(max_length=75)
     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
     payment_info = models.CharField(max_length=250,null=True,blank=True)
-    type = models.ForeignKey(SubmissionType,related_name="submissions")
+    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
 #     sample_form = models.FileField(upload_to=sample_form_path)
     submission_data = JSONField(null=True,blank=True)
     sample_schema = JSONField(default=dict,null=True,blank=True)

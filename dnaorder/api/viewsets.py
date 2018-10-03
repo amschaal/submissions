@@ -14,12 +14,13 @@ from dnaorder import emails
 from dnaorder.views import submission
 from dnaorder.validators import validate_samplesheet
 from django.contrib.auth.models import User
+from django.db.models.aggregates import Count
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact']}
-    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name')
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact']}
+    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name', 'type__name')
     ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order','biocore','locked']
     permission_classes = [SubmissionPermissions]
     @detail_route(methods=['post'])
@@ -49,7 +50,7 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
-    queryset = SubmissionType.objects.all().order_by('id')
+    queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('id')
     serializer_class =SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
