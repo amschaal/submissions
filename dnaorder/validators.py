@@ -11,8 +11,6 @@ def _required(validator, required, instance, schema):
             error = jsonschema.ValidationError(
                 '{0!r} is a required property'.format(requirement)
             )
-            print '_required validator'
-            print index
             error.schema_path.append(requirement)
             yield error
 
@@ -34,11 +32,16 @@ class ValidationException(Exception):
 def get_column(variable, data=[]):
     return [line.get(variable, None) for line in data]
 
-def unique_validator(variable, value, schema={}, data=[]):
+def unique_validator(variable, value, schema={}, data=[]): #make this a class?
     col = get_column(variable, data)
     valid = len([val for val in col if val == value and val is not None]) < 2
     if not valid:
         raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
+
+def get_validator(id, options):
+    #This is for testing.  This will be configurable.  Also, validators may be cached, etc.
+    if id == 'unique':
+        return unique_validator
 
 class SamplesheetValidator:
     def __init__(self, schema, data):
@@ -76,14 +79,18 @@ class SamplesheetValidator:
         return errors
     def validate(self):
         self.errors = self.validate_jsonschema()
-        for idx, row in enumerate(self.data):
-            for variable in self.schema['properties'].keys():
+        for variable in self.schema['properties'].keys():
+            validators = [get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
+            if self.schema['properties'][variable].get('unique', False):
+                validators.append(unique_validator)
+            for idx, row in enumerate(self.data):
                 value = row.get(variable, None)
-                if self.schema['properties'][variable].get('unique', False): #replace this with loop over "validators" property and call appropriate functions
-                    try:
-                        unique_validator(variable, value, self.schema, self.data)
-                    except ValidationException, e:
-                        self.set_error(idx, variable, e.message)
+                for validator in validators:
+                    if validator:
+                        try:
+                            validator(variable, value, self.schema, self.data)
+                        except ValidationException, e:
+                            self.set_error(idx, variable, e.message)
         return self.errors
 
 def validate_samplesheet(schema, data=[]):
