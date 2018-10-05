@@ -7,11 +7,9 @@ from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
     SubmissionData
 import re
 from django.utils.safestring import mark_safe
-from django.contrib.admin.widgets import AdminFileWidget
 from django.forms.widgets import ClearableFileInput, HiddenInput
-from django.db.models.aggregates import Max
 from dnaorder.dafis import validate_dafis
-from dnaorder.validators import validate_samplesheet
+from dnaorder.validators import SamplesheetValidator
 
 
 class SubmissionStatusForm(forms.ModelForm):
@@ -77,7 +75,8 @@ class SubmissionForm(forms.ModelForm):
 #         print 'sample_data'
 #         print sample_data
         if type:
-            errors = validate_samplesheet(type.schema,sample_data)
+            validator = SamplesheetValidator(type.schema,sample_data)
+            errors = validator.validate()
             print errors
             if len(errors):
                 self.add_error('sample_data', 'Errors were found in the samplesheet')

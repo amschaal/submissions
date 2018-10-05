@@ -48,14 +48,40 @@ class SamplesheetValidator:
     def set_error(self, index, variable, message):
         if not self.errors.has_key(index):
             self.errors[index] = {}
+    def validate_jsonschema(self):
+        v = Validator(self.schema)#Draft6Validator
+    #     print v.is_valid(data)
+        errors = {}
+        for index, row in enumerate(self.data):
+            print v.is_valid(row)
+            for error in sorted(v.iter_errors(row), key=str):
+                if not errors.has_key(index):
+                    errors[index] = {}
+                if error.schema_path[0] == 'properties':
+                    if not errors[index].has_key(error.schema_path[1]):
+                        errors[index][error.schema_path[1]] = []
+                    errors[index][error.schema_path[1]].append(error.message)
+                elif error.schema_path[0] == 'required':
+                    if not errors[index].has_key(error.schema_path[1]):
+                        errors[index][error.schema_path[1]] = []
+                    errors[index][error.schema_path[1]].append('This field is required')
+                else:
+                    print 'UNCAUGHT'
+                    print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
+    #             if len(error.path) == 0:
+    #                 if not errors.has_key('all') 
+    #             print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
+        return errors
     def validate(self):
-        for i, row in enumerate(self.data):
-            for v in self.schema['properties'].keys():
-                print i, v, row.get(v, None)
+        self.errors = self.validate_jsonschema()
+        for idx, row in enumerate(self.data):
+            for variable in self.schema['properties'].keys():
+                print idx, variable, row.get(variable, None)
                 try:
                     pass #validation function
                 except ValidationException, e:
                     pass #do stuff
+        return self.errors
 
 def validate_samplesheet(schema, data=[]):
     print schema

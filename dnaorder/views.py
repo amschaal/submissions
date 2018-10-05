@@ -16,7 +16,7 @@ from rest_framework.decorators import api_view, permission_classes
 from dnaorder.api.serializers import SubmissionSerializer, UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
-from dnaorder.validators import validate_samplesheet
+from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
 
@@ -200,7 +200,8 @@ def download(request,id):
 @api_view(['POST'])
 def validate_data(request,type_id):
     submission_type = SubmissionType.objects.get(id=type)
-    errors = validate_samplesheet(submission_type.schema,request.data.get('data'))
+    validator = SamplesheetValidator(submission_type.schema,request.data.get('data'))
+    errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
     if len(errors) == 0:
         return Response({'status':'success','message':'The data was succussfully validated'})
     else:

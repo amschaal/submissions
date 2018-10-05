@@ -12,7 +12,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.views import submission
-from dnaorder.validators import validate_samplesheet
+from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 
@@ -72,7 +72,8 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     @detail_route(methods=['post'])
     def validate_data(self,request, pk):
         submission_type = self.get_object()
-        errors = validate_samplesheet(submission_type.schema,request.data.get('data'))
+        validator = SamplesheetValidator(submission_type.schema,request.data.get('data'))
+        errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
         if len(errors) == 0:
             return response.Response({'status':'success','message':'The data was succussfully validated'})
         else:
