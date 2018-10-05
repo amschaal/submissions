@@ -25,6 +25,38 @@ Validator = jsonschema.validators.extend(
     }
 )
 
+class ValidationException(Exception):
+    def __init__(self, variable, value, message):
+        self.variable = variable
+        self.value = value
+        self.message = message
+
+def get_column(variable, data=[]):
+    return [line.get(variable, None) for line in data]
+
+def unique_validator(variable, value, schema={}, data=[]):
+    col = get_column(variable, data)
+    valid = len([val for val in col if val == value and val is not None]) < 2
+    if not valid:
+        raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
+
+class SamplesheetValidator:
+    def __init__(self, schema, data):
+        self.errors = {}
+        self.schema = schema
+        self.data = data
+    def set_error(self, index, variable, message):
+        if not self.errors.has_key(index):
+            self.errors[index] = {}
+    def validate(self):
+        for i, row in enumerate(self.data):
+            for v in self.schema['properties'].keys():
+                print i, v, row.get(v, None)
+                try:
+                    pass #validation function
+                except ValidationException, e:
+                    pass #do stuff
+
 def validate_samplesheet(schema, data=[]):
     print schema
     print data
