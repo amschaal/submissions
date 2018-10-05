@@ -48,6 +48,9 @@ class SamplesheetValidator:
     def set_error(self, index, variable, message):
         if not self.errors.has_key(index):
             self.errors[index] = {}
+        if not self.errors[index].has_key(variable):
+            self.errors[index][variable] = []
+        self.errors[index][variable].append(message)
     def validate_jsonschema(self):
         v = Validator(self.schema)#Draft6Validator
     #     print v.is_valid(data)
@@ -66,7 +69,6 @@ class SamplesheetValidator:
                         errors[index][error.schema_path[1]] = []
                     errors[index][error.schema_path[1]].append('This field is required')
                 else:
-                    print 'UNCAUGHT'
                     print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
     #             if len(error.path) == 0:
     #                 if not errors.has_key('all') 
@@ -76,11 +78,12 @@ class SamplesheetValidator:
         self.errors = self.validate_jsonschema()
         for idx, row in enumerate(self.data):
             for variable in self.schema['properties'].keys():
-                print idx, variable, row.get(variable, None)
-                try:
-                    pass #validation function
-                except ValidationException, e:
-                    pass #do stuff
+                value = row.get(variable, None)
+                if self.schema['properties'][variable].get('unique', False): #replace this with loop over "validators" property and call appropriate functions
+                    try:
+                        unique_validator(variable, value, self.schema, self.data)
+                    except ValidationException, e:
+                        self.set_error(idx, variable, e.message)
         return self.errors
 
 def validate_samplesheet(schema, data=[]):
