@@ -12,7 +12,8 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.views import submission
-from dnaorder.validators import SamplesheetValidator
+from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
+    VALIDATORS
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 
@@ -134,3 +135,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
+
+class ValidatorViewSet(viewsets.ViewSet):
+    def retrieve(self, request, pk=None):
+        VALIDATORS_DICT.get(pk)
+    def list(self, request):
+        return response.Response([v().serialize() for v in VALIDATORS])

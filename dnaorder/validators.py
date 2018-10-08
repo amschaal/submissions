@@ -36,6 +36,7 @@ class BaseValidator:
     id = None #Must override this to something unique
     name = None #Must override
     description = None
+    uses_options = True
     def __init__(self, options= {}):
         self.options = options
         if not self.id:
@@ -44,10 +45,13 @@ class BaseValidator:
             raise Exception('You must define "name" for each validator')
     def validate(self, variable, value, schema={}, data=[]):
         raise NotImplementedError
+    def serialize(self):
+        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options}
 
 class UniqueValidator(BaseValidator):
     id = 'unique'
     name = 'Unique'
+    uses_options = False
     def validate(self, variable, value, schema={}, data=[]):
         col = get_column(variable, data)
         valid = len([val for val in col if val == value and val is not None]) < 2
@@ -62,7 +66,7 @@ class FooValidator(BaseValidator):
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
 VALIDATORS = [UniqueValidator, FooValidator]
-
+VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 def unique_validator(variable, value, schema={}, data=[]): #make this a class?
     col = get_column(variable, data)
@@ -76,14 +80,13 @@ def get_validator(id, options):
         return unique_validator
 
 class SamplesheetValidator:
-    validators = dict([(v.id, v) for v in VALIDATORS])
     def __init__(self, schema, data):
         self.errors = {}
         self.schema = schema
         self.data = data
     def get_validator(self, id, options):
-        if self.validators.has_key(id):
-            return self.validators[id](options)
+        if VALIDATORS_DICT.has_key(id):
+            return VALIDATORS_DICT[id](options)
     def set_error(self, index, variable, message):
         if not self.errors.has_key(index):
             self.errors[index] = {}
