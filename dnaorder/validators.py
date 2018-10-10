@@ -51,6 +51,7 @@ class BaseValidator:
 class UniqueValidator(BaseValidator):
     id = 'unique'
     name = 'Unique'
+    description = 'Ensure that all values in the column are unique.'
     uses_options = False
     def validate(self, variable, value, schema={}, data=[]):
         col = get_column(variable, data)
@@ -84,7 +85,7 @@ class SamplesheetValidator:
         self.errors = {}
         self.schema = schema
         self.data = data
-    def get_validator(self, id, options):
+    def get_validator(self, id, options={}):
         if VALIDATORS_DICT.has_key(id):
             return VALIDATORS_DICT[id](options)
     def set_error(self, index, variable, message):
@@ -120,8 +121,8 @@ class SamplesheetValidator:
         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
             validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
-#             if self.schema['properties'][variable].get('unique', False):
-#                 validators.append(unique_validator)
+            if self.schema['properties'][variable].get('unique', False):
+                validators.append(self.get_validator(UniqueValidator.id))
             for idx, row in enumerate(self.data):
                 value = row.get(variable, None)
                 for validator in validators:

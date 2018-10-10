@@ -198,9 +198,12 @@ def download(request,id):
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 
 @api_view(['POST'])
-def validate_data(request,type_id):
-    submission_type = SubmissionType.objects.get(id=type)
-    validator = SamplesheetValidator(submission_type.schema,request.data.get('data'))
+def validate_data(request,type_id=None):
+    if type_id:
+        schema = SubmissionType.objects.get(id=type).schema
+    else:
+        schema = request.data.get('schema')
+    validator = SamplesheetValidator(schema,request.data.get('data'))
     errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
     if len(errors) == 0:
         return Response({'status':'success','message':'The data was succussfully validated'})

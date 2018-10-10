@@ -39,6 +39,7 @@ urlpatterns = [
     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
+    url(r'^api/validate/$', views.validate_data, name='validate'),
     url(r'^api/login/$', views.login_view, name='login'),
     url(r'^api/logout/$', views.logout_view, name='logout'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
