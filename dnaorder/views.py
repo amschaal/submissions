@@ -75,7 +75,7 @@ def update_submission(request,id):
     form = form_class(request.data,request.FILES,instance=submission)
     if form.is_valid():
         submission = form.save(commit=True)
-        submission_serializer = SubmissionSerializer(instance=submission)
+        submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
         return Response(submission_serializer.data)
     return Response({'errors':form.errors},status=500)
 
