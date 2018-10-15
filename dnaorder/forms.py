@@ -44,12 +44,12 @@ class SubmissionForm(forms.ModelForm):
         submission = super(SubmissionForm, self).save(commit=commit)
         if submission.type:
             submission.sample_schema = submission.type.schema
-        if hasattr(self, '_sample_data'):
-            submission.sample_data = self._sample_data
-        if hasattr(self, '_sra_data'):
-            submission.sra_data = self._sra_data
-        if hasattr(self, '_submission_data'):
-            submission.submission_data = self._submission_data
+#         if hasattr(self, '_sample_data'):
+#             submission.sample_data = self._sample_data
+#         if hasattr(self, '_sra_data'):
+#             submission.sra_data = self._sra_data
+#         if hasattr(self, '_submission_data'):
+#             submission.submission_data = self._submission_data
 #         if not submission.status:
 #             submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
         if commit:
@@ -67,14 +67,18 @@ class SubmissionForm(forms.ModelForm):
         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
             raise forms.ValidationError("Please enter payment details.")
         return payment_info
-    
+    def clean_sample_data(self):
+        sample_data = self.cleaned_data.get('sample_data', [])
+        if not sample_data or len(sample_data) < 1:
+            raise forms.ValidationError("Please provide at least 1 sample.")
+        return sample_data
     def clean(self):
         cleaned_data = super(SubmissionForm, self).clean()
         sample_data = cleaned_data.get('sample_data')
         type = cleaned_data.get('type')
 #         print 'sample_data'
 #         print sample_data
-        if type:
+        if type and sample_data and len(sample_data) > 0:
             validator = SamplesheetValidator(type.schema,sample_data)
             errors = validator.validate()
             print errors

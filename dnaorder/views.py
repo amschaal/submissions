@@ -72,9 +72,13 @@ def update_submission(request,id):
     submission = Submission.objects.get(id=id)
 #     if not request.user.is_authenticated and not submission.editable():
 #         raise PermissionDenied
-    form = form_class(request.data,request.FILES,instance=submission)
+    form = form_class(request.data,instance=submission)
     if form.is_valid():
+        print request.data
+        print form_class
         submission = form.save(commit=True)
+        print submission
+        print submission.sample_data
         submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
         return Response(submission_serializer.data)
     return Response({'errors':form.errors},status=500)
