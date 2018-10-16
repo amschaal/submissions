@@ -14,32 +14,36 @@ from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
+from django.template.defaultfilters import default
 
 class SubmissionType(models.Model):
-    original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
-    parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
-    version = models.PositiveIntegerField(default=1)
+#     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
+#     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
+#     version = models.PositiveIntegerField(default=1)
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
-    show = models.BooleanField(default=False)
+#     show = models.BooleanField(default=False)
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
     prefix = models.CharField(max_length=15,null=True,blank=True)
-    form = models.FileField(upload_to='submission_forms/')
-    header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-    skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
-    start_column = models.CharField(max_length=2,default='A')
-    end_column = models.CharField(max_length=2,null=True,blank=True)
+#     form = models.FileField(upload_to='submission_forms/')
+#     header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
+#     skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
+#     start_column = models.CharField(max_length=2,default='A')
+#     end_column = models.CharField(max_length=2,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     #Submission level form definitions below
-    has_submission_fields = models.BooleanField(default=False)
-    submission_header_row = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-    submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
-    submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
-    submission_end_column = models.CharField(max_length=2,null=True,blank=True)
+#     has_submission_fields = models.BooleanField(default=False)
+#     submission_header_row = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
+#     submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
+#     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
+#     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
+    schema = JSONField(null=True,default=dict)
+    examples = JSONField(default=list)
+    help = models.TextField(null=True,blank=True)
     def __unicode__(self):
-        return "{name} (v{version})".format(name=self.name,version=self.version)
+        return "{name}".format(name=self.name)
     @property
     def samplesheet(self):
         if not self.form or not self.id:
@@ -49,29 +53,29 @@ class SubmissionType(models.Model):
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
-    @property
-    def versions(self):
-        if self.original:
-            return SubmissionType.objects.filter(original=self.original).order_by('-version')
-        return SubmissionType.objects.filter(original=self).order_by('-version')
-    @property
-    def related_submissions(self):
-        return Submission.objects.filter(type__in=self.versions)
-def set_original(sender,instance,**kwargs):
-    if not instance.original and not instance.parent:
-        SubmissionType.objects.filter(id=instance.id).update(original=instance)
-post_save.connect(set_original, SubmissionType)
+#     @property
+#     def versions(self):
+#         if self.original:
+#             return SubmissionType.objects.filter(original=self.original).order_by('-version')
+#         return SubmissionType.objects.filter(original=self).order_by('-version')
+#     @property
+#     def related_submissions(self):
+#         return Submission.objects.filter(type__in=self.versions)
+# def set_original(sender,instance,**kwargs):
+#     if not instance.original and not instance.parent:
+#         SubmissionType.objects.filter(id=instance.id).update(original=instance)
+# post_save.connect(set_original, SubmissionType)
 
-def sra_samples_path(instance, filename):
-    ext = os.path.splitext(filename)[1]
-    filename = '%s.sra%s'%(instance.id,ext)
-    return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
-#     return 'user_{0}/{1}'.format(instance.user.id, filename)
-def sample_form_path(instance, filename):
-    ext = os.path.splitext(filename)[1]
-    filename = '%s.samples%s'%(instance.id,ext)
-    return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
-
+# def sra_samples_path(instance, filename):
+#     ext = os.path.splitext(filename)[1]
+#     filename = '%s.sra%s'%(instance.id,ext)
+#     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
+# #     return 'user_{0}/{1}'.format(instance.user.id, filename)
+# def sample_form_path(instance, filename):
+#     ext = os.path.splitext(filename)[1]
+#     filename = '%s.samples%s'%(instance.id,ext)
+#     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
+# 
 def submission_file_path(instance, filename):
     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
 
@@ -133,11 +137,12 @@ class Submission(models.Model):
     institute = models.CharField(max_length=75)
     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
     payment_info = models.CharField(max_length=250,null=True,blank=True)
-    type = models.ForeignKey(SubmissionType,related_name="submissions")
-    sample_form = models.FileField(upload_to=sample_form_path)
+    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
+#     sample_form = models.FileField(upload_to=sample_form_path)
     submission_data = JSONField(null=True,blank=True)
+    sample_schema = JSONField(default=dict,null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
-    sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
+#     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True)
     biocore = models.BooleanField(default=False)

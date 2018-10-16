@@ -12,7 +12,49 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
+from rest_framework.decorators import api_view, permission_classes
+from dnaorder.api.serializers import SubmissionSerializer, UserSerializer
+from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from dnaorder.validators import SamplesheetValidator
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.permissions import AllowAny
+
+
+@api_view(['POST'])
+@csrf_exempt
+@permission_classes((AllowAny,))
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    if request.user.is_authenticated and not username:
+        user = request.user
+    else:
+        user = authenticate(request._request, username=username, password=password)
+    if user is not None:
+        login(request._request, user)
+        return Response({'status':'success','user':UserSerializer(instance=user).data})
+    else:
+        return Response({'message':'Authentication failed.'},status=500)
+
+@api_view(['POST'])
+def logout_view(request):
+    logout(request)
+    return Response({'status':'success'})
+
+# @csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def submit(request):
+    submission_types = SubmissionType.objects.all()
+    form = SubmissionForm(request.data)
+    if form.is_valid():
+        submission = form.save(commit=True)
+        submission_serializer = SubmissionSerializer(instance=submission)
+        return Response(submission_serializer.data)
+    return Response({'errors':form.errors},status=500)
+
+def static_submit(request):
     submission_types = SubmissionType.objects.all()
     if request.method == 'GET':
         form = SubmissionForm()
@@ -22,22 +64,26 @@ def submit(request):
             submission = form.save(commit=True)
             emails.confirm_order(submission, request)
             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
-    return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+    return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
 
+# @csrf_exempt
+@api_view(['PUT'])
+@permission_classes([AllowAny])
 def update_submission(request,id):
-    form_class = AdminSubmissionForm if request.user.is_staff else AnonSubmissionFormUpdate
+    form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
     submission = Submission.objects.get(id=id)
-    if not request.user.is_authenticated and not submission.editable():
-        raise PermissionDenied
-    submission_types = SubmissionType.objects.all()
-    if request.method == 'GET':
-        form = form_class(instance=submission)
-    elif request.method == 'POST':
-        form = form_class(request.POST,request.FILES,instance=submission)
-        if form.is_valid():
-            submission = form.save(commit=True)
-            return redirect('submission',id=id)
-    return render(request,'submission_form.html',{'form':form,'submission_types':submission_types})
+#     if not request.user.is_authenticated and not submission.editable():
+#         raise PermissionDenied
+    form = form_class(request.data,instance=submission)
+    if form.is_valid():
+        print request.data
+        print form_class
+        submission = form.save(commit=True)
+        print submission
+        print submission.sample_data
+        submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
+        return Response(submission_serializer.data)
+    return Response({'errors':form.errors},status=500)
 
 def submission_types(request):
     submission_types = SubmissionType.objects.filter(show=True)
@@ -156,3 +202,16 @@ def download(request,id):
     print file_path
     # generate the file
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
+
+@api_view(['POST'])
+def validate_data(request,type_id=None):
+    if type_id:
+        schema = SubmissionType.objects.get(id=type).schema
+    else:
+        schema = request.data.get('schema')
+    validator = SamplesheetValidator(schema,request.data.get('data'))
+    errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+    if len(errors) == 0:
+        return Response({'status':'success','message':'The data was succussfully validated'})
+    else:
+        return Response({'errors':errors},status=500)

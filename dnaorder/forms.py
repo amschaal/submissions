@@ -5,23 +5,18 @@ from __builtin__ import file
 import tablib
 from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
     SubmissionData
-import material
 import re
 from django.utils.safestring import mark_safe
-from django.contrib.admin.widgets import AdminFileWidget
-from django.forms.widgets import ClearableFileInput
-from django.db.models.aggregates import Max
-from material.base import Fieldset
+from django.forms.widgets import ClearableFileInput, HiddenInput
 from dnaorder.dafis import validate_dafis
+from dnaorder.validators import SamplesheetValidator
+
 
 class SubmissionStatusForm(forms.ModelForm):
     send_email = forms.BooleanField(required=True,initial=True)
     class Meta:
         model = Submission
         fields = ['status','send_email']
-    layout = material.base.Layout(
-        material.base.Row('status', 'send_email')
-    )
 
 submission_help_texts = {
                       'sra_form':'If you are planning to submit sequences to <b class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="A very informative description of SRA submissions will pop up in my place...">NCBI SRA <i class="material-icons tiny">help_outline</i></b>, please <a target="_blank" href="https://submit.ncbi.nlm.nih.gov/biosample/template/">download the appropriate template</a> and upload them here.',
@@ -31,31 +26,74 @@ submission_help_texts = {
                       }
 
 class SubmissionForm(forms.ModelForm):
-    type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter(show=True).order_by('name'))
+    type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter().order_by('name'))
+#     sample_data = forms.HiddenInput(attrs={'hotschema':'1'})
+    def __init__(self,*args,**kwargs):
+        super(SubmissionForm, self).__init__(*args,**kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'ng-model':'submission.%s'%field})
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sample_form','sra_form','sra_data','status','internal_id','participants','data']
+        help_texts = submission_help_texts
+        labels = {'name':'Submitter Full Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Full Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
+        widgets = {
+            'sample_data': HiddenInput(attrs={'hot-schema-table': 1}),
+        }
+    def save(self, commit=True):
+        submission = super(SubmissionForm, self).save(commit=commit)
+        if submission.type:
+            submission.sample_schema = submission.type.schema
+#         if hasattr(self, '_sample_data'):
+#             submission.sample_data = self._sample_data
+#         if hasattr(self, '_sra_data'):
+#             submission.sra_data = self._sra_data
+#         if hasattr(self, '_submission_data'):
+#             submission.submission_data = self._submission_data
+#         if not submission.status:
+#             submission.status = SubmissionStatus.objects.filter(default=True).order_by('order').first()
+        if commit:
+            submission.save()
+        return submission
+
+    def clean_payment_info(self):
+        payment_type = self.cleaned_data.get('payment_type')
+        payment_info = self.cleaned_data.get('payment_info')
+        if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
+            raise forms.ValidationError("Do not enter anything into payment info when choosing credit card!")
+        elif payment_type == Submission.PAYMENT_DAFIS:
+            if not validate_dafis(payment_info):
+                raise forms.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
+        elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
+            raise forms.ValidationError("Please enter payment details.")
+        return payment_info
+    def clean_sample_data(self):
+        sample_data = self.cleaned_data.get('sample_data', [])
+        if not sample_data or len(sample_data) < 1:
+            raise forms.ValidationError("Please provide at least 1 sample.")
+        return sample_data
+    def clean(self):
+        cleaned_data = super(SubmissionForm, self).clean()
+        sample_data = cleaned_data.get('sample_data')
+        type = cleaned_data.get('type')
+#         print 'sample_data'
+#         print sample_data
+        if type and sample_data and len(sample_data) > 0:
+            validator = SamplesheetValidator(type.schema,sample_data)
+            errors = validator.validate()
+            print errors
+            if len(errors):
+                self.add_error('sample_data', 'Errors were found in the samplesheet')
+                self.errors['_sample_data'] = errors
+                
+
+class SubmissionFormOld(forms.ModelForm):
+    type = forms.ModelChoiceField(queryset=SubmissionType.objects.filter().order_by('name'))
     class Meta:
         model = Submission
         exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','data']
         help_texts = submission_help_texts
         labels = {'name':'Submitter Full Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Full Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
-    layout = material.base.Layout(
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-        'type',
-        'sample_form',
-        'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)
         if hasattr(self, '_sample_data'):
@@ -156,27 +194,9 @@ class SubmissionForm(forms.ModelForm):
 class AnonSubmissionFormUpdate(SubmissionForm):
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','participants','type','data']
+        exclude = ['submitted','status','internal_id','participants','type','data']
         help_texts = submission_help_texts
         labels = {'name':'Submitter Name','email':'Submitter Email','phone':'Submitter Phone','pi_name':'PI Name','pi_email':'PI Email','biocore':'Will the Bioinformatics Core be analyzing the data?'}
-    layout = material.base.Layout(
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-        'sample_form',
-        'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
     def __init__(self, *args, **kwargs):
         super(AnonSubmissionFormUpdate, self).__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
@@ -205,32 +225,14 @@ class AnonSubmissionFormUpdate(SubmissionForm):
 #         'biocore',
 #     )
 class AdminSubmissionForm(SubmissionForm):
-    def __init__(self, *args, **kwargs):
-        super(AdminSubmissionForm, self).__init__(*args, **kwargs)
-        self.fields['type'].required = False
+#     def __init__(self, *args, **kwargs):
+#         super(AdminSubmissionForm, self).__init__(*args, **kwargs)
+#         self.fields['type'].required = False
     class Meta:
         model = Submission
-        exclude = ['submitted','sample_data','sra_data','status','internal_id','type','data']
+#         exclude = ['submitted','sample_data','sra_data','status','internal_id','data']
+        exclude = ['submitted','sample_form','sra_form','sra_data','status','internal_id','data']
         help_texts = submission_help_texts
-    layout = material.base.Layout(
-        'participants',
-        material.base.Fieldset('Submitter details',
-        'name',
-        material.base.Row('email', 'phone'),
-        material.base.Row('pi_name', 'pi_email'),
-        'institute'
-        ),
-        material.base.Fieldset('Payment',
-        'payment_type',
-        'payment_info'
-        ),
-        material.base.Fieldset('Sample information',
-        'sample_form',
-        'sra_form',
-        'biocore',
-        'notes'
-        )
-    )
 class ValidatorForm(forms.ModelForm):
     class Meta:
         model = Validator
@@ -261,19 +263,19 @@ class SubmissionTypeForm(forms.ModelForm):
 #             self.fields['exclude_fields'].help_text += '  Current options are: '+', '.join(instance.samplesheet.headers)
     class Meta:
         model = SubmissionType
-        exclude = ['version','parent','updated','updated_by','original','show']
+        exclude = ['updated','updated_by','original']
         help_texts = {
                       'prefix':"This will be prepended to the submission's internal id.",
-                      'header_index':'Which row are the variables on?',
-                      'skip_rows':'The number of rows after the variables to ignore.  This is useful if providing examples.',
-                      'start_column':'What column (A-Z) do variables start on.',
-                      'end_column':'What column (A-Z) do variables end on?',
+#                       'header_index':'Which row are the variables on?',
+#                       'skip_rows':'The number of rows after the variables to ignore.  This is useful if providing examples.',
+#                       'start_column':'What column (A-Z) do variables start on.',
+#                       'end_column':'What column (A-Z) do variables end on?',
                       'sample_identifier': 'What is in the header for the sample name/id column?',
-                      'form': 'Please upload a template in XLSX format, minimally containing variable names in one row.',
+#                       'form': 'Please upload a template in XLSX format, minimally containing variable names in one row.',
                       'exclude_fields': 'Comma delimited list of variables that should not be printed out by default.'
                       }
         labels = {
-                'header_index': 'Variable row'
+#                 'header_index': 'Variable row'
             }
         widgets = {
                 'form':ClearableFileInput
@@ -283,23 +285,23 @@ class SubmissionTypeForm(forms.ModelForm):
             self.instance.parent_id = self.instance.id
             self.instance.original_id = self.instance.original_id
             self.instance.pk = None
-            self.instance.version = SubmissionType.objects.filter(original=self.instance.original).aggregate(Max('version'))['version__max'] + 1
+#             self.instance.version = SubmissionType.objects.filter(original=self.instance.original).aggregate(Max('version'))['version__max'] + 1
             SubmissionType.objects.filter(original=self.instance.original).update(show=False)
         self.instance.updated_by = user
-        self.instance.show = True
+#         self.instance.show = True
         return super(SubmissionTypeForm, self).save(commit=commit)
 #         self.instance.parent = self.instance.id
 #         
 #         self.instance.parent = self.instance.id
-    def clean(self):
-        cleaned_data = super(SubmissionTypeForm, self).clean()
+#     def clean(self):
+#         cleaned_data = super(SubmissionTypeForm, self).clean()
         #Try to parse a samplesheet from the form/metadata.  If it fails, raise a validation error.
-        try:
-            SampleSheet(cleaned_data['form'],cleaned_data.get('header_index') - 1,cleaned_data.get('skip_rows'),cleaned_data.get('start_column'),cleaned_data.get('end_column'),cleaned_data.get('sample_identifier'))
-#             CoreSampleSheet(,self.save(commit=False))
-#             self.instance.samplesheet
-        except:
-            raise forms.ValidationError('Something went wrong parsing the template.  Please ensure that the form configuration parameters match up with the template rows and columns')
+#         try:
+#             SampleSheet(cleaned_data['form'],cleaned_data.get('header_index') - 1,cleaned_data.get('skip_rows'),cleaned_data.get('start_column'),cleaned_data.get('end_column'),cleaned_data.get('sample_identifier'))
+# #             CoreSampleSheet(,self.save(commit=False))
+# #             self.instance.samplesheet
+#         except:
+#             raise forms.ValidationError('Something went wrong parsing the template.  Please ensure that the form configuration parameters match up with the template rows and columns')
 
 class CustomPrintForm(forms.Form):
     exclude = forms.MultipleChoiceField(label="Exclude variables")#widget=forms.CheckboxSelectMultiple

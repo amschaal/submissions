@@ -2,13 +2,10 @@ from __builtin__ import file
 import tablib
 from django.utils.functional import cached_property
 import pandas
-from psycopg2.tests.testutils import skip_after_libpq
 from collections import OrderedDict
 from dnaorder.models import Validator
 import json
-from django.conf.urls.static import static
 import string
-from material.base import Column
 
 class SampleSheetTablib(object):
     _SAMPLE_ID = '*sample_name'
@@ -241,6 +238,8 @@ class CoreSampleSheet(SampleSheet):
             return True
         return False
 
+
+#Could probably leverage previous classes to do this.  Submission data is just a special case of only having 1 row of data and ignoring the rest.
 class SubmissionData(object):
     def __init__(self, file, submission_type):
         self._file = file if file else submission_type.form.file
