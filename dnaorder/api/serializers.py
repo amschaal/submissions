@@ -3,9 +3,25 @@ from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note
 import os
 from django.contrib.auth.models import User
+from dnaorder.validators import SamplesheetValidator
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
+    def validate_examples(self, data):
+        schema = self.initial_data.get('schema',{})
+        validator = SamplesheetValidator(schema, data)
+        errors = validator.validate()
+        print errors
+        if len(errors):
+            raise serializers.ValidationError('Examples did not validate.')
+#             
+#             self.add_error('sample_data', 'Errors were found in the samplesheet')
+#                 self.errors['_sample_data'] = errors
+#         print data
+#         print self.initial_data
+#         raise serializers.ValidationError('Examples did not validate.')
+        return data
+        # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
         fields = ['id','name','description','schema','examples','help','updated','submission_count']

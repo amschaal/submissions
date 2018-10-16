@@ -42,8 +42,9 @@ def logout_view(request):
     logout(request)
     return Response({'status':'success'})
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def submit(request):
     submission_types = SubmissionType.objects.all()
     form = SubmissionForm(request.data)
@@ -65,8 +66,9 @@ def static_submit(request):
             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
     return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(['PUT'])
+@permission_classes([AllowAny])
 def update_submission(request,id):
     form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
     submission = Submission.objects.get(id=id)
