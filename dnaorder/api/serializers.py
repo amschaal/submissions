@@ -87,3 +87,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ['password']
+
+class StatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubmissionStatus
+        fields = ['id', 'order', 'name']
