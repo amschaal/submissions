@@ -1,7 +1,7 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer, StatusSerializer
+    UserSerializer, StatusSerializer, WritableSubmissionSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType
 from rest_framework.decorators import detail_route, permission_classes
@@ -18,7 +18,7 @@ from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
 
-class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
@@ -26,6 +26,11 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order', 'status__name','biocore','locked']
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
+    def get_serializer_class(self):
+        if self.request.method in ['PATCH', 'POST', 'PUT']:
+            return WritableSubmissionSerializer
+        return SubmissionSerializer
+#         return viewsets.ModelViewSet.get_serializer_class(self)
     def get_permissions(self):
         try:
             return [permission() for permission in self.permission_classes_by_action[self.action]]

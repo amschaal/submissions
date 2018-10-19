@@ -205,7 +205,11 @@ class Submission(models.Model):
         if len(participants) == 0:
             participants = ['dnatech@ucdavis.edu']
         return participants
-    
+
+class Contact(models.Model):
+    submission = models.ForeignKey(Submission, related_name='contacts')
+    name = models.CharField(max_length=50)
+    email = models.EmailField(max_length=100)
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
