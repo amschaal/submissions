@@ -101,3 +101,4 @@ ENV/
 .mypy_cache/
 
 media/
+/node_modules/
