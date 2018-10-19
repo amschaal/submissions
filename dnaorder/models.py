@@ -127,6 +127,7 @@ class Submission(models.Model):
     internal_id = models.CharField(max_length=25, unique=True)
     status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
+    cancelled = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=50)
