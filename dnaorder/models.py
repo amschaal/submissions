@@ -208,7 +208,8 @@ class Submission(models.Model):
 
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts')
-    name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=25)
+    last_name = models.CharField(max_length=30)
     email = models.EmailField(max_length=100)
     
 class SubmissionFile(models.Model):

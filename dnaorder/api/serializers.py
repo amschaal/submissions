@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note
+    SubmissionStatus, Note, Contact
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator
@@ -28,12 +28,20 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         fields = ['id','name','description','schema','examples','help','updated','submission_count']
         read_only_fields = ('updated',)
 
+class ContactSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    class Meta:
+        model = Contact
+        exclude = ['submission']
+        read_only_fields = ('id',)
+
 class SubmissionStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionStatus
         fields = ['id','name']
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
+    contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
     def validate_payment_info(self, payment_info):
@@ -57,6 +65,43 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
         return sample_data
+    def create(self, validated_data):
+        print 'creating'
+        print validated_data
+        contacts = validated_data.pop('contacts')
+        submission = Submission.objects.create(**validated_data)
+        for contact in contacts:
+            Contact.objects.create(submission=submission, **contact)
+        return submission
+    def update(self, instance, validated_data):
+        contacts = validated_data.pop('contacts')
+        print 'updating'
+        print instance
+        print contacts
+        info = serializers.model_meta.get_field_info(instance)
+
+        # Simply set each attribute on the instance, and then save it.
+        # Note that unlike `.create()` we don't need to treat many-to-many
+        # relationships as being a special case. During updates we already
+        # have an instance pk for the relationships to be associated with.
+        for attr, value in validated_data.items():
+            if attr in info.relations and info.relations[attr].to_many:
+                field = getattr(instance, attr)
+                field.set(value)
+            else:
+                setattr(instance, attr, value)
+        instance.save()
+        Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
+        for c in contacts:
+            if c.get('id', False):
+                Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
+            else:
+                Contact.objects.create(submission=instance, **c)
+        return instance
+#     def update(self, instance, validated_data):
+#         print 'updating'
+#         print validated_data
+#         return super(WritableSubmissionSerializer, self).update(instance, validated_data)
 #     def clean(self):
 #         cleaned_data = super(SubmissionForm, self).clean()
 #         sample_data = cleaned_data.get('sample_data')
