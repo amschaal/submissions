@@ -9,8 +9,8 @@ from dnaorder.dafis import validate_dafis
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
     def validate_examples(self, data):
-        schema = self.initial_data.get('schema',{})
-        validator = SamplesheetValidator(schema, data)
+        sample_schema = self.initial_data.get('sample_schema',{})
+        validator = SamplesheetValidator(sample_schema, data)
         errors = validator.validate()
         print errors
         if len(errors):
@@ -25,7 +25,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','name','description','schema','examples','help','updated','submission_count']
+        fields = ['id','name','description','sample_schema','examples','help','updated','submission_count']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -60,7 +60,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         type = self.initial_data.get('type')
         if type and sample_data and len(sample_data) > 0:
             type = SubmissionType.objects.get(id=type)
-            validator = SamplesheetValidator(type.schema,sample_data)
+            validator = SamplesheetValidator(type.sample_schema,sample_data)
             errors = validator.validate()
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
@@ -109,7 +109,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 # #         print 'sample_data'
 # #         print sample_data
 #         if type and sample_data and len(sample_data) > 0:
-#             validator = SamplesheetValidator(type.schema,sample_data)
+#             validator = SamplesheetValidator(type.sample_schema,sample_data)
 #             errors = validator.validate()
 #             print errors
 #             if len(errors):

@@ -206,9 +206,11 @@ def download(request,id):
 @api_view(['POST'])
 def validate_data(request,type_id=None):
     if type_id:
-        schema = SubmissionType.objects.get(id=type).schema
+        schema = SubmissionType.objects.get(id=type).sample_schema
     else:
-        schema = request.data.get('schema')
+        schema = request.data.get('sample_schema')
+    print 'schema'
+    print schema
     validator = SamplesheetValidator(schema,request.data.get('data'))
     errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
     if len(errors) == 0:

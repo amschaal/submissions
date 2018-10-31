@@ -43,7 +43,7 @@ class SubmissionForm(forms.ModelForm):
     def save(self, commit=True):
         submission = super(SubmissionForm, self).save(commit=commit)
         if submission.type:
-            submission.sample_schema = submission.type.schema
+            submission.sample_schema = submission.type.sample_schema
 #         if hasattr(self, '_sample_data'):
 #             submission.sample_data = self._sample_data
 #         if hasattr(self, '_sra_data'):
@@ -79,7 +79,7 @@ class SubmissionForm(forms.ModelForm):
 #         print 'sample_data'
 #         print sample_data
         if type and sample_data and len(sample_data) > 0:
-            validator = SamplesheetValidator(type.schema,sample_data)
+            validator = SamplesheetValidator(type.sample_schema,sample_data)
             errors = validator.validate()
             print errors
             if len(errors):
