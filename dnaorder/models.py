@@ -16,6 +16,10 @@ from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
 from django.template.defaultfilters import default
 
+def default_schema():
+    return {'properties': {}, 'order': [], 'required': []}
+    
+
 class SubmissionType(models.Model):
 #     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
 #     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
@@ -39,7 +43,8 @@ class SubmissionType(models.Model):
 #     submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
 #     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
 #     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
-    sample_schema = JSONField(null=True,default=dict)
+    schema = JSONField(null=True,default=default_schema)
+    sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
     help = models.TextField(null=True,blank=True)
     def __unicode__(self):
