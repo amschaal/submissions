@@ -133,6 +133,53 @@ class SamplesheetValidator:
                             self.set_error(idx, variable, e.message)
         return self.errors
 
+
+class SubmissionValidator(SamplesheetValidator):
+#     def __init__(self, schema, data):
+#         self.errors = {}
+#         self.schema = schema
+#         self.data = data
+#     def get_validator(self, id, options={}):
+#         if VALIDATORS_DICT.has_key(id):
+#             return VALIDATORS_DICT[id](options)
+    def set_error(self, variable, message):
+#         if not self.errors.has_key(index):
+#             self.errors[index] = {}
+        if not self.errors.has_key(variable):
+            self.errors[variable] = []
+        self.errors[variable].append(message)
+    def validate_jsonschema(self):
+        v = Validator(self.schema)#Draft6Validator
+    #     print v.is_valid(data)
+        errors = {}
+        v.is_valid(self.data)
+        for error in sorted(v.iter_errors(self.data), key=str):
+            if error.schema_path[0] == 'properties':
+                if not errors.has_key(error.schema_path[1]):
+                    errors[error.schema_path[1]] = []
+                errors[error.schema_path[1]].append(error.message)
+            elif error.schema_path[0] == 'required':
+                if not errors.has_key(error.schema_path[1]):
+                    errors[error.schema_path[1]] = []
+                errors[error.schema_path[1]].append('This field is required')
+            else:
+                print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
+        return errors
+    def validate(self):
+        self.errors = self.validate_jsonschema()
+        for variable in self.schema['properties'].keys():
+            validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
+            if self.schema['properties'][variable].get('unique', False):
+                validators.append(self.get_validator(UniqueValidator.id))
+            value = self.data.get(variable, None)
+            for validator in validators:
+                if validator:
+                    try:
+                        validator.validate(variable, value, self.schema, [self.data])
+                    except ValidationException, e:
+                        self.set_error(variable, e.message)
+        return self.errors
+
 def validate_samplesheet(schema, data=[]):
     print schema
     print data
