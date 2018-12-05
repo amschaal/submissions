@@ -17,8 +17,7 @@ from django.db.models.signals import post_save
 from django.template.defaultfilters import default
 
 def default_schema():
-    return {'properties': {}, 'order': [], 'required': []}
-    
+    return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
 
 class SubmissionType(models.Model):
 #     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
@@ -44,9 +43,10 @@ class SubmissionType(models.Model):
 #     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
 #     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
     schema = JSONField(null=True,default=default_schema)
+    submission_help = models.TextField(null=True,blank=True)
     sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
-    help = models.TextField(null=True,blank=True)
+    sample_help = models.TextField(null=True,blank=True)
     def __unicode__(self):
         return "{name}".format(name=self.name)
     @property
@@ -145,7 +145,7 @@ class Submission(models.Model):
     payment_info = models.CharField(max_length=250,null=True,blank=True)
     type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
 #     sample_form = models.FileField(upload_to=sample_form_path)
-    submission_data = JSONField(null=True,blank=True)
+    submission_data = JSONField(default=dict)
     sample_schema = JSONField(default=dict,null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
 #     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)

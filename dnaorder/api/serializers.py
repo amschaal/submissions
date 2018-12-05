@@ -3,7 +3,7 @@ from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note, Contact
 import os
 from django.contrib.auth.models import User
-from dnaorder.validators import SamplesheetValidator
+from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
@@ -25,7 +25,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','name','description','schema','sample_schema','examples','help','updated','submission_count']
+        fields = ['id','name','description','schema','sample_schema','examples','submission_help','sample_help','updated','submission_count']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -65,6 +65,15 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
         return sample_data
+    def validate_submission_data(self, data={}):
+        type = self.initial_data.get('type')
+        if type:
+            type = SubmissionType.objects.get(id=type)
+            validator = SubmissionValidator(type.schema,data)
+            errors = validator.validate()
+            if len(errors.keys()):
+                raise serializers.ValidationError(errors)
+        return data
     def create(self, validated_data):
         print 'creating'
         print validated_data
