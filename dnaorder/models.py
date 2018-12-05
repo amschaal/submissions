@@ -16,6 +16,9 @@ from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
 from django.template.defaultfilters import default
 
+def default_schema():
+    return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
+
 class SubmissionType(models.Model):
 #     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
 #     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
@@ -39,9 +42,11 @@ class SubmissionType(models.Model):
 #     submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
 #     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
 #     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
-    schema = JSONField(null=True,default=dict)
+    schema = JSONField(null=True,default=default_schema)
+    submission_help = models.TextField(null=True,blank=True)
+    sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
-    help = models.TextField(null=True,blank=True)
+    sample_help = models.TextField(null=True,blank=True)
     def __unicode__(self):
         return "{name}".format(name=self.name)
     @property
@@ -127,6 +132,7 @@ class Submission(models.Model):
     internal_id = models.CharField(max_length=25, unique=True)
     status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
+    cancelled = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=50)
@@ -139,7 +145,7 @@ class Submission(models.Model):
     payment_info = models.CharField(max_length=250,null=True,blank=True)
     type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
 #     sample_form = models.FileField(upload_to=sample_form_path)
-    submission_data = JSONField(null=True,blank=True)
+    submission_data = JSONField(default=dict)
     sample_schema = JSONField(default=dict,null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
 #     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
@@ -204,7 +210,12 @@ class Submission(models.Model):
         if len(participants) == 0:
             participants = ['dnatech@ucdavis.edu']
         return participants
-    
+
+class Contact(models.Model):
+    submission = models.ForeignKey(Submission, related_name='contacts')
+    first_name = models.CharField(max_length=25)
+    last_name = models.CharField(max_length=30)
+    email = models.EmailField(max_length=100)
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)

@@ -1,7 +1,7 @@
 from rest_framework import viewsets, response
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer
+    UserSerializer, StatusSerializer, WritableSubmissionSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType
 from rest_framework.decorators import detail_route, permission_classes
@@ -16,14 +16,26 @@ from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
     VALIDATORS
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
+from django.utils import timezone
 
-class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact']}
-    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name', 'type__name')
-    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order','biocore','locked']
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name', 'type__name', 'status__name')
+    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order', 'status__name','biocore','locked']
     permission_classes = [SubmissionPermissions]
+    permission_classes_by_action = {'cancel': [AllowAny]}
+    def get_serializer_class(self):
+        if self.request.method in ['PATCH', 'POST', 'PUT']:
+            return WritableSubmissionSerializer
+        return SubmissionSerializer
+#         return viewsets.ModelViewSet.get_serializer_class(self)
+    def get_permissions(self):
+        try:
+            return [permission() for permission in self.permission_classes_by_action[self.action]]
+        except KeyError: 
+            return [permission() for permission in self.permission_classes]
     @detail_route(methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
@@ -49,6 +61,23 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
+    @detail_route(methods=['post'])
+    def cancel(self,request,pk):
+        submission = self.get_object()
+        if submission.locked and not request.user.is_staff:
+            return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
+        if not submission.cancelled:
+            submission.cancelled = timezone.now()
+            submission.save()
+        return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
+    @detail_route(methods=['post'])
+    def uncancel(self,request,pk):
+        submission = self.get_object()
+        if not request.user.is_staff:
+            return response.Response({'status':'error', 'message': 'Only staff may "uncancel" a submission.'},status=403)
+        submission.cancelled = None
+        submission.save()
+        return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('id')
@@ -135,6 +164,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
+
+class StatusViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SubmissionStatus.objects.all().order_by('order')
+    serializer_class = StatusSerializer
+    ordering_fields = ['order']
+    permission_classes = (AllowAny,)
 
 class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):
