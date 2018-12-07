@@ -69,6 +69,23 @@ class EnumValidator(BaseValidator):
         if value not in choices:
             raise ValidationException(variable, value, 'Value "{0}" is not amoung the acceptable values: {1}'.format(value, ", ".join(choices)))
 
+class NumberValidator(BaseValidator):
+    id = 'number'
+    name = 'Number'
+    description = 'Only allow numbers, optionally within a certain range.'
+    uses_options = False
+    def validate(self, variable, value, schema={}, data=[]):
+        if not value:
+            return
+        try:
+            float(value)
+        except ValueError:
+            raise ValidationException(variable, value, 'Value "{0}" is not a number'.format(value))
+#         @todo: Add minimum and maximum logic
+#         choices = schema['properties'][variable]['enum']
+#         if value not in choices:
+#             raise ValidationException(variable, value, 'Value "{0}" is not amoung the acceptable values: {1}'.format(value, ", ".join(choices)))
+
 class FooValidator(BaseValidator):
     id = 'foo'
     name = 'Foo'
@@ -76,7 +93,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, FooValidator, EnumValidator]
+VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 def unique_validator(variable, value, schema={}, data=[]): #make this a class?
@@ -135,6 +152,8 @@ class SamplesheetValidator:
                 validators.append(self.get_validator(UniqueValidator.id))
             if self.schema['properties'][variable].get('enum', False):
                 validators.append(self.get_validator(EnumValidator.id))
+            if self.schema['properties'][variable].get('type', False) == 'number':
+                validators.append(self.get_validator(NumberValidator.id))
             for idx, row in enumerate(self.data):
                 value = row.get(variable, None)
                 for validator in validators:
