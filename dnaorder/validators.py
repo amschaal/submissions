@@ -59,6 +59,16 @@ class UniqueValidator(BaseValidator):
         if not valid:
             raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
 
+class EnumValidator(BaseValidator):
+    id = 'enum'
+    name = 'Choices'
+    description = 'Constrain input to a list of choices.'
+    uses_options = False
+    def validate(self, variable, value, schema={}, data=[]):
+        choices = schema['properties'][variable]['enum']
+        if value not in choices:
+            raise ValidationException(variable, value, 'Value "{0}" is not amoung the acceptable values: {1}'.format(value, ", ".join(choices)))
+
 class FooValidator(BaseValidator):
     id = 'foo'
     name = 'Foo'
@@ -66,7 +76,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, FooValidator]
+VALIDATORS = [UniqueValidator, FooValidator, EnumValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 def unique_validator(variable, value, schema={}, data=[]): #make this a class?
@@ -123,6 +133,8 @@ class SamplesheetValidator:
             validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
             if self.schema['properties'][variable].get('unique', False):
                 validators.append(self.get_validator(UniqueValidator.id))
+            if self.schema['properties'][variable].get('enum', False):
+                validators.append(self.get_validator(EnumValidator.id))
             for idx, row in enumerate(self.data):
                 value = row.get(variable, None)
                 for validator in validators:
@@ -131,6 +143,7 @@ class SamplesheetValidator:
                             validator.validate(variable, value, self.schema, self.data)
                         except ValidationException, e:
                             self.set_error(idx, variable, e.message)
+        print self.errors
         return self.errors
 
 
