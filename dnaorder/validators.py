@@ -1,5 +1,6 @@
 from jsonschema.validators import Draft6Validator
 import jsonschema
+import re
 # Custom validators
 def _required(validator, required, instance, schema):
     '''Validate 'required' properties.'''
@@ -32,7 +33,7 @@ class ValidationException(Exception):
 def get_column(variable, data=[]):
     return [line.get(variable, None) for line in data]
 
-class BaseValidator:
+class BaseValidator(object):
     id = None #Must override this to something unique
     name = None #Must override
     description = None
@@ -59,32 +60,55 @@ class UniqueValidator(BaseValidator):
         if not valid:
             raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
 
+class RegexValidator(BaseValidator):
+    id = 'regex'
+    name = 'Regular Expression'
+    description = 'Check input against a regular expression.'
+    uses_options = True
+    def __init__(self, options={}):
+        super(RegexValidator, self).__init__(options)
+        self.regex = self.options.get('regex',None)
+        if self.regex:
+            self.pattern = re.compile(self.regex)
+    def validate(self, variable, value, schema={}, data=[]):
+        if not self.pattern:
+            return
+        if not self.pattern.match(value):
+            raise ValidationException(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
+
 class EnumValidator(BaseValidator):
     id = 'enum'
     name = 'Choices'
     description = 'Constrain input to a list of choices.'
-    uses_options = False
+    uses_options = True
     def validate(self, variable, value, schema={}, data=[]):
-        choices = schema['properties'][variable]['enum']
+        choices = self.options.get('enum',[])
+        if len(choices) == 0:
+            return
         if value not in choices:
-            raise ValidationException(variable, value, 'Value "{0}" is not amoung the acceptable values: {1}'.format(value, ", ".join(choices)))
+            raise ValidationException(variable, value, 'Value "{0}" is not one of the acceptable values: {1}'.format(value, ", ".join(choices)))
 
 class NumberValidator(BaseValidator):
     id = 'number'
     name = 'Number'
     description = 'Only allow numbers, optionally within a certain range.'
-    uses_options = False
+    uses_options = True
     def validate(self, variable, value, schema={}, data=[]):
-        if not value:
+#         vschema = schema['properties'][variable]
+        if not value and value != 0:
             return
         try:
             float(value)
         except ValueError:
             raise ValidationException(variable, value, 'Value "{0}" is not a number'.format(value))
-#         @todo: Add minimum and maximum logic
-#         choices = schema['properties'][variable]['enum']
-#         if value not in choices:
-#             raise ValidationException(variable, value, 'Value "{0}" is not amoung the acceptable values: {1}'.format(value, ", ".join(choices)))
+        minimum = self.options.get('minimum', None)
+        maximum = self.options.get('maximum', None)
+        if minimum and maximum and (float(value) < minimum or float(value) > maximum):
+            raise ValidationException(variable, value, 'Value must be in the range {1} - {2}'.format(minimum,maximum))
+        if minimum and float(value) < minimum:
+            raise ValidationException(variable, value, 'The minimum value is {0}'.format(minimum))
+        if maximum and float(value) > maximum:
+            raise ValidationException(variable, value, 'The maximum value is {0}'.format(maximum))
 
 class FooValidator(BaseValidator):
     id = 'foo'
@@ -93,7 +117,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator]
+VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator, RegexValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 def unique_validator(variable, value, schema={}, data=[]): #make this a class?
@@ -147,13 +171,19 @@ class SamplesheetValidator:
     def validate(self):
         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
+            #Add validators configured by the user
             validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
+            
+            #Add validators based on the JSON schema
             if self.schema['properties'][variable].get('unique', False):
-                validators.append(self.get_validator(UniqueValidator.id))
+                validators.append(self.get_validator(UniqueValidator.id, self.schema['properties'][variable]))
             if self.schema['properties'][variable].get('enum', False):
-                validators.append(self.get_validator(EnumValidator.id))
+                validators.append(self.get_validator(EnumValidator.id, self.schema['properties'][variable]))
+            if self.schema['properties'][variable].get('pattern', False):
+                validators.append(self.get_validator(RegexValidator.id, {'regex':self.schema['properties'][variable].get('pattern')}))
             if self.schema['properties'][variable].get('type', False) == 'number':
-                validators.append(self.get_validator(NumberValidator.id))
+                validators.append(self.get_validator(NumberValidator.id, self.schema['properties'][variable]))
+                
             for idx, row in enumerate(self.data):
                 value = row.get(variable, None)
                 for validator in validators:
