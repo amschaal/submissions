@@ -25,10 +25,12 @@ Validator = jsonschema.validators.extend(
 )
 
 class ValidationException(Exception):
-    def __init__(self, variable, value, message):
+    def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
         self.value = value
         self.message = message
+        self.skip_other_exceptions = skip_other_exceptions
+
 
 def get_column(variable, data=[]):
     return [line.get(variable, None) for line in data]
@@ -59,6 +61,15 @@ class UniqueValidator(BaseValidator):
         valid = len([val for val in col if val == value and val is not None]) < 2
         if not valid:
             raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
+
+class RequiredValidator(BaseValidator):
+    id = 'required'
+    name = 'Required'
+    description = 'Require that the user fill out this field.'
+    uses_options = False
+    def validate(self, variable, value, schema={}, data=[]):
+        if value is None or value == '':
+            raise ValidationException(variable, value,"This field is required.",skip_other_exceptions=True)
 
 class RegexValidator(BaseValidator):
     id = 'regex'
@@ -117,7 +128,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator, RegexValidator]
+VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 def unique_validator(variable, value, schema={}, data=[]): #make this a class?
@@ -145,36 +156,38 @@ class SamplesheetValidator:
         if not self.errors[index].has_key(variable):
             self.errors[index][variable] = []
         self.errors[index][variable].append(message)
-    def validate_jsonschema(self):
-        v = Validator(self.schema)#Draft6Validator
-    #     print v.is_valid(data)
-        errors = {}
-        for index, row in enumerate(self.data):
-            print v.is_valid(row)
-            for error in sorted(v.iter_errors(row), key=str):
-                if not errors.has_key(index):
-                    errors[index] = {}
-                if error.schema_path[0] == 'properties':
-                    if not errors[index].has_key(error.schema_path[1]):
-                        errors[index][error.schema_path[1]] = []
-                    errors[index][error.schema_path[1]].append(error.message)
-                elif error.schema_path[0] == 'required':
-                    if not errors[index].has_key(error.schema_path[1]):
-                        errors[index][error.schema_path[1]] = []
-                    errors[index][error.schema_path[1]].append('This field is required')
-                else:
-                    print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
-    #             if len(error.path) == 0:
-    #                 if not errors.has_key('all') 
-    #             print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
-        return errors
+#     def validate_jsonschema(self):
+#         v = Validator(self.schema)#Draft6Validator
+#     #     print v.is_valid(data)
+#         errors = {}
+#         for index, row in enumerate(self.data):
+#             print v.is_valid(row)
+#             for error in sorted(v.iter_errors(row), key=str):
+#                 if not errors.has_key(index):
+#                     errors[index] = {}
+#                 if error.schema_path[0] == 'properties':
+#                     if not errors[index].has_key(error.schema_path[1]):
+#                         errors[index][error.schema_path[1]] = []
+#                     errors[index][error.schema_path[1]].append(error.message)
+#                 elif error.schema_path[0] == 'required':
+#                     if not errors[index].has_key(error.schema_path[1]):
+#                         errors[index][error.schema_path[1]] = []
+#                     errors[index][error.schema_path[1]].append('This field is required')
+#                 else:
+#                     print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
+#     #             if len(error.path) == 0:
+#     #                 if not errors.has_key('all') 
+#     #             print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
+#         return errors
     def validate(self):
-        self.errors = self.validate_jsonschema()
+#         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
             #Add validators configured by the user
             validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
             
             #Add validators based on the JSON schema
+            if variable in self.schema.get('required', []):
+                validators.append(self.get_validator(RequiredValidator.id, self.schema['properties'][variable]))
             if self.schema['properties'][variable].get('unique', False):
                 validators.append(self.get_validator(UniqueValidator.id, self.schema['properties'][variable]))
             if self.schema['properties'][variable].get('enum', False):
@@ -192,6 +205,8 @@ class SamplesheetValidator:
                             validator.validate(variable, value, self.schema, self.data)
                         except ValidationException, e:
                             self.set_error(idx, variable, e.message)
+                            if e.skip_other_exceptions:
+                                break
         print self.errors
         return self.errors
 
@@ -240,6 +255,8 @@ class SubmissionValidator(SamplesheetValidator):
                         validator.validate(variable, value, self.schema, [self.data])
                     except ValidationException, e:
                         self.set_error(variable, e.message)
+                        if e.skip_other_exceptions:
+                            break
         return self.errors
 
 def validate_samplesheet(schema, data=[]):
