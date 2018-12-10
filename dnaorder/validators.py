@@ -131,16 +131,6 @@ class FooValidator(BaseValidator):
 VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
-def unique_validator(variable, value, schema={}, data=[]): #make this a class?
-    col = get_column(variable, data)
-    valid = len([val for val in col if val == value and val is not None]) < 2
-    if not valid:
-        raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
-
-def get_validator(id, options):
-    #This is for testing.  This will be configurable.  Also, validators may be cached, etc.
-    if id == 'unique':
-        return unique_validator
 
 class SamplesheetValidator:
     def __init__(self, schema, data):
@@ -156,98 +146,48 @@ class SamplesheetValidator:
         if not self.errors[index].has_key(variable):
             self.errors[index][variable] = []
         self.errors[index][variable].append(message)
-#     def validate_jsonschema(self):
-#         v = Validator(self.schema)#Draft6Validator
-#     #     print v.is_valid(data)
-#         errors = {}
-#         for index, row in enumerate(self.data):
-#             print v.is_valid(row)
-#             for error in sorted(v.iter_errors(row), key=str):
-#                 if not errors.has_key(index):
-#                     errors[index] = {}
-#                 if error.schema_path[0] == 'properties':
-#                     if not errors[index].has_key(error.schema_path[1]):
-#                         errors[index][error.schema_path[1]] = []
-#                     errors[index][error.schema_path[1]].append(error.message)
-#                 elif error.schema_path[0] == 'required':
-#                     if not errors[index].has_key(error.schema_path[1]):
-#                         errors[index][error.schema_path[1]] = []
-#                     errors[index][error.schema_path[1]].append('This field is required')
-#                 else:
-#                     print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
-#     #             if len(error.path) == 0:
-#     #                 if not errors.has_key('all') 
-#     #             print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
-#         return errors
+    def validate_values(self, variable, validators):
+        for idx, row in enumerate(self.data):
+            value = row.get(variable, None)
+            for validator in validators:
+                if validator:
+                    try:
+                        validator.validate(variable, value, self.schema, self.data)
+                    except ValidationException, e:
+                        self.set_error(idx, variable, e.message)
+                        if e.skip_other_exceptions:
+                            break
+    def get_validators(self, variable):
+        #Add validators configured by the user
+        validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
+        #Add validators based on the JSON schema
+        if variable in self.schema.get('required', []):
+            validators.append(self.get_validator(RequiredValidator.id, self.schema['properties'][variable]))
+        if self.schema['properties'][variable].get('unique', False):
+            validators.append(self.get_validator(UniqueValidator.id, self.schema['properties'][variable]))
+        if self.schema['properties'][variable].get('enum', False):
+            validators.append(self.get_validator(EnumValidator.id, self.schema['properties'][variable]))
+        if self.schema['properties'][variable].get('pattern', False):
+            validators.append(self.get_validator(RegexValidator.id, {'regex':self.schema['properties'][variable].get('pattern')}))
+        if self.schema['properties'][variable].get('type', False) == 'number':
+            validators.append(self.get_validator(NumberValidator.id, self.schema['properties'][variable]))
+        return validators
     def validate(self):
 #         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
-            #Add validators configured by the user
-            validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
-            
-            #Add validators based on the JSON schema
-            if variable in self.schema.get('required', []):
-                validators.append(self.get_validator(RequiredValidator.id, self.schema['properties'][variable]))
-            if self.schema['properties'][variable].get('unique', False):
-                validators.append(self.get_validator(UniqueValidator.id, self.schema['properties'][variable]))
-            if self.schema['properties'][variable].get('enum', False):
-                validators.append(self.get_validator(EnumValidator.id, self.schema['properties'][variable]))
-            if self.schema['properties'][variable].get('pattern', False):
-                validators.append(self.get_validator(RegexValidator.id, {'regex':self.schema['properties'][variable].get('pattern')}))
-            if self.schema['properties'][variable].get('type', False) == 'number':
-                validators.append(self.get_validator(NumberValidator.id, self.schema['properties'][variable]))
-                
-            for idx, row in enumerate(self.data):
-                value = row.get(variable, None)
-                for validator in validators:
-                    if validator:
-                        try:
-                            validator.validate(variable, value, self.schema, self.data)
-                        except ValidationException, e:
-                            self.set_error(idx, variable, e.message)
-                            if e.skip_other_exceptions:
-                                break
+            validators = self.get_validators(variable)
+            self.validate_values(variable, validators)
         print self.errors
         return self.errors
 
-
 class SubmissionValidator(SamplesheetValidator):
-#     def __init__(self, schema, data):
-#         self.errors = {}
-#         self.schema = schema
-#         self.data = data
-#     def get_validator(self, id, options={}):
-#         if VALIDATORS_DICT.has_key(id):
-#             return VALIDATORS_DICT[id](options)
     def set_error(self, variable, message):
-#         if not self.errors.has_key(index):
-#             self.errors[index] = {}
         if not self.errors.has_key(variable):
             self.errors[variable] = []
         self.errors[variable].append(message)
-    def validate_jsonschema(self):
-        v = Validator(self.schema)#Draft6Validator
-    #     print v.is_valid(data)
-        errors = {}
-        v.is_valid(self.data)
-        for error in sorted(v.iter_errors(self.data), key=str):
-            if error.schema_path[0] == 'properties':
-                if not errors.has_key(error.schema_path[1]):
-                    errors[error.schema_path[1]] = []
-                errors[error.schema_path[1]].append(error.message)
-            elif error.schema_path[0] == 'required':
-                if not errors.has_key(error.schema_path[1]):
-                    errors[error.schema_path[1]] = []
-                errors[error.schema_path[1]].append('This field is required')
-            else:
-                print [error.message, error.path, error.absolute_path,error.schema_path,len(error.schema_path)]#. error.schema_path, error.cause]
-        return errors
     def validate(self):
-        self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
-            validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
-            if self.schema['properties'][variable].get('unique', False):
-                validators.append(self.get_validator(UniqueValidator.id))
+            validators = self.get_validators(variable)
             value = self.data.get(variable, None)
             for validator in validators:
                 if validator:
