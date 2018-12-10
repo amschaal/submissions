@@ -11,7 +11,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
-from dnaorder.views import submission
+# from dnaorder.views import submission
 from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
     VALIDATORS
 from django.contrib.auth.models import User
