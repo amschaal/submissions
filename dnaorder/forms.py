@@ -1,15 +1,15 @@
 from django import forms
-from dnaorder.models import Submission, Validator, SubmissionStatus,\
-    SubmissionType
-from __builtin__ import file
-import tablib
-from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
-    SubmissionData
-import re
-from django.utils.safestring import mark_safe
-from django.forms.widgets import ClearableFileInput, HiddenInput
-from dnaorder.dafis import validate_dafis
-from dnaorder.validators import SamplesheetValidator
+# from dnaorder.models import Submission, Validator, SubmissionStatus,\
+#     SubmissionType
+# from __builtin__ import file
+# import tablib
+# from dnaorder.spreadsheets import SRASampleSheet, CoreSampleSheet, SampleSheet,\
+#     SubmissionData
+# import re
+# from django.utils.safestring import mark_safe
+# from django.forms.widgets import ClearableFileInput, HiddenInput
+# from dnaorder.dafis import validate_dafis
+# from dnaorder.validators import SamplesheetValidator
 
 
 # class SubmissionStatusForm(forms.ModelForm):

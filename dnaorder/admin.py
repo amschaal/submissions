@@ -1,6 +1,5 @@
 from django.contrib import admin
-from dnaorder.models import SubmissionType, Submission, Validator,\
-    SubmissionStatus
+from dnaorder.models import SubmissionType, Submission, SubmissionStatus
 # from dnaorder.forms import ValidatorForm
 
 

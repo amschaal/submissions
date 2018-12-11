@@ -1,7 +1,6 @@
 from dnaorder.forms import CustomPrintForm 
 from django.shortcuts import render, redirect
-from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
-    Validator
+from dnaorder.models import SubmissionType, Submission
 from sendfile import sendfile
 import tempfile
 from django.contrib.auth.decorators import login_required
