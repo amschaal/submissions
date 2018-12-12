@@ -5,9 +5,37 @@ import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
+from dnaorder import validators
+
+def translate_schema(schema):
+    if not schema.has_key('order') or not schema.has_key('properties'):
+        return schema
+    new_schema = {'fields':[]}
+    if schema.has_key('layout'):
+        new_schema['layout'] = schema['layout']
+    for v in schema['order']:
+        s = schema['properties'][v]
+        ns = {'id':v,'description':s.get('description'),'type':s.get('type'),'unique':s.get('unique',False),'required': v in schema.get('required',[]),'validators':[]}
+        if s.has_key('enum'):
+            ns['enum'] = s['enum']
+        if ns['type'] == 'number':
+            validator = {'id':validators.NumberValidator.id,'options':{'minimum':s.get('minimum'),'maximum':s.get('maximum')}}
+            ns['validators'].append(validator)
+        if ns['type'] == 'string' and s.has_key('pattern'):
+            ns['validators'].append({'id':validators.RegexValidator.id,'options':{'regex':s['pattern']}})
+        new_schema['fields'].append(ns)
+    print new_schema
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
+    schema = serializers.SerializerMethodField()
+    sample_schema = serializers.SerializerMethodField()
+    def get_schema(self,instance):
+        translate_schema(instance.schema)
+        return instance.schema
+    def get_sample_schema(self,instance):
+        translate_schema(instance.sample_schema)
+        return instance.sample_schema
     def validate_examples(self, data):
         sample_schema = self.initial_data.get('sample_schema',{})
         validator = SamplesheetValidator(sample_schema, data)
