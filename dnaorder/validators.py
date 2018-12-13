@@ -16,6 +16,7 @@ class BaseValidator(object):
     name = None #Must override
     description = None
     uses_options = True
+    supported_types = ['string','number','boolean']
     def __init__(self, options= {}):
         self.options = options
         if not self.id:
@@ -25,7 +26,7 @@ class BaseValidator(object):
     def validate(self, variable, value, schema={}, data=[]):
         raise NotImplementedError
     def serialize(self):
-        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options}
+        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'supported_types': self.supported_types}
 
 # Custom validators
 class UniqueValidator(BaseValidator):
@@ -53,6 +54,7 @@ class RegexValidator(BaseValidator):
     name = 'Regular Expression'
     description = 'Check input against a regular expression.'
     uses_options = True
+    supported_types = ['string']
     def __init__(self, options={}):
         super(RegexValidator, self).__init__(options)
         self.regex = self.options.get('regex',None)
@@ -69,6 +71,7 @@ class EnumValidator(BaseValidator):
     name = 'Choices'
     description = 'Constrain input to a list of choices.'
     uses_options = True
+    supported_types = ['string']
     def validate(self, variable, value, schema={}, data=[]):
         choices = self.options.get('enum',[])
         if len(choices) == 0:
@@ -85,6 +88,7 @@ class NumberValidator(BaseValidator):
     name = 'Number'
     description = 'Only allow numbers, optionally within a certain range.'
     uses_options = True
+    supported_types = ['number']
     def validate(self, variable, value, schema={}, data=[]):
 #         vschema = schema['properties'][variable]
         if not value and value != 0:
@@ -109,7 +113,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, FooValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator]
+VALIDATORS = [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
