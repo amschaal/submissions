@@ -15,6 +15,7 @@ from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
 from dnaorder.spreadsheets import get_dataset
 from django.http.response import HttpResponse
+import tablib
 
 
 @api_view(['POST'])
@@ -215,7 +216,7 @@ def validate_data(request,type_id=None):
     
 def download(request, id):
     submission = Submission.objects.get(id=id)
-    data = request.GET.get('data','samples')#samples or submission
+    data = request.GET.get('data','combined')#samples or submission
     format = request.GET.get('format','xlsx')
     format = format if format in ['xls','xlsx','csv','tsv','json'] else 'xls'
     filename = None
@@ -223,10 +224,17 @@ def download(request, id):
     if data == 'submission':
         dataset = get_dataset(submission.type.schema, submission.submission_data)
         filename = "{0}.submission.{1}".format(submission.id,format)
-    else: #samples
+    elif data == 'samples': #samples
         dataset = get_dataset(submission.type.sample_schema, submission.sample_data)
         filename = "{0}.samples.{1}".format(submission.id,format)
-
+    else: #both
+        submission_data = get_dataset(submission.type.schema, submission.submission_data)
+        sample_data = get_dataset(submission.type.sample_schema, submission.sample_data)
+        submission_data.title = "Submission"
+        sample_data.title = "Samples"
+        dataset = tablib.Databook((submission_data,sample_data))
+        format = 'xlsx'
+        filename = "{0}.{1}".format(submission.id,format)
     content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
     response_kwargs = {
             'content_type': content_types[format]
