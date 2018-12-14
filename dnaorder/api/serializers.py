@@ -7,7 +7,7 @@ from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
 from dnaorder import validators
 
-def translate_schema(schema):
+def translate_schema_complex(schema):
     if not schema.has_key('order') or not schema.has_key('properties'):
         return schema
     new_schema = {'fields':[]}
@@ -24,7 +24,22 @@ def translate_schema(schema):
         if ns['type'] == 'string' and s.has_key('pattern'):
             ns['validators'].append({'id':validators.RegexValidator.id,'options':{'regex':s['pattern']}})
         new_schema['fields'].append(ns)
-    print new_schema
+    return new_schema
+
+def translate_schema(schema):
+    if not schema.has_key('order') or not schema.has_key('properties'):
+        return schema
+    for v, s in schema['properties'].items():
+        if not s.has_key('validators'):
+            s['validators'] = []
+#         ns = {'id':v,'description':s.get('description'),'type':s.get('type'),'unique':s.get('unique',False),'required': v in schema.get('required',[]),'validators':[]}
+#         if ns['type'] == 'number':
+#             validator = {'id':validators.NumberValidator.id,'options':{'minimum':s.get('minimum'),'maximum':s.get('maximum')}}
+#             ns['validators'].append(validator)
+#         if ns['type'] == 'string' and s.has_key('pattern'):
+#             ns['validators'].append({'id':validators.RegexValidator.id,'options':{'regex':s['pattern']}})
+#         new_schema['fields'].append(ns)
+#     return new_schema
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)

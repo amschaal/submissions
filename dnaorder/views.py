@@ -13,6 +13,8 @@ from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
+from dnaorder.spreadsheets import get_dataset
+from django.http.response import HttpResponse
 
 
 @api_view(['POST'])
@@ -151,7 +153,7 @@ def customize_print(request,id):
 #     emails.order_confirmed(submission, request)
 #     return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'confirmed':True})
 
-def download(request,id):
+def download_old(request,id):
     from django.http import HttpResponse
     from wsgiref.util import FileWrapper
 
@@ -210,3 +212,27 @@ def validate_data(request,type_id=None):
         return Response({'status':'success','message':'The data was succussfully validated'})
     else:
         return Response({'errors':errors},status=500)
+    
+def download(request, id):
+    submission = Submission.objects.get(id=id)
+    data = request.GET.get('data','samples')#samples or submission
+    format = request.GET.get('format','xlsx')
+    format = format if format in ['xls','xlsx','csv','tsv','json'] else 'xls'
+    filename = None
+    
+    if data == 'submission':
+        dataset = get_dataset(submission.type.schema, submission.submission_data)
+        filename = "{0}.submission.{1}".format(submission.id,format)
+    else: #samples
+        dataset = get_dataset(submission.type.sample_schema, submission.sample_data)
+        filename = "{0}.samples.{1}".format(submission.id,format)
+
+    content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+    response_kwargs = {
+            'content_type': content_types[format]
+        }
+    response = HttpResponse(getattr(dataset, format), **response_kwargs)
+    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
+    return response
+    # generate the file
+#     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
