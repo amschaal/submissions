@@ -18,3 +18,14 @@ def get_dataset(schema, data):
     dataset = tablib.Dataset(headers=get_headers(schema))
     dataset.extend(get_data(schema, data))
     return dataset
+
+def get_submission_dataset(submission):
+    dataset = tablib.Dataset(headers=get_submission_headers(submission))
+    dataset.extend(get_submission_data(submission))
+    return dataset
+
+def get_submission_headers(submission):
+    return ['ID', 'Internal ID', 'Type', 'Submitter', 'Submitter Email', 'Submitter Phone', 'PI', 'PI Email', 'Institute'] + get_headers(submission.type.schema)
+
+def get_submission_data(submission):
+    return [[submission.id, submission.internal_id, str(submission.type), submission.name, submission.email, submission.phone, submission.pi_name, submission.pi_email, submission.institute] + get_data(submission.type.schema, submission.submission_data)[0]]

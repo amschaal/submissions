@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
-from dnaorder.spreadsheets import get_dataset
+from dnaorder.spreadsheets import get_dataset, get_submission_dataset
 from django.http.response import HttpResponse
 import tablib
 
@@ -222,13 +222,13 @@ def download(request, id):
     filename = None
     
     if data == 'submission':
-        dataset = get_dataset(submission.type.schema, submission.submission_data)
+        dataset = get_submission_dataset(submission)
         filename = "{0}.submission.{1}".format(submission.id,format)
     elif data == 'samples': #samples
         dataset = get_dataset(submission.type.sample_schema, submission.sample_data)
         filename = "{0}.samples.{1}".format(submission.id,format)
-    else: #both
-        submission_data = get_dataset(submission.type.schema, submission.submission_data)
+    else: #all
+        submission_data = get_submission_dataset(submission)
         sample_data = get_dataset(submission.type.sample_schema, submission.sample_data)
         submission_data.title = "Submission"
         sample_data.title = "Samples"
