@@ -205,8 +205,6 @@ def validate_data(request,type_id=None):
         schema = SubmissionType.objects.get(id=type).sample_schema
     else:
         schema = request.data.get('sample_schema')
-    print 'schema'
-    print schema
     validator = SamplesheetValidator(schema,request.data.get('data'))
     errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
     if len(errors) == 0:
@@ -225,11 +223,11 @@ def download(request, id):
         dataset = get_submission_dataset(submission)
         filename = "{0}.submission.{1}".format(submission.id,format)
     elif data == 'samples': #samples
-        dataset = get_dataset(submission.type.sample_schema, submission.sample_data)
+        dataset = get_dataset(submission.sample_schema, submission.sample_data)
         filename = "{0}.samples.{1}".format(submission.id,format)
     else: #all
         submission_data = get_submission_dataset(submission)
-        sample_data = get_dataset(submission.type.sample_schema, submission.sample_data)
+        sample_data = get_dataset(submission.sample_schema, submission.sample_data)
         submission_data.title = "Submission"
         sample_data.title = "Samples"
         dataset = tablib.Databook((submission_data,sample_data))

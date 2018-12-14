@@ -73,6 +73,8 @@ class EnumValidator(BaseValidator):
     uses_options = True
     supported_types = ['string']
     def validate(self, variable, value, schema={}, data=[]):
+        if not value:
+            return
         choices = self.options.get('enum',[])
         if len(choices) == 0:
             return

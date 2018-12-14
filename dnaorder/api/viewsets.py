@@ -93,21 +93,14 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
 #     @detail_route(methods=['post'])
-#     def show(self,request,pk):
+#     def validate_data(self,request, pk):
 #         submission_type = self.get_object()
-#         SubmissionType.objects.filter(original=submission_type.original).update(show=False)
-#         submission_type.show = True
-#         submission_type.save()
-#         return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
-    @detail_route(methods=['post'])
-    def validate_data(self,request, pk):
-        submission_type = self.get_object()
-        validator = SamplesheetValidator(submission_type.schema,request.data.get('data'))
-        errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
-        if len(errors) == 0:
-            return response.Response({'status':'success','message':'The data was succussfully validated'})
-        else:
-            return response.Response({'errors':errors},status=500)
+#         validator = SamplesheetValidator(submission_type.sample_schema,request.data.get('data'))
+#         errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+#         if len(errors) == 0:
+#             return response.Response({'status':'success','message':'The data was succussfully validated'})
+#         else:
+#             return response.Response({'errors':errors},status=500)
     
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):

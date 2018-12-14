@@ -43,14 +43,14 @@ def translate_schema(schema):
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
-    schema = serializers.SerializerMethodField()
-    sample_schema = serializers.SerializerMethodField()
-    def get_schema(self,instance):
-        translate_schema(instance.schema)
-        return instance.schema
-    def get_sample_schema(self,instance):
-        translate_schema(instance.sample_schema)
-        return instance.sample_schema
+#     submission_schema = serializers.SerializerMethodField()
+#     sample_schema = serializers.SerializerMethodField()
+#     def get_submission_schema(self,instance):
+#         translate_schema(instance.submission_schema)
+#         return instance.schema
+#     def get_sample_schema(self,instance):
+#         translate_schema(instance.sample_schema)
+#         return instance.sample_schema
     def validate_examples(self, data):
         sample_schema = self.initial_data.get('sample_schema',{})
         validator = SamplesheetValidator(sample_schema, data)
@@ -68,7 +68,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','name','description','schema','sample_schema','examples','submission_help','sample_help','updated','submission_count']
+        fields = ['id','name','description','submission_schema','sample_schema','examples','submission_help','sample_help','updated','submission_count']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -101,18 +101,28 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if not sample_data or len(sample_data) < 1:
             raise serializers.ValidationError("Please provide at least 1 sample.")
         type = self.initial_data.get('type')
-        if type and sample_data and len(sample_data) > 0:
+        schema = None
+        if self.instance:
+            schema = self.instance.sample_schema
+        elif type:
             type = SubmissionType.objects.get(id=type)
-            validator = SamplesheetValidator(type.sample_schema,sample_data)
+            schema = type.sample_schema
+        if schema:
+            validator = SamplesheetValidator(schema,sample_data)
             errors = validator.validate()
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
         return sample_data
     def validate_submission_data(self, data={}):
         type = self.initial_data.get('type')
-        if type:
+        schema = None
+        if self.instance:
+            schema = self.instance.submission_schema
+        elif type:
             type = SubmissionType.objects.get(id=type)
-            validator = SubmissionValidator(type.schema,data)
+            schema = type.submission_schema
+        if schema:
+            validator = SubmissionValidator(schema,data)
             errors = validator.validate()
             if len(errors.keys()):
                 raise serializers.ValidationError(errors)

@@ -27,8 +27,8 @@ class SubmissionType(models.Model):
     prefix = models.CharField(max_length=15,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
-    schema = JSONField(null=True,default=default_schema)
     submission_help = models.TextField(null=True,blank=True)
+    submission_schema = JSONField(null=True,default=default_schema)
     sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
     sample_help = models.TextField(null=True,blank=True)
@@ -107,11 +107,10 @@ class Submission(models.Model):
     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
     payment_info = models.CharField(max_length=250,null=True,blank=True)
     type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
-#     sample_form = models.FileField(upload_to=sample_form_path)
+    submission_schema = JSONField(null=True,blank=True)
+    sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
-    sample_schema = JSONField(default=dict,null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
-#     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True)
     biocore = models.BooleanField(default=False)
@@ -120,6 +119,10 @@ class Submission(models.Model):
     def save(self, *args, **kwargs):
         if not self.internal_id:
             self.internal_id = self.generate_internal_id()
+        if not self.sample_schema:
+            self.sample_schema = self.type.sample_schema
+        if not self.submission_schema:
+            self.submission_schema = self.type.submission_schema
         super(Submission, self).save(*args, **kwargs)
     def generate_internal_id(self):
         prefix = self.type.prefix or ''
@@ -137,20 +140,20 @@ class Submission(models.Model):
         return '{id}: {submitted} - {type} - {pi}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi=self.pi_name)
     class Meta:
         ordering = ['submitted']
-    @property
-    def samplesheet(self):
-        from dnaorder.spreadsheets import CoreSampleSheet
-        return CoreSampleSheet(self.sample_form.file,self.type)
-    @property
-    def submission_samplesheet(self):
-        if not self.type.has_submission_fields:
-            return None
-        from dnaorder.spreadsheets import SubmissionData
-        return SubmissionData(self.sample_form.file,self.type)
-    @property
-    def sra_samplesheet(self):
-        from dnaorder.spreadsheets import SRASampleSheet
-        return SRASampleSheet(self.sra_form.file) if self.sra_form else None
+#     @property
+#     def samplesheet(self):
+#         from dnaorder.spreadsheets import CoreSampleSheet
+#         return CoreSampleSheet(self.sample_form.file,self.type)
+#     @property
+#     def submission_samplesheet(self):
+#         if not self.type.has_submission_fields:
+#             return None
+#         from dnaorder.spreadsheets import SubmissionData
+#         return SubmissionData(self.sample_form.file,self.type)
+#     @property
+#     def sra_samplesheet(self):
+#         from dnaorder.spreadsheets import SRASampleSheet
+#         return SRASampleSheet(self.sra_form.file) if self.sra_form else None
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]

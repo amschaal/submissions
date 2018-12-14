@@ -25,7 +25,7 @@ def get_submission_dataset(submission):
     return dataset
 
 def get_submission_headers(submission):
-    return ['ID', 'Internal ID', 'Type', 'Submitter', 'Submitter Email', 'Submitter Phone', 'PI', 'PI Email', 'Institute'] + get_headers(submission.type.schema)
+    return ['ID', 'Internal ID', 'Type', 'Submitter', 'Submitter Email', 'Submitter Phone', 'PI', 'PI Email', 'Institute'] + get_headers(submission.submission_schema)
 
 def get_submission_data(submission):
-    return [[submission.id, submission.internal_id, str(submission.type), submission.name, submission.email, submission.phone, submission.pi_name, submission.pi_email, submission.institute] + get_data(submission.type.schema, submission.submission_data)[0]]
+    return [[submission.id, submission.internal_id, str(submission.type), submission.name, submission.email, submission.phone, submission.pi_name, submission.pi_email, submission.institute] + get_data(submission.submission_schema, submission.submission_data)[0]]
