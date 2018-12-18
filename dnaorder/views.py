@@ -200,6 +200,7 @@ def download_old(request,id):
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 
 @api_view(['POST'])
+@permission_classes((AllowAny,))
 def validate_data(request,type_id=None):
     if type_id:
         schema = SubmissionType.objects.get(id=type).sample_schema
@@ -211,7 +212,8 @@ def validate_data(request,type_id=None):
         return Response({'status':'success','message':'The data was succussfully validated'})
     else:
         return Response({'errors':errors},status=500)
-    
+
+@permission_classes((AllowAny,))
 def download(request, id):
     submission = Submission.objects.get(id=id)
     data = request.GET.get('data','combined')#samples or submission
