@@ -162,8 +162,9 @@ class Submission(models.Model):
             return True
         return not self.locked
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('submission', args=[str(self.id)])
+#         from django.urls import reverse
+#         return reverse('submission', args=[str(self.id)])
+        return '/submissions/{0}'.format(self.id)
     def set_status(self,status,commit=True):
         self.status = status
         if status.auto_lock:
