@@ -34,12 +34,12 @@ class SubmissionType(models.Model):
     sample_help = models.TextField(null=True,blank=True)
     def __unicode__(self):
         return "{name}".format(name=self.name)
-    @property
-    def samplesheet(self):
-        if not self.form or not self.id:
-            return None
-        from dnaorder.spreadsheets import CoreSampleSheet
-        return CoreSampleSheet(self.form.file,self)
+#     @property
+#     def samplesheet(self):
+#         if not self.form or not self.id:
+#             return None
+#         from dnaorder.spreadsheets import CoreSampleSheet
+#         return CoreSampleSheet(self.form.file,self)
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
