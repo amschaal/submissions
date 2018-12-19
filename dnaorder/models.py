@@ -32,6 +32,8 @@ class SubmissionType(models.Model):
     sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
     sample_help = models.TextField(null=True,blank=True)
+    class Meta:
+        ordering = ['name']
     def __unicode__(self):
         return "{name}".format(name=self.name)
 #     @property
