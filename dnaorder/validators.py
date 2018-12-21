@@ -102,7 +102,7 @@ class NumberValidator(BaseValidator):
         minimum = self.options.get('minimum', None)
         maximum = self.options.get('maximum', None)
         if minimum and maximum and (float(value) < minimum or float(value) > maximum):
-            raise ValidationException(variable, value, 'Value must be in the range {1} - {2}'.format(minimum,maximum))
+            raise ValidationException(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
         if minimum and float(value) < minimum:
             raise ValidationException(variable, value, 'The minimum value is {0}'.format(minimum))
         if maximum and float(value) > maximum:
