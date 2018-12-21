@@ -100,11 +100,14 @@ class Submission(models.Model):
     cancelled = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
-    pi_name = models.CharField(max_length=50)
+    pi_first_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=50)
     pi_email = models.EmailField(max_length=75)
+    pi_phone = models.CharField(max_length=20)
     institute = models.CharField(max_length=75)
     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
     payment_info = models.CharField(max_length=250,null=True,blank=True)
@@ -139,7 +142,7 @@ class Submission(models.Model):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
     def __unicode__(self):
-        return '{id}: {submitted} - {type} - {pi}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi=self.pi_name)
+        return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
         ordering = ['submitted']
 #     @property

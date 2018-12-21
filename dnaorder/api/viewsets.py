@@ -21,9 +21,9 @@ from django.utils import timezone
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
     serializer_class = SubmissionSerializer
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
-    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name', 'type__name', 'status__name')
-    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order', 'status__name','biocore','locked']
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status__name')
+    ordering_fields = ['id','internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status__order', 'status__name','biocore','locked']
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_serializer_class(self):
