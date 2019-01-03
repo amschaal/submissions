@@ -1,4 +1,4 @@
-A new note has been added to submission {{note.submission.id}}:
+A new note has been added to submission {{note.submission.internal_id}}:
 {{note.text}}
 
 You can view submission details and any other notes on the submission page:
