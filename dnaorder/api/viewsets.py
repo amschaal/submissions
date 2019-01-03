@@ -80,7 +80,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
-    queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('name')
+    queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order')
     serializer_class =SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}

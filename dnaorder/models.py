@@ -24,6 +24,7 @@ class SubmissionType(models.Model):
     updated_by = models.ForeignKey(User,null=True,blank=True)
     name = models.CharField(max_length=50)
     description = models.TextField(null=True,blank=True)
+    sort_order = models.PositiveIntegerField(default=1)
     prefix = models.CharField(max_length=15,null=True,blank=True)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
