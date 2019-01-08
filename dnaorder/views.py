@@ -16,6 +16,8 @@ from rest_framework.permissions import AllowAny
 from dnaorder.spreadsheets import get_dataset, get_submission_dataset
 from django.http.response import HttpResponse
 import tablib
+from django.conf import settings
+from django.utils import timezone
 
 
 @api_view(['POST'])
@@ -147,12 +149,12 @@ def customize_print(request,id):
 
 # def confirm_submission(request,id):
 #     submission = Submission.objects.get(id=id)
-#     if submission.status:
-#         return redirect('submission',id=id)
-#     status = SubmissionStatus.objects.order_by('order').first()
-#     submission.set_status(status,commit=True)
-#     emails.order_confirmed(submission, request)
-#     return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'confirmed':True})
+#     url = '{0}{1}'.format(settings.BASE_URI,submission.get_absolute_url())
+#     if not submission.confirmed:
+#         submission.confirmed = timezone.now()
+#         submission.save()
+#         emails.order_confirmed(submission, request)
+#     return redirect(url)
 
 def download_old(request,id):
     from django.http import HttpResponse

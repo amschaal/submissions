@@ -1,4 +1,4 @@
-from rest_framework import viewsets, response
+from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer
@@ -17,6 +17,7 @@ from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
+from rest_framework.response import Response
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type','status').all()
@@ -78,6 +79,28 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.cancelled = None
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
+    @detail_route(methods=['post'])
+    def confirm(self,request,pk):
+        submission = self.get_object()
+        if not submission.confirmed:
+            submission.confirmed = timezone.now()
+            submission.save()
+            emails.order_confirmed(submission, request)
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        emails.order_confirmed(instance, self.request)
+#         emails.confirm_order(instance, self.request)
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         data = serializer.data
+#         del data['id'] #Hide this so that they have to check their email to confirm
+#         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+        
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order')

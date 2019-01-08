@@ -1,4 +1,4 @@
-Dear {{submission.name}},
+Dear {{submission.first_name}},
 
 Your sample submission created on {{submission.submitted|date}} is pending.  In order to process your submission, we require that you first validate the submission by clicking on the following link:
 {{BASE_URI}}{% url 'confirm_submission' id=submission.id %}

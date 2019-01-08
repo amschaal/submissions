@@ -33,7 +33,7 @@ class SubmissionType(models.Model):
     sample_schema = JSONField(null=True,default=default_schema)
     examples = JSONField(default=list)
     sample_help = models.TextField(null=True, blank=True)
-    confirmation_email_text = models.TextField(null=True, blank=True)
+    confirmation_text = models.TextField(null=True, blank=True)
     class Meta:
         ordering = ['name']
     def __unicode__(self):
@@ -101,6 +101,7 @@ class Submission(models.Model):
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
+    confirmed = models.DateTimeField(null=True, blank=True)
     updated = models.DateTimeField(auto_now=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
