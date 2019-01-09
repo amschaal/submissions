@@ -4,7 +4,7 @@ def get_headers(schema, use_title=True):
 
 def get_data(schema, data, default=None, list_delimiter=', '):
     if not data:
-        return []
+        return [[]]
     if isinstance(data, dict):
         data = [data]
 #     print schema
