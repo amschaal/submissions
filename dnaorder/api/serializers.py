@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
 from dnaorder import validators
+from dnaorder.payment import UCDPaymentSerializer
 
 def translate_schema_complex(schema):
     if not schema.has_key('order') or not schema.has_key('properties'):
@@ -87,6 +88,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
+    payment = UCDPaymentSerializer()
     def validate_payment_info(self, payment_info):
         payment_type = self.initial_data.get('payment_type')
         if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
@@ -222,7 +224,7 @@ class NoteSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()
     def get_user(self,instance):
-        return str(instance.created_by)
+        return str(instance.created_by) if instance.created_by else 'Anonymous'
     def get_can_modify(self,instance):
         request = self._context.get('request')
         if request:

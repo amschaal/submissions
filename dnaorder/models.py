@@ -124,6 +124,7 @@ class Submission(models.Model):
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)
     data = JSONField(default=dict)
+    payment = JSONField(default=dict)
     def save(self, *args, **kwargs):
         if not self.internal_id:
             self.internal_id = self.generate_internal_id()
