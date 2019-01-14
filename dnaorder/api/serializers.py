@@ -42,6 +42,11 @@ def translate_schema(schema):
 #         new_schema['fields'].append(ns)
 #     return new_schema
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        exclude = ['password']
+
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
 #     submission_schema = serializers.SerializerMethodField()
@@ -185,11 +190,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             return instance.editable(request.user)
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id','participants','data']
+        exclude = ['submitted','sra_data','status','internal_id','data']
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SubmissionTypeSerializer()
     status = SubmissionStatusSerializer()
+    participant_names = serializers.SerializerMethodField(read_only=True)
+    def get_participant_names(self,instance):
+        return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
     class Meta:
         model = Submission
         exclude = []
@@ -232,11 +240,6 @@ class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
         exclude = []
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        exclude = ['password']
 
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
