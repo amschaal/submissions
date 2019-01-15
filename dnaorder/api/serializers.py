@@ -74,7 +74,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','name','description','sort_order','submission_schema','sample_schema','examples','submission_help','sample_help','updated','submission_count','confirmation_text']
+        fields = ['id','active','name','description','sort_order','submission_schema','sample_schema','examples','submission_help','sample_help','updated','submission_count','confirmation_text']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):

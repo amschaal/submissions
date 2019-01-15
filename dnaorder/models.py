@@ -22,6 +22,7 @@ def default_schema():
 class SubmissionType(models.Model):
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
+    active = models.BooleanField(default=True)
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)

@@ -108,6 +108,7 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')
+    filter_fields = {'active':['exact']}
     def get_permissions(self):
         try:
             # return permission_classes depending on `action` 
