@@ -25,6 +25,7 @@ class BaseValidator(object):
             raise Exception('You must define "name" for each validator')
     def validate(self, variable, value, schema={}, data=[]):
         raise NotImplementedError
+        # @todo: return cleaned data
     def serialize(self):
         return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'supported_types': self.supported_types}
 
@@ -166,6 +167,17 @@ class SamplesheetValidator:
             self.validate_values(variable, validators)
         print self.errors
         return self.errors
+    def cleaned(self):
+        # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
+        cleaned = []
+        for idx, row in enumerate(self.data):
+            cleaned.append(dict([(variable,row.get(variable, None))  for variable in self.schema['properties'].keys()]))
+#             value = row.get(variable, None)
+        return cleaned
+#         for variable in self.schema['properties'].keys():
+#             validators = self.get_validators(variable)
+#             self.validate_values(variable, validators)
+#         return dict([(,)  for variable in self.schema['properties'].keys()])
 
 class SubmissionValidator(SamplesheetValidator):
     def set_error(self, variable, message):
@@ -182,3 +194,6 @@ class SubmissionValidator(SamplesheetValidator):
                     self.set_error(variable, e.message)
                     if e.skip_other_exceptions:
                         break
+    def cleaned(self):
+        # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
+        return dict([(variable,self.data.get(variable, None))  for variable in self.schema['properties'].keys()])

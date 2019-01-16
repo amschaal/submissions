@@ -119,6 +119,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             errors = validator.validate()
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
+            return validator.cleaned()
         return sample_data
     def validate_submission_data(self, data={}):
         type = self.initial_data.get('type')
@@ -133,6 +134,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             errors = validator.validate()
             if len(errors.keys()):
                 raise serializers.ValidationError(errors)
+            return validator.cleaned()
         return data
     def create(self, validated_data):
         print 'creating'
