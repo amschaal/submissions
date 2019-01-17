@@ -15,9 +15,19 @@ from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
 from django.template.defaultfilters import default
+from django.contrib.sites.models import Site
+from dnaorder.payment import PaymentTypeManager
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
+
+# class PaymentType(models.Model):
+#     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
+
+class Lab(models.Model):
+    name = models.CharField(max_length=50)
+    site = models.ForeignKey(Site)
+    payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
 
 class SubmissionType(models.Model):
     updated = models.DateTimeField(auto_now=True)

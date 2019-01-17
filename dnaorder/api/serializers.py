@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
 from dnaorder import validators
-from dnaorder.payment import UCDPaymentSerializer
+from dnaorder.payment.ucd import UCDPaymentSerializer
 
 def translate_schema_complex(schema):
     if not schema.has_key('order') or not schema.has_key('properties'):

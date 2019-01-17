@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ['fatboy.genomecenter.ucdavis.edu','dnatechorders.com','127.0.0.
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.sites',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -150,5 +151,7 @@ REST_FRAMEWORK = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 BASE_URI = 'https://orders.dnatech.ucdavis.edu'
+
+PAYMENT_TYPES = []
 
 from config import *
