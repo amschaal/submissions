@@ -44,9 +44,11 @@ class UniqueValidator(BaseValidator):
 class RequiredValidator(BaseValidator):
     id = 'required'
     name = 'Required'
-    description = 'Require that the user fill out this field.'
+    description = 'Require that the user fill out this field. Internal fields are not required.'
     uses_options = False
     def validate(self, variable, value, schema={}, data=[]):
+        if schema['properties'].get(variable,{}).get('internal', False):
+            return
         if value is None or value == '':
             raise ValidationException(variable, value,"This field is required.",skip_other_exceptions=True)
 
