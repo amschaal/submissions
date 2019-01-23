@@ -94,7 +94,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
-    payment = PPMSPaymentSerializer() # UCDPaymentSerializer()
+    payment = UCDPaymentSerializer()# PPMSPaymentSerializer() # UCDPaymentSerializer()
     def validate_payment_info(self, payment_info):
         payment_type = self.initial_data.get('payment_type')
         if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
