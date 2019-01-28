@@ -152,6 +152,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 BASE_URI = 'https://orders.dnatech.ucdavis.edu'
 
+LAB_EMAIL = 'dnatech@ucdavis.edu'
+
 PAYMENT_TYPES = []
 
 from config import *

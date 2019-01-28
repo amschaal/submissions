@@ -228,9 +228,10 @@ class NoteSerializer(serializers.ModelSerializer):
             data.update({'created_by':request.user.id})
             if request.user.is_authenticated:
                 if data.get('send_email'):
-                    data.update({'emails':[submission.email]})
+                    data.update({'emails':submission.get_submitter_emails()}) # submission.participant_emails
             else:
-                data.update({'emails': submission.participant_emails})
+                data.update({'emails': submission.get_participant_emails()})
+        print data
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()

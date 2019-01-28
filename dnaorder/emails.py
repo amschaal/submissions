@@ -7,7 +7,7 @@ def status_update(submission,request,emails=None):
     send_mail(
         'Submission {id} Status Updated'.format(id=submission.internal_id),
         body,
-        'dnatech@ucdavis.edu',
+        submission.get_lab_email(),
         emails or [submission.email],
         fail_silently=False,
     )
@@ -16,7 +16,7 @@ def confirm_order(submission,request,emails=None):
     send_mail(
         'Please Confirm Your Submission',
         body,
-        'dnatech@ucdavis.edu',
+        submission.get_lab_email(),
         emails or [submission.email],
         fail_silently=False,
     )
@@ -25,8 +25,8 @@ def order_confirmed(submission,request,emails=None):
     send_mail(
         'Submission {id} confirmed'.format(id=submission.internal_id),
         body,
-        'dnatech@ucdavis.edu',
-        emails or [submission.email,submission.pi_email,'dnatech@ucdavis.edu'],
+        submission.get_lab_email(),
+        emails or [submission.email,submission.pi_email,submission.get_lab_email()],
         fail_silently=False,
     )
 
@@ -35,7 +35,7 @@ def note_email(note):
     send_mail(
         'A note has been added to submission {id}'.format(id=note.submission.internal_id),
         body,
-        'dnatech@ucdavis.edu',
+        note.submission.get_lab_email(),
         note.emails,
         fail_silently=False,
     )

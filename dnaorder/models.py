@@ -17,6 +17,7 @@ from django.db.models.signals import post_save
 from django.template.defaultfilters import default
 from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
+from django.conf import settings
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
@@ -155,6 +156,16 @@ class Submission(models.Model):
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
+    def get_lab_email(self):
+        return settings.LAB_EMAIL
+    def get_participant_emails(self):
+        emails = [p.email for p in self.participants.all() if p.email]
+        if len(emails) == 0:
+            emails = [self.get_lab_email()]
+        return emails
+    def get_submitter_emails(self):
+        emails = [c.email for c in self.contacts.all() if c.email] + [self.email, self.pi_email]
+        return emails
     def __unicode__(self):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
