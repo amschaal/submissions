@@ -93,18 +93,18 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-    payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
+#     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
     payment = UCDPaymentSerializer()# PPMSPaymentSerializer() # UCDPaymentSerializer()
-    def validate_payment_info(self, payment_info):
-        payment_type = self.initial_data.get('payment_type')
-        if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
-            raise serializers.ValidationError("Do not enter anything into payment info when choosing credit card!")
-        elif payment_type == Submission.PAYMENT_DAFIS:
-            if not validate_dafis(payment_info):
-                raise serializers.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
-        elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
-            raise serializers.ValidationError("Please enter payment details.")
-        return payment_info
+#     def validate_payment_info(self, payment_info):
+#         payment_type = self.initial_data.get('payment_type')
+#         if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
+#             raise serializers.ValidationError("Do not enter anything into payment info when choosing credit card!")
+#         elif payment_type == Submission.PAYMENT_DAFIS:
+#             if not validate_dafis(payment_info):
+#                 raise serializers.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
+#         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
+#             raise serializers.ValidationError("Please enter payment details.")
+#         return payment_info
     def validate_sample_data(self, sample_data):
         if not sample_data or len(sample_data) < 1:
             raise serializers.ValidationError("Please provide at least 1 sample.")
