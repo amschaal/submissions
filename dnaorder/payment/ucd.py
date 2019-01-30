@@ -4,7 +4,7 @@ from dnaorder.payment import PaymentType
 
 class UCDPaymentSerializer(serializers.Serializer):
     payment_type = serializers.CharField(required=False)
-    payment_info = serializers.CharField(required=False)
+    payment_info = serializers.CharField(required=False, allow_blank=True)
     def validate(self, data):
         from dnaorder.models import Submission
         PAYMENT_TYPES = [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO]
