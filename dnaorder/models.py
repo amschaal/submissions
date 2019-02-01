@@ -25,6 +25,13 @@ def default_schema():
 # class PaymentType(models.Model):
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
+class PrefixID(models.Model):
+#     lab = models.ForeignKey('Lab')
+    prefix = models.CharField(max_length=15)
+    current_id = models.PositiveIntegerField(default=0)
+    def generate_id(self):
+        return '{prefix}{id}'.format(prefix=self.prefix,id=self.current_id)
+
 class Lab(models.Model):
     name = models.CharField(max_length=50)
     site = models.ForeignKey(Site)
@@ -37,7 +44,7 @@ class SubmissionType(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
-    prefix = models.CharField(max_length=15,null=True,blank=True)
+    prefix = models.CharField(max_length=15)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
@@ -138,21 +145,25 @@ class Submission(models.Model):
     payment = JSONField(default=dict)
     def save(self, *args, **kwargs):
         if not self.internal_id:
-            self.internal_id = self.generate_internal_id()
+            prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix)
+            prefix.current_id += 1
+            self.internal_id = prefix.generate_id()
+            prefix.save()
         if not self.sample_schema:
             self.sample_schema = self.type.sample_schema
         if not self.submission_schema:
             self.submission_schema = self.type.submission_schema
         super(Submission, self).save(*args, **kwargs)
-    def generate_internal_id(self):
-        prefix = self.type.prefix or ''
-        print prefix
-        base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
-        for i in range(1,100):#that's a lot of submissions per day!
-            id = '{base_id}_{i}'.format(base_id=base_id,i=i)
-            if not Submission.objects.filter(internal_id=id).exists():
-                return id
-#         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
+#     def generate_internal_id(self):
+#         prefix, created = Prefix.object.get_or_create(prefix=self.type.prefix) 
+# #         print prefix
+# #         prefix
+#         base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
+#         for i in range(1,100):#that's a lot of submissions per day!
+#             id = '{base_id}_{i}'.format(base_id=base_id,i=i)
+#             if not Submission.objects.filter(internal_id=id).exists():
+#                 return id
+# #         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
