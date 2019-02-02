@@ -31,6 +31,8 @@ class PrefixID(models.Model):
     current_id = models.PositiveIntegerField(default=0)
     def generate_id(self):
         return '{prefix}{id}'.format(prefix=self.prefix,id=self.current_id)
+    def __unicode__(self):
+        return self.generate_id()
 
 class Lab(models.Model):
     name = models.CharField(max_length=50)
@@ -48,6 +50,7 @@ class SubmissionType(models.Model):
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
+    statuses = JSONField(default=list)
     submission_schema = JSONField(null=True,default=default_schema)
     sample_schema = JSONField(null=True,default=default_schema)
     sample_help = models.TextField(null=True, blank=True)
@@ -115,7 +118,7 @@ class Submission(models.Model):
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'DaFIS (UC Davis Account String)'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     internal_id = models.CharField(max_length=25, unique=True)
-    status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
+    status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
@@ -206,12 +209,12 @@ class Submission(models.Model):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
         return '/submissions/{0}'.format(self.id)
-    def set_status(self,status,commit=True):
-        self.status = status
-        if status.auto_lock:
-            self.locked = True
-        if commit:
-            self.save()
+#     def set_status(self,status,commit=True):
+#         self.status = status
+#         if status.auto_lock:
+#             self.locked = True
+#         if commit:
+#             self.save()
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]

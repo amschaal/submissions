@@ -75,7 +75,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','active','prefix','name','description','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
+        fields = ['id','active','prefix','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -197,7 +197,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SubmissionTypeSerializer()
-    status = SubmissionStatusSerializer()
+#     status = SubmissionStatusSerializer()
     participant_names = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
