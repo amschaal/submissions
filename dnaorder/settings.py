@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_filters',
 #     'material',
     'dnaorder',
+    'billing',
     'corsheaders',
 ]
 

@@ -18,11 +18,12 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from api.urls import urlpatterns as api_urlpatterns
+from billing.api.urls import urlpatterns as billing_urlpatterns
 
 import views
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
+    url(r'^server/admin/', admin.site.urls),
 #     url(r'^api/submit/$', views.submit, name='submit'),
 #     url(r'^submissions/$', views.submissions, name='submissions'),
 #     url(r'^submission_types/$', views.submission_types, name='submission_types'),
@@ -39,6 +40,7 @@ urlpatterns = [
 #     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
+    url(r'^api/billing/', include(billing_urlpatterns)),
     url(r'^api/validate/$', views.validate_data, name='validate'),
     url(r'^api/login/$', views.login_view, name='login'),
     url(r'^api/logout/$', views.logout_view, name='logout'),

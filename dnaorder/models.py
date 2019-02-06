@@ -38,6 +38,8 @@ class Lab(models.Model):
     name = models.CharField(max_length=50)
     site = models.ForeignKey(Site)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
+    def __unicode__(self):
+        return self.name
 
 class SubmissionType(models.Model):
     updated = models.DateTimeField(auto_now=True)
@@ -121,6 +123,7 @@ class Submission(models.Model):
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
+    completed = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
     confirmed = models.DateTimeField(null=True, blank=True)
     updated = models.DateTimeField(auto_now=True)
