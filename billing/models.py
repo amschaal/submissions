@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 from dnaorder.models import Lab, Submission
+from django.core.validators import MinValueValidator
 
 class Service(models.Model):
     lab = models.ForeignKey(Lab)
@@ -18,6 +19,8 @@ class Service(models.Model):
 class LineItem(models.Model):
     submission = models.ForeignKey(Submission, related_name="line_items")
     service = models.ForeignKey(Service, on_delete=models.PROTECT)
-    quantity = models.FloatField()
+    quantity = models.FloatField(validators=[MinValueValidator(0)])
     notes = models.TextField(null=True, blank=True)
     updated = models.DateTimeField(auto_now=True)
+    class Meta:
+        unique_together = (('submission','service'),)
