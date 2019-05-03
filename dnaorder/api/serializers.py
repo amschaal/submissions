@@ -7,7 +7,7 @@ from dnaorder.validators import SamplesheetValidator, SubmissionValidator
 from dnaorder.dafis import validate_dafis
 from dnaorder import validators
 from dnaorder.payment.ucd import UCDPaymentSerializer
-from dnaorder.payment.ppms import PPMSPaymentSerializer
+from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 
 def translate_schema_complex(schema):
     if not schema.has_key('order') or not schema.has_key('properties'):
