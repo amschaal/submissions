@@ -2,15 +2,14 @@ from rest_framework import serializers
 from dnaorder.payment import PaymentType
 
 class PPMSPaymentSerializer(serializers.Serializer):
-    pi_email= serializers.CharField(required=False)
+    pi_email= serializers.CharField()
     display = serializers.SerializerMethodField(read_only=True)
     def get_display(self, obj):
         return {'PPMS PI Email': obj.get('pi_email','')}
     def validate(self, data):
-        print 'payment'
-        print data
         if not data.get('pi_email', None):
             raise serializers.ValidationError({"pi_email":"PPMS PI Email is required."})
+#         raise serializers.ValidationError({"pi_email":"Bad email."})
         return data
 #         from dnaorder.models import Submission
 #         PAYMENT_TYPES = [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO]

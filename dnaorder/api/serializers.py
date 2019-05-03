@@ -119,6 +119,11 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
         fields = ['id','name']
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
+    def __init__(self,*args,**kwargs):
+        print 'WriteableSubmissionSerializer'
+        print args
+        print kwargs
+        super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
 #     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
