@@ -3,7 +3,7 @@ XlsxWriter==1.0.2
 django-cors-headers==2.3.0
 django-filter==1.1.0
 django-sendfile==0.3.11
-djangorestframework==3.7.7
+djangorestframework==3.9.4
 djangorestframework-filters==0.10.2
 lxml==3.3.3
 openpyxl==2.4.11
