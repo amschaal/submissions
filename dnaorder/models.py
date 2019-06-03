@@ -29,8 +29,8 @@ class PrefixID(models.Model):
 #     lab = models.ForeignKey('Lab')
     prefix = models.CharField(max_length=15)
     current_id = models.PositiveIntegerField(default=0)
-    def generate_id(self):
-        return '{prefix}{id}'.format(prefix=self.prefix,id=self.current_id)
+    def generate_id(self, minimum_digits=4):
+        return '{prefix}{id}'.format(prefix=self.prefix,id=str(self.current_id).zfill(minimum_digits))
     def __unicode__(self):
         return self.generate_id()
 
