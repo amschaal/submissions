@@ -66,7 +66,7 @@ class RegexValidator(BaseValidator):
     def validate(self, variable, value, schema={}, data=[]):
         if not self.pattern:
             return
-        if not self.pattern.match(value):
+        if not self.pattern.match(str(value)):
             raise ValidationException(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
 
 class EnumValidator(BaseValidator):
