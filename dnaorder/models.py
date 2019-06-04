@@ -226,6 +226,13 @@ class Submission(models.Model):
             participants = ['dnatech@ucdavis.edu']
         return participants
 
+class Draft(models.Model):
+    id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    data = JSONField(null=False,blank=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    
+
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts')
     first_name = models.CharField(max_length=25)
