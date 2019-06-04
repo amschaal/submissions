@@ -1,9 +1,10 @@
 from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer, StatusSerializer, WritableSubmissionSerializer
+    UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
+    DraftSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType
+    SubmissionType, Draft
 from rest_framework.decorators import detail_route, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -196,3 +197,8 @@ class ValidatorViewSet(viewsets.ViewSet):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
         return response.Response([v().serialize() for v in VALIDATORS])
+
+class DraftViewSet(viewsets.ModelViewSet):
+    queryset = Draft.objects.all().order_by('-updated')
+    serializer_class = DraftSerializer
+    permission_classes = (AllowAny,)

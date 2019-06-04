@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact
+    SubmissionStatus, Note, Contact, Draft
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -251,6 +251,12 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionFile
         exclude = []
+
+class DraftSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Draft
+        exclude = []
+        read_only_fields = ('id','created','updated')
 
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
