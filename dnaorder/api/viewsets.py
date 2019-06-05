@@ -2,12 +2,13 @@ from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
-    DraftSerializer
+    DraftSerializer, LabSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType, Draft
-from rest_framework.decorators import detail_route, permission_classes
+    SubmissionType, Draft, Lab
+from rest_framework.decorators import detail_route, permission_classes, action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny,\
+    IsAuthenticatedOrReadOnly
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions
 from django.core.mail import send_mail
@@ -19,6 +20,7 @@ from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
 from rest_framework.response import Response
+from django.contrib.sites.shortcuts import get_current_site
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -202,3 +204,13 @@ class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')
     serializer_class = DraftSerializer
     permission_classes = (AllowAny,)
+
+class LabViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Lab.objects.all()
+    serializer_class = LabSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    @action(detail=False, methods=['get'])
+    def default(self, request):
+        lab = Lab.objects.get(site__id=get_current_site(request).id)
+        serializer = self.get_serializer(lab, many=False)
+        return Response(serializer.data)
