@@ -205,7 +205,7 @@ class DraftViewSet(viewsets.ModelViewSet):
     serializer_class = DraftSerializer
     permission_classes = (AllowAny,)
 
-class LabViewSet(viewsets.ReadOnlyModelViewSet):
+class LabViewSet(viewsets.ModelViewSet):
     queryset = Lab.objects.all()
     serializer_class = LabSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
