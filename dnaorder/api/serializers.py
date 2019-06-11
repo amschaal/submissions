@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab
+    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -103,8 +103,8 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','active','prefix','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
-        read_only_fields = ('updated',)
+        fields = ['id','lab','active','prefix','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
+        read_only_fields = ('updated','lab')
 
 class ContactSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
@@ -263,7 +263,13 @@ class LabSerializer(serializers.ModelSerializer):
         model = Lab
         exclude = []
         read_only_fields = ('name', 'site', 'payment_type_id')
-
+        
+class PrefixSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrefixID
+        exclude = []
+        read_only_fields = ('lab',)
+        
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         data = kwargs.get('data')

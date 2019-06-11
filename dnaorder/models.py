@@ -26,7 +26,7 @@ def default_schema():
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
 class PrefixID(models.Model):
-#     lab = models.ForeignKey('Lab')
+    lab = models.ForeignKey('Lab', null=True, related_name='prefixes')
     prefix = models.CharField(max_length=15)
     current_id = models.PositiveIntegerField(default=0)
     def generate_id(self, minimum_digits=4):
@@ -43,6 +43,7 @@ class Lab(models.Model):
         return self.name
 
 class SubmissionType(models.Model):
+    lab = models.ForeignKey(Lab)
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
     active = models.BooleanField(default=True)
@@ -120,7 +121,8 @@ class Submission(models.Model):
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'DaFIS (UC Davis Account String)'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
-    internal_id = models.CharField(max_length=25, unique=True)
+    lab = models.ForeignKey(Lab)
+    internal_id = models.CharField(max_length=25)
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
@@ -151,8 +153,9 @@ class Submission(models.Model):
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
     def save(self, *args, **kwargs):
+        self.lab = self.type.lab
         if not self.internal_id:
-            prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix)
+            prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
             prefix.current_id += 1
             self.internal_id = prefix.generate_id()
             prefix.save()
@@ -188,6 +191,7 @@ class Submission(models.Model):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
         ordering = ['submitted']
+        unique_together = (('internal_id','lab'))
 #     @property
 #     def samplesheet(self):
 #         from dnaorder.spreadsheets import CoreSampleSheet
