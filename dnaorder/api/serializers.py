@@ -103,7 +103,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','lab','active','prefix','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
+        fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text']
         read_only_fields = ('updated','lab')
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -227,6 +227,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id','data']
+        read_only_fields= ['lab']
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SubmissionTypeSerializer()

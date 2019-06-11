@@ -100,7 +100,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(lab=get_site_lab(self.request))
         emails.order_confirmed(instance, self.request)
 #         emails.confirm_order(instance, self.request)
 #     def create(self, request, *args, **kwargs):

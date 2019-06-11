@@ -51,6 +51,7 @@ class SubmissionType(models.Model):
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
     prefix = models.CharField(max_length=15)
+    next_id = models.PositiveIntegerField(default=1)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
@@ -61,6 +62,7 @@ class SubmissionType(models.Model):
     confirmation_text = models.TextField(null=True, blank=True)
     class Meta:
         ordering = ['sort_order', 'name']
+        unique_together = (('lab','prefix'),)
     def __unicode__(self):
         return "{name}".format(name=self.name)
 #     @property
@@ -155,10 +157,12 @@ class Submission(models.Model):
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.internal_id:
-            prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
-            prefix.current_id += 1
-            self.internal_id = prefix.generate_id()
-            prefix.save()
+#             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
+            
+#             prefix.current_id += 1
+            self.internal_id = "{0}{1}".format(self.type.prefix, self.type.next_id)
+            self.type.next_id += 1
+            self.type.save()
         if not self.sample_schema:
             self.sample_schema = self.type.sample_schema
         if not self.submission_schema:
