@@ -160,7 +160,7 @@ class Submission(models.Model):
 #             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
             
 #             prefix.current_id += 1
-            self.internal_id = "{0}{1}".format(self.type.prefix, self.type.next_id)
+            self.internal_id = "{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
             self.type.next_id += 1
             self.type.save()
         if not self.sample_schema:
