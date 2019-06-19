@@ -182,6 +182,7 @@ class Submission(models.Model):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
     def get_lab_email(self):
+        return "no-reply@{0}".format(self.lab.site.domain)
         return settings.LAB_EMAIL
     def get_participant_emails(self):
         emails = [p.email for p in self.participants.all() if p.email]
