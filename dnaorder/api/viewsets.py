@@ -32,7 +32,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
-        queryset = viewsets.ModelViewSet.get_queryset(self)
+        queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
         lab = get_site_lab(self.request)
         return queryset.filter(lab=lab)
     def get_serializer_class(self):
