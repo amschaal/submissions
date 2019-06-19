@@ -228,9 +228,16 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id','data']
         read_only_fields= ['lab']
+        
+class LabSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        exclude = []
+        read_only_fields = ('name', 'site', 'payment_type_id')
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SubmissionTypeSerializer()
+    lab = LabSerializer(read_only=True)
 #     status = SubmissionStatusSerializer()
     participant_names = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
@@ -258,12 +265,6 @@ class DraftSerializer(serializers.ModelSerializer):
         model = Draft
         exclude = []
         read_only_fields = ('id','created','updated')
-
-class LabSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lab
-        exclude = []
-        read_only_fields = ('name', 'site', 'payment_type_id')
         
 class PrefixSerializer(serializers.ModelSerializer):
     class Meta:
