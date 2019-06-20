@@ -36,6 +36,7 @@ class PrefixID(models.Model):
 
 class Lab(models.Model):
     name = models.CharField(max_length=50)
+    email = models.EmailField()
     site = models.OneToOneField(Site)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
@@ -181,9 +182,8 @@ class Submission(models.Model):
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
-    def get_lab_email(self):
+    def get_lab_from_email(self):
         return "no-reply@{0}".format(self.lab.site.domain)
-        return settings.LAB_EMAIL
     def get_participant_emails(self):
         emails = [p.email for p in self.participants.all() if p.email]
         if len(emails) == 0:
