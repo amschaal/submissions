@@ -187,7 +187,7 @@ class Submission(models.Model):
     def get_participant_emails(self):
         emails = [p.email for p in self.participants.all() if p.email]
         if len(emails) == 0:
-            emails = [self.get_lab_email()]
+            emails = [self.lab.email]
         return emails
     def get_submitter_emails(self):
         emails = [c.email for c in self.contacts.all() if c.email] + [self.email, self.pi_email]
