@@ -120,9 +120,9 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
-        print 'WriteableSubmissionSerializer'
-        print args
-        print kwargs
+#         print 'WriteableSubmissionSerializer'
+#         print args
+#         print kwargs
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()

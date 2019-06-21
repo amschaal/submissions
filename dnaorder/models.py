@@ -150,11 +150,12 @@ class Submission(models.Model):
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
-    notes = models.TextField(null=True,blank=True)
+    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
+    comments = models.TextField(null=True, blank=True)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.internal_id:
