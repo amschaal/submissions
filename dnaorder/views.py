@@ -1,15 +1,9 @@
-from dnaorder.forms import SubmissionForm, SubmissionStatusForm,\
-    SubmissionTypeForm, ValidatorForm, AdminSubmissionForm,\
-    AnonSubmissionFormUpdate, CustomPrintForm
+from dnaorder.forms import CustomPrintForm 
 from django.shortcuts import render, redirect
-from dnaorder.models import SubmissionType, Submission, SubmissionStatus,\
-    Validator
+from dnaorder.models import SubmissionType, Submission
 from sendfile import sendfile
 import tempfile
-import os
-import json
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from dnaorder import emails
 from collections import OrderedDict
 from rest_framework.decorators import api_view, permission_classes
@@ -19,6 +13,11 @@ from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
+from dnaorder.spreadsheets import get_dataset, get_submission_dataset
+from django.http.response import HttpResponse
+import tablib
+from django.conf import settings
+from django.utils import timezone
 
 
 @api_view(['POST'])
@@ -42,93 +41,92 @@ def logout_view(request):
     logout(request)
     return Response({'status':'success'})
 
-# @csrf_exempt
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def submit(request):
-    submission_types = SubmissionType.objects.all()
-    form = SubmissionForm(request.data)
-    if form.is_valid():
-        submission = form.save(commit=True)
-        submission_serializer = SubmissionSerializer(instance=submission)
-        return Response(submission_serializer.data)
-    return Response({'errors':form.errors},status=500)
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def submit(request):
+#     submission_types = SubmissionType.objects.all()
+#     form = SubmissionForm(request.data)
+#     if form.is_valid():
+#         submission = form.save(commit=True)
+#         submission_serializer = SubmissionSerializer(instance=submission)
+#         return Response(submission_serializer.data)
+#     return Response({'errors':form.errors},status=500)
+# 
+# def static_submit(request):
+#     submission_types = SubmissionType.objects.all()
+#     if request.method == 'GET':
+#         form = SubmissionForm()
+#     elif request.method == 'POST':
+#         form = SubmissionForm(request.POST,request.FILES)
+#         if form.is_valid():
+#             submission = form.save(commit=True)
+#             emails.confirm_order(submission, request)
+#             return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
+#     return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
+# 
+# # @csrf_exempt
+# @api_view(['PUT'])
+# @permission_classes([AllowAny])
+# def update_submission(request,id):
+#     form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
+#     submission = Submission.objects.get(id=id)
+# #     if not request.user.is_authenticated and not submission.editable():
+# #         raise PermissionDenied
+#     form = form_class(request.data,instance=submission)
+#     if form.is_valid():
+#         print request.data
+#         print form_class
+#         submission = form.save(commit=True)
+#         print submission
+#         print submission.sample_data
+#         submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
+#         return Response(submission_serializer.data)
+#     return Response({'errors':form.errors},status=500)
+# 
+# def submission_types(request):
+#     submission_types = SubmissionType.objects.filter(show=True)
+#     return render(request,'submission_types.html',{'submission_types':submission_types})
+# 
+# def submission_type_versions(request,id):
+#     submission_type = SubmissionType.objects.get(id=id)
+#     return render(request,'submission_type_versions.html',{'submission_type':submission_type})
+# 
+# def create_update_submission_type(request,id=None):
+#     submission_type = SubmissionType.objects.get(id=id) if id else None
+#     if request.method == 'GET':
+#         form = SubmissionTypeForm(instance=submission_type)
+#     elif request.method == 'POST':
+#         form = SubmissionTypeForm(request.POST,request.FILES,instance=submission_type)
+#         if form.is_valid():
+#             submission_type = form.save(request.user,commit=True)
+#             if id and int(id) != submission_type.id:
+#                 return redirect('update_submission_type',id=submission_type.id)
+#             return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type,'valid':True})
+#     return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type})
 
-def static_submit(request):
-    submission_types = SubmissionType.objects.all()
-    if request.method == 'GET':
-        form = SubmissionForm()
-    elif request.method == 'POST':
-        form = SubmissionForm(request.POST,request.FILES)
-        if form.is_valid():
-            submission = form.save(commit=True)
-            emails.confirm_order(submission, request)
-            return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'submitted':True})
-    return render(request,'submission_form_hot.html',{'form':form,'submission_types':submission_types})
-
-# @csrf_exempt
-@api_view(['PUT'])
-@permission_classes([AllowAny])
-def update_submission(request,id):
-    form_class = AdminSubmissionForm if request.user.is_staff else SubmissionForm
-    submission = Submission.objects.get(id=id)
-#     if not request.user.is_authenticated and not submission.editable():
-#         raise PermissionDenied
-    form = form_class(request.data,instance=submission)
-    if form.is_valid():
-        print request.data
-        print form_class
-        submission = form.save(commit=True)
-        print submission
-        print submission.sample_data
-        submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
-        return Response(submission_serializer.data)
-    return Response({'errors':form.errors},status=500)
-
-def submission_types(request):
-    submission_types = SubmissionType.objects.filter(show=True)
-    return render(request,'submission_types.html',{'submission_types':submission_types})
-
-def submission_type_versions(request,id):
-    submission_type = SubmissionType.objects.get(id=id)
-    return render(request,'submission_type_versions.html',{'submission_type':submission_type})
-
-def create_update_submission_type(request,id=None):
-    submission_type = SubmissionType.objects.get(id=id) if id else None
-    if request.method == 'GET':
-        form = SubmissionTypeForm(instance=submission_type)
-    elif request.method == 'POST':
-        form = SubmissionTypeForm(request.POST,request.FILES,instance=submission_type)
-        if form.is_valid():
-            submission_type = form.save(request.user,commit=True)
-            if id and int(id) != submission_type.id:
-                return redirect('update_submission_type',id=submission_type.id)
-            return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type,'valid':True})
-    return render(request,'submission_type_form.html',{'form':form,'submission_type':submission_type})
-
-def validators(request):
-    validators = Validator.objects.all().order_by('field_id')
-    return render(request,'validators.html',{'validators':validators})
-
-def create_update_validator(request,id=None):
-    validator = Validator.objects.get(id=id) if id else None
-    if request.method == 'GET':
-        form = ValidatorForm(instance=validator)
-    elif request.method == 'POST':
-        form = ValidatorForm(request.POST,request.FILES,instance=validator)
-        if form.is_valid():
-            validator = form.save(commit=True)
-            return render(request,'validator_form.html',{'form':form,'validator':validator,'valid':True})
-    return render(request,'validator_form.html',{'form':form,'validator':validator})
-
-@login_required
-def submissions(request):
-    return render(request,'submissions.html',{})
-
-def submission(request,id):
-    submission = Submission.objects.get(id=id)
-    status_form = SubmissionStatusForm(instance=submission) if request.user.is_authenticated else None
-    return render(request,'submission.html',{'submission':submission,'status_form':status_form,'editable':submission.editable(request.user)})
+# def validators(request):
+#     validators = Validator.objects.all().order_by('field_id')
+#     return render(request,'validators.html',{'validators':validators})
+# 
+# def create_update_validator(request,id=None):
+#     validator = Validator.objects.get(id=id) if id else None
+#     if request.method == 'GET':
+#         form = ValidatorForm(instance=validator)
+#     elif request.method == 'POST':
+#         form = ValidatorForm(request.POST,request.FILES,instance=validator)
+#         if form.is_valid():
+#             validator = form.save(commit=True)
+#             return render(request,'validator_form.html',{'form':form,'validator':validator,'valid':True})
+#     return render(request,'validator_form.html',{'form':form,'validator':validator})
+# 
+# @login_required
+# def submissions(request):
+#     return render(request,'submissions.html',{})
+# 
+# def submission(request,id):
+#     submission = Submission.objects.get(id=id)
+#     status_form = SubmissionStatusForm(instance=submission) if request.user.is_authenticated else None
+#     return render(request,'submission.html',{'submission':submission,'status_form':status_form,'editable':submission.editable(request.user)})
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
@@ -149,16 +147,16 @@ def customize_print(request,id):
     form = CustomPrintForm(submission,initial={'exclude':submission.type.excluded_fields})
     return render(request,'customize_print.html',{'submission':submission,'form':form})
 
-def confirm_submission(request,id):
-    submission = Submission.objects.get(id=id)
-    if submission.status:
-        return redirect('submission',id=id)
-    status = SubmissionStatus.objects.order_by('order').first()
-    submission.set_status(status,commit=True)
-    emails.order_confirmed(submission, request)
-    return render(request,'submission.html',{'submission':submission,'editable':submission.editable(request.user),'confirmed':True})
+# def confirm_submission(request,id):
+#     submission = Submission.objects.get(id=id)
+#     url = '{0}{1}'.format(settings.BASE_URI,submission.get_absolute_url())
+#     if not submission.confirmed:
+#         submission.confirmed = timezone.now()
+#         submission.save()
+#         emails.order_confirmed(submission, request)
+#     return redirect(url)
 
-def download(request,id):
+def download_old(request,id):
     from django.http import HttpResponse
     from wsgiref.util import FileWrapper
 
@@ -204,16 +202,47 @@ def download(request,id):
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 
 @api_view(['POST'])
+@permission_classes((AllowAny,))
 def validate_data(request,type_id=None):
     if type_id:
         schema = SubmissionType.objects.get(id=type).sample_schema
     else:
         schema = request.data.get('sample_schema')
-    print 'schema'
-    print schema
     validator = SamplesheetValidator(schema,request.data.get('data'))
     errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
     if len(errors) == 0:
         return Response({'status':'success','message':'The data was succussfully validated'})
     else:
         return Response({'errors':errors},status=500)
+
+@permission_classes((AllowAny,))
+def download(request, id):
+    submission = Submission.objects.get(id=id)
+    data = request.GET.get('data','combined')#samples or submission
+    format = request.GET.get('format','xlsx')
+    format = format if format in ['xls','xlsx','csv','tsv','json'] else 'xls'
+    filename = None
+    
+    if data == 'submission':
+        dataset = get_submission_dataset(submission)
+        filename = "{0}.submission.{1}".format(submission.id,format)
+    elif data == 'samples': #samples
+        dataset = get_dataset(submission.sample_schema, submission.sample_data)
+        filename = "{0}.samples.{1}".format(submission.id,format)
+    else: #all
+        submission_data = get_submission_dataset(submission)
+        sample_data = get_dataset(submission.sample_schema, submission.sample_data)
+        submission_data.title = "Submission"
+        sample_data.title = "Samples"
+        dataset = tablib.Databook((submission_data,sample_data))
+        format = 'xlsx'
+        filename = "{0}.{1}".format(submission.id,format)
+    content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+    response_kwargs = {
+            'content_type': content_types[format]
+        }
+    response = HttpResponse(getattr(dataset, format), **response_kwargs)
+    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
+    return response
+    # generate the file
+#     return sendfile(request, file_path, attachment_filename=filename,attachment=True)

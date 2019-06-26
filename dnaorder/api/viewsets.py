@@ -1,31 +1,40 @@
-from rest_framework import viewsets, response
+from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer, StatusSerializer, WritableSubmissionSerializer
+    UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
+    DraftSerializer, LabSerializer, PrefixSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType
-from rest_framework.decorators import detail_route, permission_classes
+    SubmissionType, Draft, Lab, PrefixID
+from rest_framework.decorators import detail_route, permission_classes, action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny,\
+    IsAuthenticatedOrReadOnly
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
-from dnaorder.views import submission
+# from dnaorder.views import submission
 from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
     VALIDATORS
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
+from rest_framework.response import Response
+from django.contrib.sites.shortcuts import get_current_site
+from dnaorder.utils import get_site_lab
 
 class SubmissionViewSet(viewsets.ModelViewSet):
-    queryset = Submission.objects.select_related('type','status').all()
+    queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'name':['icontains'],'email':['icontains'],'pi_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status__name':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
-    search_fields = ('id', 'internal_id', 'institute', 'name', 'notes', 'email', 'pi_email', 'pi_name', 'type__name', 'status__name')
-    ordering_fields = ['id','internal_id', 'phone','name','email','pi_name','pi_email','institute','type__name','submitted','status__order', 'status__name','biocore','locked']
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    ordering_fields = ['id','internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+        lab = get_site_lab(self.request)
+        return queryset.filter(lab=lab)
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
@@ -39,9 +48,12 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @detail_route(methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
-        status = SubmissionStatus.objects.get(id=request.data.get('status'))
-        submission.set_status(status,commit=True)
-        text = 'Submission status updated to "{status}".'.format(status=submission.status.name)
+#         status = SubmissionStatus.objects.get(id=request.data.get('status'))
+#         submission.set_status(status,commit=True)
+        status = request.data.get('status', None)
+        submission.status = status
+        submission.save()
+        text = 'Submission status updated to "{status}".'.format(status=status)
         if request.data.get('email',False):
 #             emails.status_update(submission,request=request)
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
@@ -78,13 +90,40 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.cancelled = None
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
+    @detail_route(methods=['post'])
+    def confirm(self,request,pk):
+        submission = self.get_object()
+        if not submission.confirmed:
+            submission.confirmed = timezone.now()
+            submission.save()
+            emails.order_confirmed(submission, request)
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
+    def perform_create(self, serializer):
+        instance = serializer.save(lab=get_site_lab(self.request))
+        emails.order_confirmed(instance, self.request)
+#         emails.confirm_order(instance, self.request)
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         data = serializer.data
+#         del data['id'] #Hide this so that they have to check their email to confirm
+#         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+        
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
-    queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('id')
+    queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
     serializer_class =SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')
+    filter_fields = {'active':['exact']}
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+        lab = get_site_lab(self.request)
+        return queryset.filter(lab=lab)
     def get_permissions(self):
         try:
             # return permission_classes depending on `action` 
@@ -92,22 +131,17 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
         except KeyError: 
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
+    def perform_create(self, serializer):
+        return serializer.save(lab=get_site_lab(self.request))
 #     @detail_route(methods=['post'])
-#     def show(self,request,pk):
+#     def validate_data(self,request, pk):
 #         submission_type = self.get_object()
-#         SubmissionType.objects.filter(original=submission_type.original).update(show=False)
-#         submission_type.show = True
-#         submission_type.save()
-#         return response.Response({'status':'success','message':'Version {0} set to default.'.format(submission_type.version)})
-    @detail_route(methods=['post'])
-    def validate_data(self,request, pk):
-        submission_type = self.get_object()
-        validator = SamplesheetValidator(submission_type.schema,request.data.get('data'))
-        errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
-        if len(errors) == 0:
-            return response.Response({'status':'success','message':'The data was succussfully validated'})
-        else:
-            return response.Response({'errors':errors},status=500)
+#         validator = SamplesheetValidator(submission_type.sample_schema,request.data.get('data'))
+#         errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+#         if len(errors) == 0:
+#             return response.Response({'status':'success','message':'The data was succussfully validated'})
+#         else:
+#             return response.Response({'errors':errors},status=500)
     
 
 class SubmissionFileViewSet(viewsets.ModelViewSet):
@@ -176,3 +210,29 @@ class ValidatorViewSet(viewsets.ViewSet):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
         return response.Response([v().serialize() for v in VALIDATORS])
+
+class DraftViewSet(viewsets.ModelViewSet):
+    queryset = Draft.objects.all().order_by('-updated')
+    serializer_class = DraftSerializer
+    permission_classes = (AllowAny,)
+
+class LabViewSet(viewsets.ModelViewSet):
+    queryset = Lab.objects.all()
+    serializer_class = LabSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    @action(detail=False, methods=['get'])
+    def default(self, request):
+        lab = get_site_lab(request)
+        serializer = self.get_serializer(lab, many=False)
+        return Response(serializer.data)
+
+class PrefixViewSet(viewsets.ModelViewSet):
+    queryset = PrefixID.objects.all()
+    serializer_class = PrefixSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    filter_fields = {'lab_id':['exact']}
+#     def get_queryset(self):
+#         queryset = viewsets.ModelViewSet.get_queryset(self)
+#         lab = get_site_lab(self.request)
+#         return queryset.filter(lab=lab)   
+    

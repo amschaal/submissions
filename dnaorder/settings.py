@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ['fatboy.genomecenter.ucdavis.edu','dnatechorders.com','127.0.0.
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.sites',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'django_filters',
 #     'material',
     'dnaorder',
+    'billing',
     'corsheaders',
 ]
 
@@ -144,11 +146,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'dnaorder.api.pagination.StandardPagePagination',
     'PAGE_SIZE': 10,
     'PAGINATE_BY_PARAM': 'page_size',  # Allow client to override, using `?page_size=xxx`.
-    'MAX_PAGINATE_BY': 1000
+    'MAX_PAGINATE_BY': 1000,
+    'EXCEPTION_HANDLER': 'dnaorder.api.exceptions.custom_exception_handler'
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 BASE_URI = 'https://orders.dnatech.ucdavis.edu'
+
+LAB_EMAIL = 'dnatech@ucdavis.edu'
+
+PAYMENT_TYPES = []
 
 from config import *

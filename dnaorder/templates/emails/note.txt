@@ -1,8 +1,10 @@
-A new note has been added to submission {{note.submission.id}}:
+A new comment has been added to submission {{note.submission.internal_id}}:
 {{note.text}}
 
-You can view submission details and any other notes on the submission page:
+You can view submission details and any other comments on the submission page:
 {{BASE_URI}}{{note.submission.get_absolute_url}}
+
+Please do not reply to this email.  If you would like to respond, please do so in the comments tab at the URL above.
 
 Thank you,
 

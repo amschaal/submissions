@@ -15,72 +15,67 @@ from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 from django.db.models.signals import post_save
 from django.template.defaultfilters import default
+from django.contrib.sites.models import Site
+from dnaorder.payment import PaymentTypeManager
+from django.conf import settings
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
 
+# class PaymentType(models.Model):
+#     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
+
+class PrefixID(models.Model):
+    lab = models.ForeignKey('Lab', null=True, related_name='prefixes')
+    prefix = models.CharField(max_length=15)
+    current_id = models.PositiveIntegerField(default=0)
+    def generate_id(self, minimum_digits=4):
+        return '{prefix}{id}'.format(prefix=self.prefix,id=str(self.current_id).zfill(minimum_digits))
+    def __unicode__(self):
+        return self.generate_id()
+
+class Lab(models.Model):
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    site = models.OneToOneField(Site)
+    payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
+    home_page = models.TextField(default='')
+    def __unicode__(self):
+        return self.name
+
 class SubmissionType(models.Model):
-#     original = models.ForeignKey('self',null=True,blank=True,related_name='descendants')
-#     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.PROTECT,related_name='children')
-#     version = models.PositiveIntegerField(default=1)
+    lab = models.ForeignKey(Lab)
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True)
-#     show = models.BooleanField(default=False)
-    name = models.CharField(max_length=50)
+    active = models.BooleanField(default=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
-    prefix = models.CharField(max_length=15,null=True,blank=True)
-#     form = models.FileField(upload_to='submission_forms/')
-#     header_index = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-#     skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
-#     start_column = models.CharField(max_length=2,default='A')
-#     end_column = models.CharField(max_length=2,null=True,blank=True)
+    sort_order = models.PositiveIntegerField(default=1)
+    prefix = models.CharField(max_length=15)
+    next_id = models.PositiveIntegerField(default=1)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
-    #Submission level form definitions below
-#     has_submission_fields = models.BooleanField(default=False)
-#     submission_header_row = models.PositiveSmallIntegerField(null=True,blank=True,default=0)
-#     submission_skip_rows = models.PositiveSmallIntegerField(null=True,blank=True,default=1)
-#     submission_start_column = models.CharField(max_length=2,default='A',null=True,blank=True)
-#     submission_end_column = models.CharField(max_length=2,null=True,blank=True)
-    schema = JSONField(null=True,default=default_schema)
     submission_help = models.TextField(null=True,blank=True)
+    statuses = JSONField(default=list)
+    submission_schema = JSONField(null=True,default=default_schema)
     sample_schema = JSONField(null=True,default=default_schema)
-    examples = JSONField(default=list)
-    sample_help = models.TextField(null=True,blank=True)
+    sample_help = models.TextField(null=True, blank=True)
+    confirmation_text = models.TextField(null=True, blank=True)
+    class Meta:
+        ordering = ['sort_order', 'name']
+        unique_together = (('lab','prefix'),)
     def __unicode__(self):
         return "{name}".format(name=self.name)
-    @property
-    def samplesheet(self):
-        if not self.form or not self.id:
-            return None
-        from dnaorder.spreadsheets import CoreSampleSheet
-        return CoreSampleSheet(self.form.file,self)
+#     @property
+#     def samplesheet(self):
+#         if not self.form or not self.id:
+#             return None
+#         from dnaorder.spreadsheets import CoreSampleSheet
+#         return CoreSampleSheet(self.form.file,self)
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
-#     @property
-#     def versions(self):
-#         if self.original:
-#             return SubmissionType.objects.filter(original=self.original).order_by('-version')
-#         return SubmissionType.objects.filter(original=self).order_by('-version')
-#     @property
-#     def related_submissions(self):
-#         return Submission.objects.filter(type__in=self.versions)
-# def set_original(sender,instance,**kwargs):
-#     if not instance.original and not instance.parent:
-#         SubmissionType.objects.filter(id=instance.id).update(original=instance)
-# post_save.connect(set_original, SubmissionType)
 
-# def sra_samples_path(instance, filename):
-#     ext = os.path.splitext(filename)[1]
-#     filename = '%s.sra%s'%(instance.id,ext)
-#     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
-# #     return 'user_{0}/{1}'.format(instance.user.id, filename)
-# def sample_form_path(instance, filename):
-#     ext = os.path.splitext(filename)[1]
-#     filename = '%s.samples%s'%(instance.id,ext)
-#     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=timezone.now(),submission_id=instance.id,filename=filename)
-# 
 def submission_file_path(instance, filename):
     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
 
@@ -129,65 +124,94 @@ class Submission(models.Model):
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'DaFIS (UC Davis Account String)'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
-    internal_id = models.CharField(max_length=25, unique=True)
-    status = models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
+    lab = models.ForeignKey(Lab)
+    internal_id = models.CharField(max_length=25)
+    status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
+    completed = models.DateTimeField(null=True, blank=True)
     submitted = models.DateTimeField(auto_now_add=True)
+    confirmed = models.DateTimeField(null=True, blank=True)
     updated = models.DateTimeField(auto_now=True)
-    name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
-    pi_name = models.CharField(max_length=50)
+    pi_first_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=50)
     pi_email = models.EmailField(max_length=75)
+    pi_phone = models.CharField(max_length=20)
     institute = models.CharField(max_length=75)
-    payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
-    payment_info = models.CharField(max_length=250,null=True,blank=True)
+#     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
+#     payment_info = models.CharField(max_length=250,null=True,blank=True)
     type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
-#     sample_form = models.FileField(upload_to=sample_form_path)
+    submission_schema = JSONField(null=True,blank=True)
+    sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
-    sample_schema = JSONField(default=dict,null=True,blank=True)
     sample_data = JSONField(null=True,blank=True)
-#     sra_form = models.FileField(upload_to=sra_samples_path,null=True,blank=True)
     sra_data = JSONField(null=True,blank=True)
-    notes = models.TextField(null=True,blank=True)
+    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)
     data = JSONField(default=dict)
+    payment = JSONField(default=dict)
+    comments = models.TextField(null=True, blank=True)
     def save(self, *args, **kwargs):
+        self.lab = self.type.lab
         if not self.internal_id:
-            self.internal_id = self.generate_internal_id()
+#             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
+            
+#             prefix.current_id += 1
+            self.internal_id = "{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
+            self.type.next_id += 1
+            self.type.save()
+        if not self.sample_schema:
+            self.sample_schema = self.type.sample_schema
+        if not self.submission_schema:
+            self.submission_schema = self.type.submission_schema
         super(Submission, self).save(*args, **kwargs)
-    def generate_internal_id(self):
-        prefix = self.type.prefix or ''
-        print prefix
-        base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
-        for i in range(1,100):#that's a lot of submissions per day!
-            id = '{base_id}_{i}'.format(base_id=base_id,i=i)
-            if not Submission.objects.filter(internal_id=id).exists():
-                return id
-#         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
+#     def generate_internal_id(self):
+#         prefix, created = Prefix.object.get_or_create(prefix=self.type.prefix) 
+# #         print prefix
+# #         prefix
+#         base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
+#         for i in range(1,100):#that's a lot of submissions per day!
+#             id = '{base_id}_{i}'.format(base_id=base_id,i=i)
+#             if not Submission.objects.filter(internal_id=id).exists():
+#                 return id
+# #         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
+    def get_lab_from_email(self):
+        return "no-reply@{0}".format(self.lab.site.domain)
+    def get_participant_emails(self):
+        emails = [p.email for p in self.participants.all() if p.email]
+        if len(emails) == 0:
+            emails = [self.lab.email]
+        return emails
+    def get_submitter_emails(self):
+        emails = [c.email for c in self.contacts.all() if c.email] + [self.email, self.pi_email]
+        return emails
     def __unicode__(self):
-        return '{id}: {submitted} - {type} - {pi}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi=self.pi_name)
+        return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
         ordering = ['submitted']
-    @property
-    def samplesheet(self):
-        from dnaorder.spreadsheets import CoreSampleSheet
-        return CoreSampleSheet(self.sample_form.file,self.type)
-    @property
-    def submission_samplesheet(self):
-        if not self.type.has_submission_fields:
-            return None
-        from dnaorder.spreadsheets import SubmissionData
-        return SubmissionData(self.sample_form.file,self.type)
-    @property
-    def sra_samplesheet(self):
-        from dnaorder.spreadsheets import SRASampleSheet
-        return SRASampleSheet(self.sra_form.file) if self.sra_form else None
+        unique_together = (('internal_id','lab'))
+#     @property
+#     def samplesheet(self):
+#         from dnaorder.spreadsheets import CoreSampleSheet
+#         return CoreSampleSheet(self.sample_form.file,self.type)
+#     @property
+#     def submission_samplesheet(self):
+#         if not self.type.has_submission_fields:
+#             return None
+#         from dnaorder.spreadsheets import SubmissionData
+#         return SubmissionData(self.sample_form.file,self.type)
+#     @property
+#     def sra_samplesheet(self):
+#         from dnaorder.spreadsheets import SRASampleSheet
+#         return SRASampleSheet(self.sra_form.file) if self.sra_form else None
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
@@ -196,20 +220,28 @@ class Submission(models.Model):
             return True
         return not self.locked
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('submission', args=[str(self.id)])
-    def set_status(self,status,commit=True):
-        self.status = status
-        if status.auto_lock:
-            self.locked = True
-        if commit:
-            self.save()
+#         from django.urls import reverse
+#         return reverse('submission', args=[str(self.id)])
+        return '/submissions/{0}'.format(self.id)
+#     def set_status(self,status,commit=True):
+#         self.status = status
+#         if status.auto_lock:
+#             self.locked = True
+#         if commit:
+#             self.save()
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
         if len(participants) == 0:
             participants = ['dnatech@ucdavis.edu']
         return participants
+
+class Draft(models.Model):
+    id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    data = JSONField(null=False,blank=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    
 
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts')
@@ -236,29 +268,29 @@ class SubmissionFile(models.Model):
     class Meta:
         ordering = ['id']
 
-class Validator(models.Model):
-    field_id = models.CharField(max_length=30)
-    message = models.CharField(max_length=250,null=True,blank=True)
-    regex = models.CharField(max_length=250,null=True,blank=True)
-    choices = models.TextField(null=True,blank=True)
-    range = FloatRangeField(null=True,blank=True)
-    def __unicode__(self):
-        return self.field_id
-    def is_valid(self,value):
-        if self.regex:
-            pattern = re.compile(self.regex)
-            if not pattern.match(str(value)):
-                return False
-        if self.choices and str(value) not in [c.strip() for c in self.choices.split(',')]:
-            return False
-        if self.range:
-            try:
-                v = float(value)
-                if not v in self.range:
-                    return False
-            except:
-                return False
-        return True
+# class Validator(models.Model):
+#     field_id = models.CharField(max_length=30)
+#     message = models.CharField(max_length=250,null=True,blank=True)
+#     regex = models.CharField(max_length=250,null=True,blank=True)
+#     choices = models.TextField(null=True,blank=True)
+#     range = FloatRangeField(null=True,blank=True)
+#     def __unicode__(self):
+#         return self.field_id
+#     def is_valid(self,value):
+#         if self.regex:
+#             pattern = re.compile(self.regex)
+#             if not pattern.match(str(value)):
+#                 return False
+#         if self.choices and str(value) not in [c.strip() for c in self.choices.split(',')]:
+#             return False
+#         if self.range:
+#             try:
+#                 v = float(value)
+#                 if not v in self.range:
+#                     return False
+#             except:
+#                 return False
+#         return True
 
 class Note(models.Model):
     TYPE_LOG = 'LOG'

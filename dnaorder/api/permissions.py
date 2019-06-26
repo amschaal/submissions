@@ -12,7 +12,7 @@ class ReadOnlyPermissions(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
-        return request.user.is_superuser
+        return request.user.is_staff
 
 class NotePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
