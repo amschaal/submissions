@@ -311,7 +311,7 @@ class Note(models.Model):
         return not user.is_anonymous and self.type == Note.TYPE_NOTE and self.created_by == user# or not self.created_by
 @receiver(signals.post_save, sender=Note)
 def send_note_email(sender, instance, created, **kwargs):
-    'Note created'
+#     'Note created'
     if created and instance.emails:
         print instance.emails
         emails.note_email(instance)

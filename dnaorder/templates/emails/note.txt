@@ -1,5 +1,5 @@
 A new comment has been added to submission {{note.submission.internal_id}}:
-{{note.text}}
+{{note.text|safe}}
 
 You can view submission details and any other comments on the submission page:
 {{BASE_URI}}{{note.submission.get_absolute_url}}
