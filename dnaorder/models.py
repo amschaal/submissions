@@ -40,6 +40,7 @@ class Lab(models.Model):
     site = models.OneToOneField(Site)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
+    variables = JSONField(default=dict)
     def __unicode__(self):
         return self.name
 
