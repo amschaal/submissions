@@ -36,6 +36,16 @@ def login_view(request):
     else:
         return Response({'message':'Authentication failed.'},status=500)
 
+@api_view(['GET'])
+@csrf_exempt
+@permission_classes((AllowAny,))
+def get_user(request):
+    if request.user.is_authenticated:
+        user = request.user
+        return Response({'status':'success','user':UserSerializer(instance=user).data})
+    else:
+        return Response({'message':'Not authenticated.'},status=500)
+
 @api_view(['POST'])
 def logout_view(request):
     logout(request)

@@ -45,6 +45,7 @@ urlpatterns = [
     url(r'^api/validate/$', views.validate_data, name='validate'),
     url(r'^api/login/$', views.login_view, name='login'),
     url(r'^api/logout/$', views.logout_view, name='logout'),
+    url(r'^api/get_user/$', views.get_user, name='get_user'),
     url(r'^accounts/login/$', auth_views.login, name="login",kwargs={'redirect_authenticated_user': True}),
     url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
