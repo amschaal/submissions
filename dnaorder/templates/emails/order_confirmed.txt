@@ -1,6 +1,6 @@
 Dear {{submission.first_name}},
 
-Your submission from {{submission.submitted|date}} has been confirmed.  You may view your submission details and status at the following URL:
+Your submission from {{submission.submitted|date}} has been received.  You may view your submission details and status at the following URL:
 {{BASE_URI}}{{submission.get_absolute_url}}
 {% if submission.type.confirmation_text %}
 {{submission.type.confirmation_text}}

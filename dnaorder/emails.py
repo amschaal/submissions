@@ -23,7 +23,7 @@ def confirm_order(submission,request,emails=None):
 def order_confirmed(submission,request,emails=None):
     body = render_to_string('emails/order_confirmed.txt',{'submission':submission},request=request)
     send_mail(
-        'Submission {id} confirmed'.format(id=submission.internal_id),
+        'Submission {id} received'.format(id=submission.internal_id),
         body,
         submission.get_lab_from_email(),
         emails or [submission.email,submission.pi_email,submission.lab.email],
