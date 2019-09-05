@@ -327,3 +327,14 @@ def user_string(self):
         return self.username
 User.__unicode__ = user_string
 User.__str__ = user_string
+
+class Vocabulary(models.Model):
+    name = models.CharField(max_length=30, primary_key=True)
+
+class Term(models.Model):
+    vocabulary = models.ForeignKey(Vocabulary)
+    value = models.CharField(max_length=100)
+    obj = JSONField(null=True)
+    class Meta:
+        ordering = ['vocabulary', 'value']
+        unique_together = (('vocabulary','value'),)
