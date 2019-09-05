@@ -329,7 +329,8 @@ User.__unicode__ = user_string
 User.__str__ = user_string
 
 class Vocabulary(models.Model):
-    name = models.CharField(max_length=30, primary_key=True)
+    id = models.CharField(max_length=30, primary_key=True)
+    name = models.CharField(max_length=50)
 
 class Term(models.Model):
     vocabulary = models.ForeignKey(Vocabulary)

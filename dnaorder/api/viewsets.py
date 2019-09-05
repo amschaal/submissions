@@ -2,9 +2,10 @@ from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
-    DraftSerializer, LabSerializer, PrefixSerializer
+    DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
+    TermSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType, Draft, Lab, PrefixID
+    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term
 from rest_framework.decorators import detail_route, permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
@@ -235,4 +236,24 @@ class PrefixViewSet(viewsets.ModelViewSet):
 #         queryset = viewsets.ModelViewSet.get_queryset(self)
 #         lab = get_site_lab(self.request)
 #         return queryset.filter(lab=lab)   
-    
+
+class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
+    queryset = Vocabulary.objects.distinct()
+    serializer_class = VocabularySerializer
+    filter_fields = {
+        'name':['icontains','exact'],
+        'id':['icontains','exact']
+        }
+
+class TermViewSet(viewsets.ReadOnlyModelViewSet):
+    filter_fields = {
+        'value':['icontains','exact']
+#         'barcodes':['icontains','exact']
+        }
+    serializer_class = TermSerializer
+    queryset = Term.objects.distinct()
+    lookup_field = 'value'
+    def get_queryset(self):
+        return viewsets.ReadOnlyModelViewSet.get_queryset(self).filter(vocabulary=self.kwargs.get('vocabulary'))
+    def get_object(self):
+        return viewsets.ReadOnlyModelViewSet.get_object(self)

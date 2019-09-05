@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID
+    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -302,3 +302,13 @@ class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionStatus
         fields = ['id', 'order', 'name']
+        
+class VocabularySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vocabulary
+        exclude = []
+
+class TermSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Term
+        exclude = []
