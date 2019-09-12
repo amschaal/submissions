@@ -240,6 +240,7 @@ class PrefixViewSet(viewsets.ModelViewSet):
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
     serializer_class = VocabularySerializer
+    search_fields = ['id', 'name']
     filter_fields = {
         'name':['icontains','exact'],
         'id':['icontains','exact']
@@ -250,6 +251,7 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
         'value':['icontains','exact']
 #         'barcodes':['icontains','exact']
         }
+    search_fields = ['value']
     serializer_class = TermSerializer
     queryset = Term.objects.distinct()
     lookup_field = 'value'

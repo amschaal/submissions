@@ -16,6 +16,7 @@ class BaseValidator(object):
     name = None #Must override
     description = None
     uses_options = True
+    schema = None
     supported_types = ['string','number','boolean']
     def __init__(self, options= {}):
         self.options = options
@@ -27,7 +28,7 @@ class BaseValidator(object):
         raise NotImplementedError
         # @todo: return cleaned data
     def serialize(self):
-        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'supported_types': self.supported_types}
+        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
 
 # Custom validators
 class UniqueValidator(BaseValidator):
@@ -57,14 +58,17 @@ class RegexValidator(BaseValidator):
     name = 'Regular Expression'
     description = 'Check input against a regular expression.'
     uses_options = True
+    schema = [{'variable': 'regex', 'label': 'Regex', 'type': 'text'}]
     supported_types = ['string']
     def __init__(self, options={}):
         super(RegexValidator, self).__init__(options)
+        print "Regex Validator"
+        print options
         self.regex = self.options.get('regex',None)
         if self.regex:
             self.pattern = re.compile(self.regex)
     def validate(self, variable, value, schema={}, data=[]):
-        if not self.pattern:
+        if not hasattr(self, 'pattern'):
             return
         if not self.pattern.match(str(value)):
             raise ValidationException(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
@@ -149,6 +153,7 @@ class SamplesheetValidator:
                             break
     def get_validators(self, variable):
         #Add validators configured by the user
+        print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
         if variable in self.schema.get('required', []):

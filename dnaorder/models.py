@@ -335,7 +335,7 @@ class Vocabulary(models.Model):
 class Term(models.Model):
     vocabulary = models.ForeignKey(Vocabulary)
     value = models.CharField(max_length=100)
-    obj = JSONField(null=True)
+    obj = JSONField(null=True, blank=True)
     class Meta:
         ordering = ['vocabulary', 'value']
         unique_together = (('vocabulary','value'),)
