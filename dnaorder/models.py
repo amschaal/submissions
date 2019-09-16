@@ -236,8 +236,17 @@ class Submission(models.Model):
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
         if len(participants) == 0:
-            participants = ['dnatech@ucdavis.edu']
+            if self.type.default_participants.count() > 0:
+                participants = [u.email for u in self.type.default_participants.all()]
+            else:
+                participants = ['dnatech@ucdavis.edu']
         return participants
+
+@receiver(signals.post_save, sender=Submission)
+def set_default_participants(sender, instance, created, **kwargs):
+    if created and instance.type.default_participants.count() > 0:
+        for u in instance.type.default_participants.all():
+            instance.participants.add(u)
 
 class Draft(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)

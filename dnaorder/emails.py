@@ -26,7 +26,7 @@ def order_confirmed(submission,request,emails=None):
         'Submission {id} received'.format(id=submission.internal_id),
         body,
         submission.get_lab_from_email(),
-        emails or [submission.email,submission.pi_email,submission.lab.email],
+        emails or [submission.email,submission.pi_email] + submission.participant_emails,
         fail_silently=False,
     )
 
