@@ -116,7 +116,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
-    serializer_class =SubmissionTypeSerializer
+    serializer_class = SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')

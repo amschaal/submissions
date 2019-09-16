@@ -63,6 +63,7 @@ class SubmissionType(models.Model):
     sample_schema = JSONField(null=True,default=default_schema)
     sample_help = models.TextField(null=True, blank=True)
     confirmation_text = models.TextField(null=True, blank=True)
+    default_participants = models.ManyToManyField(User, blank=True, related_name='+')
     class Meta:
         ordering = ['sort_order', 'name']
         unique_together = (('lab','prefix'),)
