@@ -42,6 +42,7 @@ class Lab(models.Model):
     home_page = models.TextField(default='')
     submission_variables = JSONField(default=dict)
     sample_variables = JSONField(default=dict)
+    users = models.ManyToManyField(User, related_name='labs')
     def __unicode__(self):
         return self.name
 
