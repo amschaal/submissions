@@ -220,7 +220,7 @@ class Submission(models.Model):
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
     def editable(self,user=None):
-        if user and user.is_authenticated:
+        if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
     def get_absolute_url(self):
