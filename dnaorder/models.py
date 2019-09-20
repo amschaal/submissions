@@ -120,6 +120,7 @@ class Submission(models.Model):
 #         (STATUS_LIBRARIES_PREPPED,'Libraries prepped'),
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
+    PERMISSION_ADMIN = 'ADMIN'
     PAYMENT_DAFIS = 'DaFIS'
     PAYMENT_UC = 'UC Chart String'
     PAYMENT_CREDIT_CARD = 'Credit Card'
@@ -223,6 +224,12 @@ class Submission(models.Model):
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
+    def get_user_permissions(self, user):
+        permissions = []
+        if user:
+            if self.participants.filter(username=user.username).exists():
+                permissions.append(Submission.PERMISSION_ADMIN)
+        return permissions
     def get_absolute_url(self):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])

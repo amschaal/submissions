@@ -236,12 +236,22 @@ class LabSerializer(serializers.ModelSerializer):
         read_only_fields = ('name', 'site', 'payment_type_id')
 
 class SubmissionSerializer(WritableSubmissionSerializer):
+#     def __init__(self, *args, **kwargs):
+#         print 'submissionserializers'
+#         print args
+#         print kwargs
+#         super(SubmissionSerializer, self).__init__(*args, **kwargs)
     type = SubmissionTypeSerializer()
     lab = LabSerializer(read_only=True)
 #     status = SubmissionStatusSerializer()
+    permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
+    def get_permissions(self,instance):
+        #Only return permissions for detailed view, otherwise too expensive
+        if self._context.has_key('view') and self._context['view'].detail and self._context.has_key('request'):
+            return instance.get_user_permissions(self.context['request'].user)
     class Meta:
         model = Submission
         exclude = []
