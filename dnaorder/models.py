@@ -227,7 +227,7 @@ class Submission(models.Model):
     def get_user_permissions(self, user):
         permissions = []
         if user:
-            if self.participants.filter(username=user.username).exists():
+            if user.is_superuser or self.participants.filter(username=user.username).exists():
                 permissions.append(Submission.PERMISSION_ADMIN)
         return permissions
     def get_absolute_url(self):
