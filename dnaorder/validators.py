@@ -115,6 +115,25 @@ class NumberValidator(BaseValidator):
         if maximum and float(value) > maximum:
             raise ValidationException(variable, value, 'The maximum value is {0}'.format(maximum))
 
+class AdapterValidator(BaseValidator):
+    id = 'adapter'
+    name = 'Adapter Validator'
+    schema = [{'variable': 'samplename', 'label': 'Samplename variable', 'type': 'text'},
+              {'variable': 'db', 'label': 'Database variable', 'type': 'text'},
+              {'variable': 'adapter', 'label': 'Adapter variable', 'type': 'text'}
+              ]
+    def validate(self, variable, value, schema={}, data=[]):
+        if not hasattr(self, 'errors'):
+            self.validate_all(schema, data)
+        if variable in self.errors:
+            raise ValidationException(variable, value, self.errors[variable])
+    def validate_all(self, schema, data):
+        print 'Adapter Validator'
+        print self.options
+#         print data
+#         print schema
+        self.errors = {}
+
 class FooValidator(BaseValidator):
     id = 'foo'
     name = 'Foo'
@@ -122,7 +141,7 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator]
+VALIDATORS = [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator]
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
