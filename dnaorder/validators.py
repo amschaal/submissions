@@ -24,7 +24,7 @@ class BaseValidator(object):
             raise Exception('You must define "id" for each validator')
         if not self.name:
             raise Exception('You must define "name" for each validator')
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         raise NotImplementedError
         # @todo: return cleaned data
     def serialize(self):
@@ -36,7 +36,7 @@ class UniqueValidator(BaseValidator):
     name = 'Unique'
     description = 'Ensure that all values in the column are unique.'
     uses_options = False
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         col = get_column(variable, data)
         valid = len([val for val in col if val == value and val is not None]) < 2
         if not valid:
@@ -47,7 +47,7 @@ class RequiredValidator(BaseValidator):
     name = 'Required'
     description = 'Require that the user fill out this field. Internal fields are not required.'
     uses_options = False
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         if schema['properties'].get(variable,{}).get('internal', False):
             return
         if value is None or value == '':
@@ -67,7 +67,7 @@ class RegexValidator(BaseValidator):
         self.regex = self.options.get('regex',None)
         if self.regex:
             self.pattern = re.compile(self.regex)
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         if not hasattr(self, 'pattern'):
             return
         if not self.pattern.match(str(value)):
@@ -79,7 +79,7 @@ class EnumValidator(BaseValidator):
     description = 'Constrain input to a list of choices.'
     uses_options = True
     supported_types = ['string']
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         if not value:
             return
         choices = self.options.get('enum',[])
@@ -98,7 +98,7 @@ class NumberValidator(BaseValidator):
     description = 'Only allow numbers, optionally within a certain range.'
     uses_options = True
     supported_types = ['number']
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
 #         vschema = schema['properties'][variable]
         if not value and value != 0:
             return
@@ -122,22 +122,37 @@ class AdapterValidator(BaseValidator):
               {'variable': 'db', 'label': 'Database variable', 'type': 'text'},
               {'variable': 'adapter', 'label': 'Adapter variable', 'type': 'text'}
               ]
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         if not hasattr(self, 'errors'):
             self.validate_all(schema, data)
-        if variable in self.errors:
-            raise ValidationException(variable, value, self.errors[variable])
+        library = row.get(self.options.get('samplename'))
+        if library and library in self.errors:
+#             self.errors[library] -> {u'xyz23': [{u'distance': 0, u'xyz23': u'GTAATTGC', u'10xPN120262': u'GTAATTGC'}, {u'distance': 0, u'xyz23': u'AGTCGCTT', u'10xPN120262': u'AGTCGCTT'}, {u'distance': 0, u'xyz23': u'CACGAGAA', u'10xPN120262': u'CACGAGAA'}, {u'distance': 0, u'xyz23': u'TCGTCACG', u'10xPN120262': u'TCGTCACG'}]}
+            error = 'Barcode conflicts with samples: {}'.format(', '.join(self.errors[library].keys()))
+            raise ValidationException(variable, value, error)
     def validate_all(self, schema, data):
+        import json
+        import urllib2
         print 'Adapter Validator'
         print self.options
-#         print data
-#         print schema
-        self.errors = {}
+        libraries = [{'id': d.get(self.options.get('samplename')),'adapter_db':d.get(self.options.get('db')),'adapter':d.get(self.options.get('adapter'))} for d in data]
+        data = {
+                'libraries': libraries
+        }
+        req = urllib2.Request('http://sims.ucdavis.edu:8000/api/libraries/check_adapters/')
+        req.add_header('Content-Type', 'application/json')
+        response = urllib2.urlopen(req, json.dumps(data))
+        try:
+            self.errors = json.loads(response.read()).get('conflicts',{})
+        except:
+            self.errors = {}
+        print 'END Adapter Validation'
+#         self.errors = {}
 
 class FooValidator(BaseValidator):
     id = 'foo'
     name = 'Foo'
-    def validate(self, variable, value, schema={}, data=[]):
+    def validate(self, variable, value, schema={}, data=[], row=[]):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
@@ -165,7 +180,7 @@ class SamplesheetValidator:
             for validator in validators:
                 if validator:
                     try:
-                        validator.validate(variable, value, self.schema, self.data)
+                        validator.validate(variable, value, self.schema, self.data, row)
                     except ValidationException, e:
                         self.set_error(idx, variable, e.message)
                         if e.skip_other_exceptions:
@@ -215,7 +230,7 @@ class SubmissionValidator(SamplesheetValidator):
         for validator in validators:
             if validator:
                 try:
-                    validator.validate(variable, value, self.schema, [self.data])
+                    validator.validate(variable, value, self.schema, [self.data], [self.data])
                 except ValidationException, e:
                     self.set_error(variable, e.message)
                     if e.skip_other_exceptions:
