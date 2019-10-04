@@ -5,9 +5,10 @@ from dnaorder.payment import PaymentType
 class UCDPaymentSerializer(serializers.Serializer):
     payment_type = serializers.CharField(required=False)
     payment_info = serializers.CharField(required=False, allow_blank=True)
+    ppms_order_id = serializers.CharField(required=False, allow_blank=True)
     display = serializers.SerializerMethodField(read_only=True)
     def get_display(self, obj):
-        return {'Payment Type': obj.get('payment_type',''), 'Payment Info': obj.get('payment_info','')}
+        return {'Payment Type': obj.get('payment_type',''), 'Payment Info': obj.get('payment_info',''), 'PPMS Order ID': obj.get('ppms_order_id','')}
     def validate(self, data):
         from dnaorder.models import Submission
         PAYMENT_TYPES = [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO]
