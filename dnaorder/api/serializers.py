@@ -90,14 +90,11 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         sample_schema = self.initial_data.get('sample_schema',{})
         validator = SamplesheetValidator(sample_schema, data)
         errors = validator.validate()
-        print errors
         if len(errors):
             raise serializers.ValidationError('Examples did not validate.')
 #             
 #             self.add_error('sample_data', 'Errors were found in the samplesheet')
 #                 self.errors['_sample_data'] = errors
-#         print data
-#         print self.initial_data
 #         raise serializers.ValidationError('Examples did not validate.')
         return data
         # Apply custom validation either here, or in the view.
@@ -120,9 +117,6 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
-#         print 'WriteableSubmissionSerializer'
-#         print args
-#         print kwargs
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
@@ -171,8 +165,6 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             return validator.cleaned()
         return data
     def create(self, validated_data):
-        print 'creating'
-        print validated_data
         contacts = validated_data.pop('contacts')
         submission = Submission.objects.create(**validated_data)
         for contact in contacts:
@@ -180,9 +172,6 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return submission
     def update(self, instance, validated_data):
         contacts = validated_data.pop('contacts')
-        print 'updating'
-        print instance
-        print contacts
         info = serializers.model_meta.get_field_info(instance)
 
         # Simply set each attribute on the instance, and then save it.
@@ -204,19 +193,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 Contact.objects.create(submission=instance, **c)
         return instance
 #     def update(self, instance, validated_data):
-#         print 'updating'
-#         print validated_data
 #         return super(WritableSubmissionSerializer, self).update(instance, validated_data)
 #     def clean(self):
 #         cleaned_data = super(SubmissionForm, self).clean()
 #         sample_data = cleaned_data.get('sample_data')
 #         type = cleaned_data.get('type')
-# #         print 'sample_data'
-# #         print sample_data
 #         if type and sample_data and len(sample_data) > 0:
 #             validator = SamplesheetValidator(type.sample_schema,sample_data)
 #             errors = validator.validate()
-#             print errors
 #             if len(errors):
 #                 self.add_error('sample_data', 'Errors were found in the samplesheet')
 #                 self.errors['_sample_data'] = errors
@@ -237,9 +221,6 @@ class LabSerializer(serializers.ModelSerializer):
 
 class SubmissionSerializer(WritableSubmissionSerializer):
 #     def __init__(self, *args, **kwargs):
-#         print 'submissionserializers'
-#         print args
-#         print kwargs
 #         super(SubmissionSerializer, self).__init__(*args, **kwargs)
     type = SubmissionTypeSerializer()
     lab = LabSerializer(read_only=True)
@@ -294,7 +275,6 @@ class NoteSerializer(serializers.ModelSerializer):
                     data.update({'emails':submission.get_submitter_emails()}) # submission.participant_emails
             else:
                 data.update({'emails': submission.get_participant_emails()})
-        print data
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()

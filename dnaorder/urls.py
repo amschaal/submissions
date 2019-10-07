@@ -17,7 +17,7 @@ from django.conf.urls import url, include
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from api.urls import urlpatterns as api_urlpatterns
+from dnaorder.api.urls import urlpatterns as api_urlpatterns
 from billing.api.urls import urlpatterns as billing_urlpatterns
 from django.contrib.auth import views as auth_views
 

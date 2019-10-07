@@ -164,4 +164,4 @@ LAB_EMAIL = 'dnatech@ucdavis.edu'
 
 PAYMENT_TYPES = []
 
-from config import *
+from dnaorder.config import *

@@ -7,8 +7,6 @@ def get_data(schema, data, default=None, list_delimiter=', '):
         return [[]]
     if isinstance(data, dict):
         data = [data]
-#     print schema
-#     print data
     rows = []
     for row in data:
         rows.append([list_delimiter.join(row.get(v,default)) if isinstance(row.get(v,default), list) else row.get(v,default) for v in schema.get('order',[])])

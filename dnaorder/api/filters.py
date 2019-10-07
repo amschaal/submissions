@@ -5,8 +5,6 @@ class ParticipatingFilter(filters.BaseFilterBackend):
     """
     def filter_queryset(self, request, queryset, view):
         participating = view.request.query_params.get('participating',None)
-        print 'participating'
-        print participating
         if participating is not None:
             return queryset.filter(participants__in=[request.user])
         else:

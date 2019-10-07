@@ -10,6 +10,6 @@ def validate_dafis(acct_string):
     valid = None
     try:
         valid = json.load(urllib2.urlopen(URL))
-    except Exception, e:
+    except Exception as e:
         return False
     return valid

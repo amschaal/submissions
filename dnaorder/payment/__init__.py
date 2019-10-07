@@ -21,6 +21,6 @@ class PaymentTypeManager:
         return None
     def get_choices(self):
         choices = ()
-        for id, payment_type in self.payment_types.iteritems():
+        for id, payment_type in self.payment_types.items():
             choices += ((id,payment_type.name),)
         return choices
