@@ -10,35 +10,35 @@ from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 
 def translate_schema_complex(schema):
-    if not schema.has_key('order') or not schema.has_key('properties'):
+    if not  'order' in schema  or not  'properties' in schema :
         return schema
     new_schema = {'fields':[]}
-    if schema.has_key('layout'):
+    if  'layout' in schema :
         new_schema['layout'] = schema['layout']
     for v in schema['order']:
         s = schema['properties'][v]
         ns = {'id':v,'description':s.get('description'),'type':s.get('type'),'unique':s.get('unique',False),'required': v in schema.get('required',[]),'validators':[]}
-        if s.has_key('enum'):
+        if  'enum' in s :
             ns['enum'] = s['enum']
         if ns['type'] == 'number':
             validator = {'id':validators.NumberValidator.id,'options':{'minimum':s.get('minimum'),'maximum':s.get('maximum')}}
             ns['validators'].append(validator)
-        if ns['type'] == 'string' and s.has_key('pattern'):
+        if ns['type'] == 'string' and  'pattern' in s :
             ns['validators'].append({'id':validators.RegexValidator.id,'options':{'regex':s['pattern']}})
         new_schema['fields'].append(ns)
     return new_schema
 
 def translate_schema(schema):
-    if not schema.has_key('order') or not schema.has_key('properties'):
+    if not  'order' in schema  or not  'properties' in schema :
         return schema
     for v, s in schema['properties'].items():
-        if not s.has_key('validators'):
+        if not  'validators' in s :
             s['validators'] = []
 #         ns = {'id':v,'description':s.get('description'),'type':s.get('type'),'unique':s.get('unique',False),'required': v in schema.get('required',[]),'validators':[]}
 #         if ns['type'] == 'number':
 #             validator = {'id':validators.NumberValidator.id,'options':{'minimum':s.get('minimum'),'maximum':s.get('maximum')}}
 #             ns['validators'].append(validator)
-#         if ns['type'] == 'string' and s.has_key('pattern'):
+#         if ns['type'] == 'string' and  'pattern' in s :
 #             ns['validators'].append({'id':validators.RegexValidator.id,'options':{'regex':s['pattern']}})
 #         new_schema['fields'].append(ns)
 #     return new_schema
@@ -231,7 +231,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
-        if self._context.has_key('view') and self._context['view'].detail and self._context.has_key('request'):
+        if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
             return instance.get_user_permissions(self.context['request'].user)
     class Meta:
         model = Submission

@@ -156,10 +156,10 @@ class SampleSheet(object):
     def error_lookup(self):
         errors = {}
         for e in self._errors:
-            if not errors.has_key(e['column']):
+            if not e['column'] in errors:
                 errors[e['column']] = {}
             for id in e['ids']:
-                if not errors[e['column']].has_key(id):
+                if not id in errors[e['column']]:
                     errors[e['column']][id] = []
                 errors[e['column']][id]+=[e['message']]
             

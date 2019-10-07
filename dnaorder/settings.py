@@ -148,7 +148,10 @@ REST_FRAMEWORK = {
 #         'rest_framework.permissions.AllowAny'
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_FILTER_BACKENDS': ('rest_framework_filters.backends.DjangoFilterBackend','rest_framework.filters.OrderingFilter', 'rest_framework.filters.SearchFilter'),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend',
+                                'rest_framework.filters.OrderingFilter',
+                                'rest_framework.filters.SearchFilter'],
+#     ('rest_framework_filters.backends.DjangoFilterBackend','rest_framework.filters.OrderingFilter', 'rest_framework.filters.SearchFilter'),
     'DEFAULT_PAGINATION_CLASS': 'dnaorder.api.pagination.StandardPagePagination',
     'PAGE_SIZE': 10,
     'PAGINATE_BY_PARAM': 'page_size',  # Allow client to override, using `?page_size=xxx`.

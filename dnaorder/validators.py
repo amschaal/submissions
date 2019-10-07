@@ -130,18 +130,20 @@ class AdapterValidator(BaseValidator):
             raise ValidationException(variable, value, error)
     def validate_all(self, schema, data):
         import json
-        import urllib2
+        import urllib
         libraries = [{'id': d.get(self.options.get('samplename')),'adapter_db':d.get(self.options.get('db')),'adapter':d.get(self.options.get('adapter'))} for d in data]
         data = {
                 'libraries': libraries
         }
-        req = urllib2.Request('http://sims.ucdavis.edu:8000/api/libraries/check_adapters/')
+        data = json.dumps(data).encode("utf-8")
+        req = urllib.request.Request('http://sims.ucdavis.edu:8000/api/libraries/check_adapters/')
         req.add_header('Content-Type', 'application/json')
-        response = urllib2.urlopen(req, json.dumps(data))
         try:
+            response = urllib.request.urlopen(req, data=data)
             self.errors = json.loads(response.read()).get('conflicts',{})
-        except:
+        except Exception as e:
             self.errors = {}
+#             print(e.read().decode())
 #         self.errors = {}
 
 class FooValidator(BaseValidator):
@@ -161,12 +163,12 @@ class SamplesheetValidator:
         self.schema = schema
         self.data = data
     def get_validator(self, id, options={}):
-        if VALIDATORS_DICT.has_key(id):
+        if id in VALIDATORS_DICT:
             return VALIDATORS_DICT[id](options)
     def set_error(self, index, variable, message):
-        if not self.errors.has_key(index):
+        if not index in self.errors:
             self.errors[index] = {}
-        if not self.errors[index].has_key(variable):
+        if not variable in self.errors[index]:
             self.errors[index][variable] = []
         self.errors[index][variable].append(message)
     def validate_values(self, variable, validators):
@@ -216,7 +218,7 @@ class SamplesheetValidator:
 
 class SubmissionValidator(SamplesheetValidator):
     def set_error(self, variable, message):
-        if not self.errors.has_key(variable):
+        if not variable in self.errors:
             self.errors[variable] = []
         self.errors[variable].append(message)
     def validate_values(self, variable, validators):

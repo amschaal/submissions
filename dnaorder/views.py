@@ -136,12 +136,12 @@ def logout_view(request):
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
-    exclude = submission.type.excluded_fields if not request.GET.has_key('exclude') else request.GET.getlist('exclude')
+    exclude = submission.type.excluded_fields if not 'exclude' in request.GET else request.GET.getlist('exclude')
     max_samples = request.GET.get('max_samples')
     if not max_samples:
         max_samples = 1000
     variables = [v.replace('_',' ') for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
-    vertical = request.GET.has_key('vertical')
+    vertical = 'vertical' in request.GET
     pages = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude,page_size=int(max_samples))
     
     if vertical:
