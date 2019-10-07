@@ -6,7 +6,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     TermSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term
-from rest_framework.decorators import detail_route, permission_classes, action
+from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
     IsAuthenticatedOrReadOnly
@@ -48,7 +48,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             return [permission() for permission in self.permission_classes_by_action[self.action]]
         except KeyError: 
             return [permission() for permission in self.permission_classes]
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
 #         status = SubmissionStatus.objects.get(id=request.data.get('status'))
@@ -64,19 +64,19 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def lock(self,request,pk):
         submission = self.get_object()
         submission.locked = True
         submission.save()
         return response.Response({'status':'success','locked':True,'message':'Submission locked.'})
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def unlock(self,request,pk):
         submission = self.get_object()
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def cancel(self,request,pk):
         submission = self.get_object()
         if submission.locked and not request.user.is_staff:
@@ -85,7 +85,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             submission.cancelled = timezone.now()
             submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def uncancel(self,request,pk):
         submission = self.get_object()
         if not request.user.is_staff:
@@ -93,7 +93,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.cancelled = None
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def confirm(self,request,pk):
         submission = self.get_object()
         if not submission.confirmed:
