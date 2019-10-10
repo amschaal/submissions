@@ -62,7 +62,7 @@ class ModelRelatedField(serializers.RelatedField):
         self.queryset = kwargs.pop('queryset', self.model.objects.all())
         super(ModelRelatedField, self).__init__(**kwargs)
     def to_internal_value(self, data):
-        if isinstance(data, int) or isinstance(data, basestring):
+        if isinstance(data, int) or isinstance(data, str):
             kwargs = {self.pk:data}
             return self.model.objects.get(**kwargs)
         if data.get(self.pk,None):
