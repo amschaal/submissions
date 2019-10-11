@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/2.2/howto/deployment/wsgi/
 
 import os, sys
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'submissions.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dnaorder.settings')
 
 sys.path.append(os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2]))
 
