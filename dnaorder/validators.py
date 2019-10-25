@@ -1,5 +1,6 @@
 import re
 
+
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -153,7 +154,11 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator]
+def get_validators():
+    from genomics.validators import BarcodeValidator
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
+
+VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
