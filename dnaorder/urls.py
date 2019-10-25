@@ -17,11 +17,11 @@ from django.conf.urls import url, include
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from api.urls import urlpatterns as api_urlpatterns
+from dnaorder.api.urls import urlpatterns as api_urlpatterns
 from billing.api.urls import urlpatterns as billing_urlpatterns
 from django.contrib.auth import views as auth_views
 
-import views
+from dnaorder import views
 
 urlpatterns = [
     url(r'^server/admin/', admin.site.urls),
@@ -46,6 +46,6 @@ urlpatterns = [
     url(r'^api/login/$', views.login_view, name='login'),
     url(r'^api/logout/$', views.logout_view, name='logout'),
     url(r'^api/get_user/$', views.get_user, name='get_user'),
-    url(r'^accounts/login/$', auth_views.login, name="login",kwargs={'redirect_authenticated_user': True}),
-    url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
+#     url(r'^accounts/login/$', auth_views.login, name="login",kwargs={'redirect_authenticated_user': True}),
+#     url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

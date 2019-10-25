@@ -84,11 +84,7 @@ def logout_view(request):
 # #         raise PermissionDenied
 #     form = form_class(request.data,instance=submission)
 #     if form.is_valid():
-#         print request.data
-#         print form_class
 #         submission = form.save(commit=True)
-#         print submission
-#         print submission.sample_data
 #         submission_serializer = SubmissionSerializer(instance=submission,context={'request':request})
 #         return Response(submission_serializer.data)
 #     return Response({'errors':form.errors},status=500)
@@ -140,12 +136,12 @@ def logout_view(request):
 
 def print_submission(request,id):
     submission = Submission.objects.get(id=id)
-    exclude = submission.type.excluded_fields if not request.GET.has_key('exclude') else request.GET.getlist('exclude')
+    exclude = submission.type.excluded_fields if not 'exclude' in request.GET else request.GET.getlist('exclude')
     max_samples = request.GET.get('max_samples')
     if not max_samples:
         max_samples = 1000
     variables = [v.replace('_',' ') for v in submission.samplesheet.headers if v not in exclude]#list(set(submission.samplesheet.headers)-set(exclude))
-    vertical = request.GET.has_key('vertical')
+    vertical = 'vertical' in request.GET
     pages = submission.samplesheet.get_data(transpose=vertical,exclude_columns=exclude,page_size=int(max_samples))
     
     if vertical:
@@ -190,7 +186,6 @@ def download_old(request,id):
         else:
             df = submission.samplesheet.df
             filename = "%s.samples"%submission.id
-#         print samplesheet
         #Make it all lower case.  Maybe this should be an option in the interface?
         df = df.apply(lambda x: x.str.lower(),axis='columns')
 #         df = df[:][:].str.lower()
@@ -202,12 +197,8 @@ def download_old(request,id):
             df.to_csv(tmpfile.name,index=False)
             filename += '.csv'
             
-#         print 'read'
-#         print os.path.exists(tmpfile.name)
-#         print tmpfile.read()
         file_path = tmpfile.name
         
-    print file_path
     # generate the file
     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 

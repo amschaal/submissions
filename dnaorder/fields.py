@@ -7,8 +7,6 @@ class EmailArrayField(ArrayField):
     pass
 #     class EmailArrayValidator(validators.EmailValidator):
 #         def __call__(self, value):
-#             print 'validate'
-#             print value
 #             for email in value:
 #                 super(EmailListField.EmailListValidator, self).__call__(email)
 
@@ -17,8 +15,6 @@ class EmailListField(models.CharField):
 
     class EmailListValidator(validators.EmailValidator):
         def __call__(self, value):
-            print 'validate'
-            print value
             for email in value:
                 super(EmailListField.EmailListValidator, self).__call__(email)
 

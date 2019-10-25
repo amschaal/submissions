@@ -26,7 +26,7 @@ def default_schema():
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
 class PrefixID(models.Model):
-    lab = models.ForeignKey('Lab', null=True, related_name='prefixes')
+    lab = models.ForeignKey('Lab', null=True, related_name='prefixes', on_delete=models.CASCADE)
     prefix = models.CharField(max_length=15)
     current_id = models.PositiveIntegerField(default=0)
     def generate_id(self, minimum_digits=4):
@@ -37,7 +37,7 @@ class PrefixID(models.Model):
 class Lab(models.Model):
     name = models.CharField(max_length=50)
     email = models.EmailField()
-    site = models.OneToOneField(Site)
+    site = models.OneToOneField(Site, on_delete=models.PROTECT)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
     submission_variables = JSONField(default=dict)
@@ -47,9 +47,9 @@ class Lab(models.Model):
         return self.name
 
 class SubmissionType(models.Model):
-    lab = models.ForeignKey(Lab)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
     updated = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(User,null=True,blank=True)
+    updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
@@ -129,7 +129,7 @@ class Submission(models.Model):
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'DaFIS (UC Davis Account String)'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
-    lab = models.ForeignKey(Lab)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
     internal_id = models.CharField(max_length=25)
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
@@ -177,8 +177,6 @@ class Submission(models.Model):
         super(Submission, self).save(*args, **kwargs)
 #     def generate_internal_id(self):
 #         prefix, created = Prefix.object.get_or_create(prefix=self.type.prefix) 
-# #         print prefix
-# #         prefix
 #         base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
 #         for i in range(1,100):#that's a lot of submissions per day!
 #             id = '{base_id}_{i}'.format(base_id=base_id,i=i)
@@ -264,14 +262,14 @@ class Draft(models.Model):
     
 
 class Contact(models.Model):
-    submission = models.ForeignKey(Submission, related_name='contacts')
+    submission = models.ForeignKey(Submission, related_name='contacts', on_delete=models.CASCADE)
     first_name = models.CharField(max_length=25)
     last_name = models.CharField(max_length=30)
     email = models.EmailField(max_length=100)
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
-    submission = models.ForeignKey(Submission,related_name="files")
+    submission = models.ForeignKey(Submission,related_name="files", on_delete=models.CASCADE)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     file = models.FileField(upload_to=submission_file_path)
     def get_filename(self):
@@ -316,12 +314,12 @@ class Note(models.Model):
     TYPE_LOG = 'LOG'
     TYPE_NOTE = 'NOTE'
     TYPES = ((TYPE_LOG,TYPE_LOG),(TYPE_NOTE,TYPE_NOTE))
-    submission = models.ForeignKey(Submission)
-    parent = models.ForeignKey('Note',null=True)
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE)
+    parent = models.ForeignKey('Note',null=True, on_delete=models.PROTECT)
     text = models.TextField()
     type = models.CharField(max_length=20,choices=TYPES)
     created = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User,null=True)
+    created_by = models.ForeignKey(User,null=True, on_delete=models.PROTECT)
     emails = ArrayField(models.CharField(max_length=50),blank=True,null=True)
     sent = models.NullBooleanField()
     public = models.BooleanField(default=False)
@@ -333,7 +331,6 @@ class Note(models.Model):
 def send_note_email(sender, instance, created, **kwargs):
 #     'Note created'
     if created and instance.emails:
-        print instance.emails
         emails.note_email(instance)
         instance.sent = True
         instance.save()
@@ -351,7 +348,7 @@ class Vocabulary(models.Model):
     name = models.CharField(max_length=50)
 
 class Term(models.Model):
-    vocabulary = models.ForeignKey(Vocabulary)
+    vocabulary = models.ForeignKey(Vocabulary, on_delete=models.CASCADE)
     value = models.CharField(max_length=100)
     obj = JSONField(null=True, blank=True)
     class Meta:

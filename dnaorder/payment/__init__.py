@@ -16,11 +16,11 @@ class PaymentTypeManager:
             p = import_string(p)
             self.payment_types[p.id]=p
     def get_payment_type(self,id):
-        if self.payment_types.has_key(id):
+        if  id in self.payment_types:
             return self.payment_types[id]
         return None
     def get_choices(self):
         choices = ()
-        for id, payment_type in self.payment_types.iteritems():
+        for id, payment_type in self.payment_types.items():
             choices += ((id,payment_type.name),)
         return choices

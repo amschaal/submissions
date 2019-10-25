@@ -1,5 +1,6 @@
 import re
 
+
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -62,8 +63,6 @@ class RegexValidator(BaseValidator):
     supported_types = ['string']
     def __init__(self, options={}):
         super(RegexValidator, self).__init__(options)
-        print "Regex Validator"
-        print options
         self.regex = self.options.get('regex',None)
         if self.regex:
             self.pattern = re.compile(self.regex)
@@ -132,21 +131,20 @@ class AdapterValidator(BaseValidator):
             raise ValidationException(variable, value, error)
     def validate_all(self, schema, data):
         import json
-        import urllib2
-        print 'Adapter Validator'
-        print self.options
+        import urllib
         libraries = [{'id': d.get(self.options.get('samplename')),'adapter_db':d.get(self.options.get('db')),'adapter':d.get(self.options.get('adapter'))} for d in data]
         data = {
                 'libraries': libraries
         }
-        req = urllib2.Request('http://sims.ucdavis.edu:8000/api/libraries/check_adapters/')
+        data = json.dumps(data).encode("utf-8")
+        req = urllib.request.Request('http://sims.ucdavis.edu:8000/api/libraries/check_adapters/')
         req.add_header('Content-Type', 'application/json')
-        response = urllib2.urlopen(req, json.dumps(data))
         try:
+            response = urllib.request.urlopen(req, data=data)
             self.errors = json.loads(response.read()).get('conflicts',{})
-        except:
+        except Exception as e:
             self.errors = {}
-        print 'END Adapter Validation'
+#             print(e.read().decode())
 #         self.errors = {}
 
 class FooValidator(BaseValidator):
@@ -156,7 +154,11 @@ class FooValidator(BaseValidator):
         if value != 'foo':
             raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
 
-VALIDATORS = [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator]
+def get_validators():
+    from genomics.validators import BarcodeValidator
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
+
+VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
@@ -166,12 +168,12 @@ class SamplesheetValidator:
         self.schema = schema
         self.data = data
     def get_validator(self, id, options={}):
-        if VALIDATORS_DICT.has_key(id):
+        if id in VALIDATORS_DICT:
             return VALIDATORS_DICT[id](options)
     def set_error(self, index, variable, message):
-        if not self.errors.has_key(index):
+        if not index in self.errors:
             self.errors[index] = {}
-        if not self.errors[index].has_key(variable):
+        if not variable in self.errors[index]:
             self.errors[index][variable] = []
         self.errors[index][variable].append(message)
     def validate_values(self, variable, validators):
@@ -181,13 +183,13 @@ class SamplesheetValidator:
                 if validator:
                     try:
                         validator.validate(variable, value, self.schema, self.data, row)
-                    except ValidationException, e:
+                    except ValidationException as e:
                         self.set_error(idx, variable, e.message)
                         if e.skip_other_exceptions:
                             break
     def get_validators(self, variable):
         #Add validators configured by the user
-        print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
+#         print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
         if variable in self.schema.get('required', []):
@@ -206,7 +208,6 @@ class SamplesheetValidator:
         for variable in self.schema['properties'].keys():
             validators = self.get_validators(variable)
             self.validate_values(variable, validators)
-        print self.errors
         return self.errors
     def cleaned(self):
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
@@ -222,7 +223,7 @@ class SamplesheetValidator:
 
 class SubmissionValidator(SamplesheetValidator):
     def set_error(self, variable, message):
-        if not self.errors.has_key(variable):
+        if not variable in self.errors:
             self.errors[variable] = []
         self.errors[variable].append(message)
     def validate_values(self, variable, validators):
@@ -231,7 +232,7 @@ class SubmissionValidator(SamplesheetValidator):
             if validator:
                 try:
                     validator.validate(variable, value, self.schema, [self.data], [self.data])
-                except ValidationException, e:
+                except ValidationException as e:
                     self.set_error(variable, e.message)
                     if e.skip_other_exceptions:
                         break
