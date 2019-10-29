@@ -31,7 +31,7 @@ class PrefixID(models.Model):
     current_id = models.PositiveIntegerField(default=0)
     def generate_id(self, minimum_digits=4):
         return '{prefix}{id}'.format(prefix=self.prefix,id=str(self.current_id).zfill(minimum_digits))
-    def __unicode__(self):
+    def __str__(self):
         return self.generate_id()
 
 class Lab(models.Model):
@@ -43,7 +43,7 @@ class Lab(models.Model):
     submission_variables = JSONField(default=dict)
     sample_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 class SubmissionType(models.Model):
@@ -68,7 +68,7 @@ class SubmissionType(models.Model):
     class Meta:
         ordering = ['sort_order', 'name']
         unique_together = (('lab','prefix'),)
-    def __unicode__(self):
+    def __str__(self):
         return "{name}".format(name=self.name)
 #     @property
 #     def samplesheet(self):
@@ -99,7 +99,7 @@ class SubmissionStatus(models.Model):
     order = models.PositiveSmallIntegerField()
     name = models.CharField(max_length=40)
     auto_lock = models.BooleanField(default=False)
-    def __unicode__(self):
+    def __str__(self):
         return self.name
     class Meta:
         verbose_name_plural = "Submission Statuses"
@@ -196,7 +196,7 @@ class Submission(models.Model):
     def get_submitter_emails(self):
         emails = [c.email for c in self.contacts.all() if c.email] + [self.email, self.pi_email]
         return emails
-    def __unicode__(self):
+    def __str__(self):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
         ordering = ['submitted']
@@ -292,7 +292,7 @@ class SubmissionFile(models.Model):
 #     regex = models.CharField(max_length=250,null=True,blank=True)
 #     choices = models.TextField(null=True,blank=True)
 #     range = FloatRangeField(null=True,blank=True)
-#     def __unicode__(self):
+#     def __str__(self):
 #         return self.field_id
 #     def is_valid(self,value):
 #         if self.regex:
@@ -340,7 +340,7 @@ def user_string(self):
         return "{first} {last}".format(first=self.first_name, last=self.last_name)
     else:
         return self.username
-User.__unicode__ = user_string
+User.__str__ = user_string
 User.__str__ = user_string
 
 class Vocabulary(models.Model):
