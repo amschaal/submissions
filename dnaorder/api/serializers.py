@@ -144,8 +144,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             schema = type.sample_schema
         if schema:
             validator = SamplesheetValidator(schema,sample_data)
-            errors, warnings = validator.validate()
-            if len(errors):
+            self._sample_errors, self._sample_warnings = validator.validate()
+            if len(self._sample_errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
             return validator.cleaned()
         return sample_data
@@ -159,13 +159,17 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             schema = type.submission_schema
         if schema:
             validator = SubmissionValidator(schema,data)
-            errors, warnings = validator.validate()
-            if len(errors.keys()):
-                raise serializers.ValidationError(errors)
+            self._submission_errors, self._submission_warnings = validator.validate()
+            if len(self._submission_errors):
+                raise serializers.ValidationError(self._submission_errors)
             return validator.cleaned()
         return data
     def create(self, validated_data):
         contacts = validated_data.pop('contacts')
+        validated_data['data'] = {
+                                    'samplesheet': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+                                    'submission': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
+                                  }
         submission = Submission.objects.create(**validated_data)
         for contact in contacts:
             Contact.objects.create(submission=submission, **contact)
@@ -184,6 +188,11 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 field.set(value)
             else:
                 setattr(instance, attr, value)
+#         instance.save()
+        instance.data.update({
+                                    'samplesheet': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+                                    'submission': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
+                                  })
         instance.save()
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:
