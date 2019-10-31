@@ -9,7 +9,7 @@ def validate_dafis(acct_string):
     URL = "https://kfs.ucdavis.edu/kfs-prd/remoting/rest/fau/account/%s/%s/isvalid" % (chart,account)
     valid = None
     try:
-        valid = json.load(urlopen(URL))
+        valid = json.loads(urlopen(URL).read())
     except Exception as e:
         return False
     return valid
