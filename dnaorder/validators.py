@@ -8,6 +8,12 @@ class ValidationException(Exception):
         self.message = message
         self.skip_other_exceptions = skip_other_exceptions
 
+class ValidationError(ValidationException):
+    pass
+
+class ValidationWarning(ValidationException):
+    pass
+
 
 def get_column(variable, data=[]):
     return [line.get(variable, None) for line in data]
@@ -41,7 +47,7 @@ class UniqueValidator(BaseValidator):
         col = get_column(variable, data)
         valid = len([val for val in col if val == value and val is not None]) < 2
         if not valid:
-            raise ValidationException(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
+            raise ValidationError(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
 
 class RequiredValidator(BaseValidator):
     id = 'required'
@@ -52,7 +58,7 @@ class RequiredValidator(BaseValidator):
         if schema['properties'].get(variable,{}).get('internal', False):
             return
         if value is None or value == '':
-            raise ValidationException(variable, value,"This field is required.",skip_other_exceptions=True)
+            raise ValidationError(variable, value,"This field is required.",skip_other_exceptions=True)
 
 class RegexValidator(BaseValidator):
     id = 'regex'
@@ -70,7 +76,7 @@ class RegexValidator(BaseValidator):
         if not hasattr(self, 'pattern'):
             return
         if not self.pattern.match(str(value)):
-            raise ValidationException(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
+            raise ValidationError(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
 
 class EnumValidator(BaseValidator):
     id = 'enum'
@@ -87,9 +93,9 @@ class EnumValidator(BaseValidator):
         if isinstance(value, (list,tuple)):
             bad_values = [v for v in value if v not in choices]
             if len(bad_values) > 0:
-                raise ValidationException(variable, value, 'Value(s) "{0}" not in the acceptable values: {1}'.format(", ".join(bad_values), ", ".join(choices)))
+                raise ValidationError(variable, value, 'Value(s) "{0}" not in the acceptable values: {1}'.format(", ".join(bad_values), ", ".join(choices)))
         elif value not in choices:
-            raise ValidationException(variable, value, 'Value "{0}" is not one of the acceptable values: {1}'.format(value, ", ".join(choices)))
+            raise ValidationError(variable, value, 'Value "{0}" is not one of the acceptable values: {1}'.format(value, ", ".join(choices)))
 
 class NumberValidator(BaseValidator):
     id = 'number'
@@ -104,15 +110,15 @@ class NumberValidator(BaseValidator):
         try:
             float(value)
         except ValueError:
-            raise ValidationException(variable, value, 'Value "{0}" is not a number'.format(value))
+            raise ValidationError(variable, value, 'Value "{0}" is not a number'.format(value))
         minimum = self.options.get('minimum', None)
         maximum = self.options.get('maximum', None)
         if minimum and maximum and (float(value) < minimum or float(value) > maximum):
-            raise ValidationException(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
+            raise ValidationError(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
         if minimum and float(value) < minimum:
-            raise ValidationException(variable, value, 'The minimum value is {0}'.format(minimum))
+            raise ValidationError(variable, value, 'The minimum value is {0}'.format(minimum))
         if maximum and float(value) > maximum:
-            raise ValidationException(variable, value, 'The maximum value is {0}'.format(maximum))
+            raise ValidationError(variable, value, 'The maximum value is {0}'.format(maximum))
 
 class AdapterValidator(BaseValidator):
     id = 'adapter'
@@ -128,7 +134,7 @@ class AdapterValidator(BaseValidator):
         if library and library in self.errors:
 #             self.errors[library] -> {u'xyz23': [{u'distance': 0, u'xyz23': u'GTAATTGC', u'10xPN120262': u'GTAATTGC'}, {u'distance': 0, u'xyz23': u'AGTCGCTT', u'10xPN120262': u'AGTCGCTT'}, {u'distance': 0, u'xyz23': u'CACGAGAA', u'10xPN120262': u'CACGAGAA'}, {u'distance': 0, u'xyz23': u'TCGTCACG', u'10xPN120262': u'TCGTCACG'}]}
             error = 'Barcode conflicts with samples: {}'.format(', '.join(self.errors[library].keys()))
-            raise ValidationException(variable, value, error)
+            raise ValidationError(variable, value, error)
     def validate_all(self, schema, data):
         import json
         import urllib
@@ -152,7 +158,7 @@ class FooValidator(BaseValidator):
     name = 'Foo'
     def validate(self, variable, value, schema={}, data=[], row=[]):
         if value != 'foo':
-            raise ValidationException(variable, value, 'Value must be "foo"'.format(value, variable))
+            raise ValidationError(variable, value, 'Value must be "foo"'.format(value, variable))
 
 def get_validators():
     from genomics.validators import BarcodeValidator
@@ -165,6 +171,7 @@ VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 class SamplesheetValidator:
     def __init__(self, schema, data):
         self.errors = {}
+        self.warnings = {}
         self.schema = schema
         self.data = data
     def get_validator(self, id, options={}):
@@ -176,6 +183,12 @@ class SamplesheetValidator:
         if not variable in self.errors[index]:
             self.errors[index][variable] = []
         self.errors[index][variable].append(message)
+    def set_warning(self, index, variable, message):
+        if not index in self.warnings:
+            self.warnings[index] = {}
+        if not variable in self.warnings[index]:
+            self.warnings[index][variable] = []
+        self.warnings[index][variable].append(message)
     def validate_values(self, variable, validators):
         for idx, row in enumerate(self.data):
             value = row.get(variable, None)
@@ -183,7 +196,11 @@ class SamplesheetValidator:
                 if validator:
                     try:
                         validator.validate(variable, value, self.schema, self.data, row)
-                    except ValidationException as e:
+                    except ValidationWarning as e:
+                        self.set_warning(idx, variable, e.message)
+                        if e.skip_other_exceptions:
+                            break
+                    except ValidationError as e:
                         self.set_error(idx, variable, e.message)
                         if e.skip_other_exceptions:
                             break
@@ -208,7 +225,7 @@ class SamplesheetValidator:
         for variable in self.schema['properties'].keys():
             validators = self.get_validators(variable)
             self.validate_values(variable, validators)
-        return self.errors
+        return (self.errors, self.warnings)
     def cleaned(self):
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
         cleaned = []
@@ -226,13 +243,21 @@ class SubmissionValidator(SamplesheetValidator):
         if not variable in self.errors:
             self.errors[variable] = []
         self.errors[variable].append(message)
+    def set_warning(self, variable, message):
+        if not variable in self.warning:
+            self.warnings[variable] = []
+        self.warnings[variable].append(message)
     def validate_values(self, variable, validators):
         value = self.data.get(variable, None)
         for validator in validators:
             if validator:
                 try:
                     validator.validate(variable, value, self.schema, [self.data], [self.data])
-                except ValidationException as e:
+                except ValidationWarning as e:
+                    self.set_warning(variable, e.message)
+                    if e.skip_other_exceptions:
+                        break
+                except ValidationError as e:
                     self.set_error(variable, e.message)
                     if e.skip_other_exceptions:
                         break

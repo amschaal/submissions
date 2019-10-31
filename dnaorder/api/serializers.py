@@ -89,7 +89,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
     def validate_examples(self, data):
         sample_schema = self.initial_data.get('sample_schema',{})
         validator = SamplesheetValidator(sample_schema, data)
-        errors = validator.validate()
+        errors, warnings = validator.validate()
         if len(errors):
             raise serializers.ValidationError('Examples did not validate.')
 #             
@@ -144,7 +144,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             schema = type.sample_schema
         if schema:
             validator = SamplesheetValidator(schema,sample_data)
-            errors = validator.validate()
+            errors, warnings = validator.validate()
             if len(errors):
                 raise serializers.ValidationError("Samplesheet contains errors.")
             return validator.cleaned()
@@ -159,7 +159,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             schema = type.submission_schema
         if schema:
             validator = SubmissionValidator(schema,data)
-            errors = validator.validate()
+            errors, warnings = validator.validate()
             if len(errors.keys()):
                 raise serializers.ValidationError(errors)
             return validator.cleaned()

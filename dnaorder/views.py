@@ -210,11 +210,11 @@ def validate_data(request,type_id=None):
     else:
         schema = request.data.get('sample_schema')
     validator = SamplesheetValidator(schema,request.data.get('data'))
-    errors = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
-    if len(errors) == 0:
-        return Response({'status':'success','message':'The data was succussfully validated'})
+    errors, warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+    if len(errors) == 0 and len(warnings) == 0:
+        return Response({'status':'success','message':'The data was successfully validated'})
     else:
-        return Response({'errors':errors},status=500)
+        return Response({'errors':errors, 'warnings': warnings},status=500)
 
 @permission_classes((AllowAny,))
 def download(request, id):
