@@ -164,13 +164,25 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(self._submission_errors)
             return validator.cleaned()
         return data
+    def update_errors_and_warnings(self, instance):
+        instance.data.update({'errors':{},'warnings':{}})
+        if len(self._sample_errors):
+            instance.data['errors']['sample_data']=self._sample_errors
+        if len(self._sample_warnings):
+            instance.data['warnings']['sample_data']=self._sample_warnings
+        if len(self._submission_errors):
+            instance.data['errors']['submission_data']=self._submission_errors
+        if len(self._submission_warnings):
+            instance.data['warnings']['submission_data']=self._submission_warnings
+        instance.save()
     def create(self, validated_data):
         contacts = validated_data.pop('contacts')
         validated_data['data'] = {
-                                    'samplesheet': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
-                                    'submission': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
+                                    'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+                                    'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                   }
         submission = Submission.objects.create(**validated_data)
+        self.update_errors_and_warnings(submission)
         for contact in contacts:
             Contact.objects.create(submission=submission, **contact)
         return submission
@@ -188,12 +200,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 field.set(value)
             else:
                 setattr(instance, attr, value)
+        self.update_errors_and_warnings(instance)
 #         instance.save()
-        instance.data.update({
-                                    'samplesheet': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
-                                    'submission': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
-                                  })
-        instance.save()
+        
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:
             if c.get('id', False):
@@ -219,8 +228,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             return instance.editable(request.user)
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id','data']
-        read_only_fields= ['lab']
+        exclude = ['submitted','sra_data','status','internal_id']
+        read_only_fields= ['lab','data']
         
 class LabSerializer(serializers.ModelSerializer):
     class Meta:
