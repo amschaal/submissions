@@ -120,6 +120,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
+    warnings = serializers.SerializerMethodField()
 #     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer() 
 #     def validate_payment_info(self, payment_info):
@@ -146,7 +147,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             validator = SamplesheetValidator(schema,sample_data)
             self._sample_errors, self._sample_warnings = validator.validate()
             if len(self._sample_errors):
-                raise serializers.ValidationError("Samplesheet contains errors.")
+                raise serializers.ValidationError(self._sample_errors)
             return validator.cleaned()
         return sample_data
     def validate_submission_data(self, data={}):
@@ -226,6 +227,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         request = self._context.get('request')
         if request:
             return instance.editable(request.user)
+    def get_warnings(self, instance):
+        return instance.data.get('warnings') if instance and instance.data else {}
     class Meta:
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id']
