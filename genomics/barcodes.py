@@ -26,19 +26,26 @@ def get_conflicts(l1, l2, min_distance=2):
 #             errors[l1['id']][l2['id']].append({'barcode1'})
 
 """
-libraries: [{'id':'id1', 'barcodes': {'P5':[...]}}, ...] 
+libraries: [{'id':'id1', 'pool':'poolA', 'barcodes': {'P5':[...]}}, ...] 
 returns: {'id1': {'id3': [{'barcode':'...','distance':2},...]}, 'id3': {'id1': [{'barcode':'...','distance':2},...]}
 """
 def get_all_conflicts(libraries, min_distance=2):
     conflicts = {}
-    for i, l1 in enumerate(libraries):
-        for l2 in libraries[i+1:]:
-            c = get_conflicts(l1, l2, min_distance)
-            if len(c) > 0:
-                if not l1['id'] in conflicts:
-                    conflicts[l1['id']] = {}
-                if not l2['id'] in conflicts:
-                    conflicts[l2['id']] = {}
-                conflicts[l1['id']][l2['id']] = c
-                conflicts[l2['id']][l1['id']] = c
+    pools = {}
+    for i, l in enumerate(libraries):
+        pool = str(l.get('pool','')).strip().lower()
+        if pool not in pools:
+            pools[pool] = []
+        pools[pool].append(l)
+    for pool in pools.values():
+        for i, l1 in enumerate(pool):
+            for l2 in pool[i+1:]:
+                c = get_conflicts(l1, l2, min_distance)
+                if len(c) > 0:
+                    if not l1['id'] in conflicts:
+                        conflicts[l1['id']] = {}
+                    if not l2['id'] in conflicts:
+                        conflicts[l2['id']] = {}
+                    conflicts[l1['id']][l2['id']] = c
+                    conflicts[l2['id']][l1['id']] = c
     return conflicts
