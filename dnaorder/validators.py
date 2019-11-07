@@ -273,11 +273,11 @@ class SamplesheetValidator:
 #         return dict([(,)  for variable in self.schema['properties'].keys()])
 
 class SubmissionValidator(SamplesheetValidator):
-    def set_error(self, variable, message):
+    def set_error(self, index, variable, message):
         if not variable in self.errors:
             self.errors[variable] = []
         self.errors[variable].append(message)
-    def set_warning(self, variable, message):
+    def set_warning(self, index, variable, message):
         if not variable in self.warning:
             self.warnings[variable] = []
         self.warnings[variable].append(message)
