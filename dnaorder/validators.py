@@ -46,8 +46,6 @@ class BaseValidator(object):
                 self.validate(variable, value, schema, data, row)
             except ValidationException as e:
                 if not idx in exceptions:
-                    exceptions[idx] = {}
-                if variable not in exceptions[idx]:
                     exceptions[idx] = []
                 exceptions[idx].append(e)
         if len(exceptions) > 0:
