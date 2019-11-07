@@ -2,10 +2,14 @@ import re
 
 
 class ValidationException(Exception):
-    def __init__(self, variable, value, message, skip_other_exceptions=False):
-        self.variable = variable
-        self.value = value
-        self.message = message
+    def __init__(self, detail, value=None, message=None, skip_other_exceptions=False):
+        self.exceptions = None
+        if isinstance(detail,dict):
+            self.exceptions = detail
+        else: 
+            self.variable = detail
+            self.value = value
+            self.message = message
         self.skip_other_exceptions = skip_other_exceptions
 
 class ValidationError(ValidationException):
