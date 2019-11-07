@@ -9,17 +9,23 @@ l1, l2: {'id':'id1', 'barcodes': {'P5':[...]}}
 """
 def get_conflicts(l1, l2, min_distance=2):
 #     print('test distance {} + {}'.format(l1,l2))
-    conflicts = []
-    for b1 in l1['barcodes']:
-        for b2 in l2['barcodes']:
-            try:
-                d = hamming_distance(b1, b2)
-                if d < min_distance:
-    #                 print('hamming distance {} - {} = {}'.format(s1,s2,d))
-                    conflicts.append({l1['id']: b1, l2['id']: b2, 'distance': d})
-            except AssertionError:
-                conflicts.append({l1['id']: b1, l2['id']: b2, 'distance': 0, 'message': 'Barcodes are differing lengths'})
-    return conflicts
+    conflicts = {}
+    for k in l1['barcodes'].keys():
+        conflicts[k] = []
+        if k in l2['barcodes']:
+            for b1 in l1['barcodes'][k]:
+                for b2 in l2['barcodes'][k]:
+                    try:
+                        d = hamming_distance(b1, b2)
+                        if d < min_distance:
+            #                 print('hamming distance {} - {} = {}'.format(s1,s2,d))
+                            conflicts[k].append({l1['id']: b1, l2['id']: b2, 'distance': d})
+                    except AssertionError:
+                        conflicts[k].append({l1['id']: b1, l2['id']: b2, 'distance': 0, 'message': 'Barcodes are differing lengths'})
+        if len(conflicts[k]) == 0: # For dual barcodes, only one end needs to be conflict free
+            return []
+#     flat_list = [item for sublist in l for item in sublist]
+    return [c for barcode in conflicts.values() for c in barcode]
 #     if len(conflicts) > 0:
 #         errors = {l1['id']: {l2['id']:[]}, l2['id']: {l1['id']:[]}}
 #         for c in conflicts:

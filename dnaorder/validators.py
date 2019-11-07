@@ -197,11 +197,11 @@ class SamplesheetValidator:
                     try:
                         validator.validate(variable, value, self.schema, self.data, row)
                     except ValidationWarning as e:
-                        self.set_warning(idx, variable, e.message)
+                        self.set_warning(idx, e.variable, e.message)
                         if e.skip_other_exceptions:
                             break
                     except ValidationError as e:
-                        self.set_error(idx, variable, e.message)
+                        self.set_error(idx, e.variable, e.message)
                         if e.skip_other_exceptions:
                             break
     def get_validators(self, variable):
@@ -254,11 +254,11 @@ class SubmissionValidator(SamplesheetValidator):
                 try:
                     validator.validate(variable, value, self.schema, [self.data], [self.data])
                 except ValidationWarning as e:
-                    self.set_warning(variable, e.message)
+                    self.set_warning(e.variable, e.message)
                     if e.skip_other_exceptions:
                         break
                 except ValidationError as e:
-                    self.set_error(variable, e.message)
+                    self.set_error(e.variable, e.message)
                     if e.skip_other_exceptions:
                         break
     def cleaned(self):
