@@ -14,13 +14,13 @@ class BarcodeValidator(BaseValidator):
         self.sample_name = self.options.get('samplename')
         self.barcode2 = self.options.get('barcode2', None)
         if not hasattr(self, 'errors'):
-            self.validate_all(schema, data, variable)
+            self._validate_all(schema, data, variable)
         library = row.get(self.options.get('samplename'))
         if library and library in self.errors:
 #             self.errors[library] -> {u'xyz23': [{u'distance': 0, u'xyz23': u'GTAATTGC', u'10xPN120262': u'GTAATTGC'}, {u'distance': 0, u'xyz23': u'AGTCGCTT', u'10xPN120262': u'AGTCGCTT'}, {u'distance': 0, u'xyz23': u'CACGAGAA', u'10xPN120262': u'CACGAGAA'}, {u'distance': 0, u'xyz23': u'TCGTCACG', u'10xPN120262': u'TCGTCACG'}]}
             error = 'Barcode conflicts with samples: {}.  Please ensure equal length barcodes and a hamming distance of at least {}.'.format(', '.join(self.errors[library].keys()),self.hamming_distance)
             raise ValidationWarning(variable, value, error)
-    def validate_all(self, schema, data, variable):
+    def _validate_all(self, schema, data, variable):
         libraries = []
         for d in data:
             if d.get(variable, None):

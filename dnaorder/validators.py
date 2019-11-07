@@ -2,14 +2,15 @@ import re
 
 
 class ValidationException(Exception):
-    def __init__(self, detail, value=None, message=None, skip_other_exceptions=False):
-        self.exceptions = None
-        if isinstance(detail,dict):
-            self.exceptions = detail
-        else: 
-            self.variable = detail
-            self.value = value
-            self.message = message
+    def __init__(self, variable, value, message, skip_other_exceptions=False):
+        self.variable = variable
+        self.value = value
+        self.message = message
+        self.skip_other_exceptions = skip_other_exceptions
+
+class MultiValidationException(Exception):
+    def __init__(self, exceptions, skip_other_exceptions=False):
+        self.exceptions = exceptions
         self.skip_other_exceptions = skip_other_exceptions
 
 class ValidationError(ValidationException):
@@ -37,6 +38,20 @@ class BaseValidator(object):
             raise Exception('You must define "name" for each validator')
     def validate(self, variable, value, schema={}, data=[], row=[]):
         raise NotImplementedError
+    def validate_all(self, variable, schema={}, data=[]):
+        exceptions = {}
+        for idx, row in enumerate(data):
+            value = row.get(variable, None)
+            try:
+                self.validate(variable, value, schema, data, row)
+            except ValidationException as e:
+                if not idx in exceptions:
+                    exceptions[idx] = {}
+                if variable not in exceptions[idx]:
+                    exceptions[idx] = []
+                exceptions[idx].append(e)
+        if len(exceptions) > 0:
+            raise MultiValidationException(exceptions)
         # @todo: return cleaned data
     def serialize(self):
         return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
@@ -133,13 +148,13 @@ class AdapterValidator(BaseValidator):
               ]
     def validate(self, variable, value, schema={}, data=[], row=[]):
         if not hasattr(self, 'errors'):
-            self.validate_all(schema, data)
+            self._validate_all(schema, data)
         library = row.get(self.options.get('samplename'))
         if library and library in self.errors:
 #             self.errors[library] -> {u'xyz23': [{u'distance': 0, u'xyz23': u'GTAATTGC', u'10xPN120262': u'GTAATTGC'}, {u'distance': 0, u'xyz23': u'AGTCGCTT', u'10xPN120262': u'AGTCGCTT'}, {u'distance': 0, u'xyz23': u'CACGAGAA', u'10xPN120262': u'CACGAGAA'}, {u'distance': 0, u'xyz23': u'TCGTCACG', u'10xPN120262': u'TCGTCACG'}]}
             error = 'Barcode conflicts with samples: {}'.format(', '.join(self.errors[library].keys()))
             raise ValidationError(variable, value, error)
-    def validate_all(self, schema, data):
+    def _validate_all(self, schema, data):
         import json
         import urllib
         libraries = [{'id': d.get(self.options.get('samplename')),'adapter_db':d.get(self.options.get('db')),'adapter':d.get(self.options.get('adapter'))} for d in data]
@@ -208,6 +223,22 @@ class SamplesheetValidator:
                         self.set_error(idx, e.variable, e.message)
                         if e.skip_other_exceptions:
                             break
+    def validate_all(self, variable, validators):
+        data = self.data if isinstance(self.data, list) else [self.data]
+        for validator in validators:
+            if validator:
+                try:
+                    validator.validate_all(variable, self.schema, data)
+                except MultiValidationException as e:
+                    print(e.exceptions)
+                    for idx, exceptions in e.exceptions.items():
+                        for exception in exceptions:
+                            if isinstance(exception, ValidationError):
+                                self.set_error(idx, exception.variable, exception.message)
+                            elif isinstance(exception, ValidationWarning):
+                                self.set_warning(idx, exception.variable, exception.message)
+#                                 if e.skip_other_exceptions:
+#                                     break
     def get_validators(self, variable):
         #Add validators configured by the user
 #         print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
@@ -228,7 +259,8 @@ class SamplesheetValidator:
 #         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
             validators = self.get_validators(variable)
-            self.validate_values(variable, validators)
+#             self.validate_values(variable, validators)
+            self.validate_all(variable, validators)
         return (self.errors, self.warnings)
     def cleaned(self):
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
