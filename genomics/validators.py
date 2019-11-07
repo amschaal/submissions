@@ -1,7 +1,10 @@
 from dnaorder.validators import BaseValidator, ValidationError, ValidationWarning,\
     MultiValidationException
 from genomics.barcodes import get_all_conflicts
+import re
+
 class BarcodeValidator(BaseValidator):
+    regex = re.compile('^[ATGC,]*$')
     id = 'barcode'
     name = 'Barcode Validator'
     schema = [{'variable': 'samplename', 'label': 'Samplename variable', 'type': 'text'},
@@ -25,7 +28,20 @@ class BarcodeValidator(BaseValidator):
         errors = get_all_conflicts(libraries, hamming_distance)
         
         exceptions = {}
-        for idx, row in enumerate(data):
+        for idx, d in enumerate(data):
+            #First check to make sure regex matches
+            b1 = d.get(variable, '')
+            if not BarcodeValidator.regex.match(b1):
+                if not idx in exceptions:
+                    exceptions[idx] = []
+                exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain A,T,G,C'))
+            b2 = d.get(barcode2, '')
+            if barcode2 and not BarcodeValidator.regex.match(b2):
+                if not idx in exceptions:
+                    exceptions[idx] = []
+                exceptions[idx].append(ValidationError(barcode2, None, 'Barcodes should only contain A,T,G,C'))
+
+            #Now go through barcode conflicts
             if idx in errors:
                 if not idx in exceptions:
                     exceptions[idx] = []
