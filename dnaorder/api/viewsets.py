@@ -11,7 +11,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
     IsAuthenticatedOrReadOnly
 from dnaorder.api.permissions import SubmissionFilePermissions,\
-    ReadOnlyPermissions, SubmissionPermissions
+    ReadOnlyPermissions, SubmissionPermissions, DraftPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -217,7 +217,7 @@ class ValidatorViewSet(viewsets.ViewSet):
 class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')
     serializer_class = DraftSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (DraftPermissions,)
 
 class LabViewSet(viewsets.ModelViewSet):
     queryset = Lab.objects.all()

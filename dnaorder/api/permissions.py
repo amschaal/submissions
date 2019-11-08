@@ -35,6 +35,14 @@ class SubmissionPermissions(permissions.BasePermission):
             return True
         # May not modify file unless submission is "editable".
         return obj.editable(request.user)
+
+class DraftPermissions(SubmissionPermissions):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        return False
 #     def has_object_permission(self, request, view, obj):
 #         # Read permissions are allowed to any request,
 #         # so we'll always allow GET, HEAD or OPTIONS requests.
