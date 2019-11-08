@@ -186,11 +186,24 @@ VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
 class SamplesheetValidator:
-    def __init__(self, schema, data):
+    def __init__(self, schema, data, clear_empty_rows=True):
         self.errors = {}
         self.warnings = {}
         self.schema = schema
         self.data = data
+        if clear_empty_rows:
+            self.clear_empty_rows()
+    def clear_empty_rows(self):
+        while True:
+            if len(self.data) > 1 and self.row_is_empty(self.data[-1]):
+                self.data.pop()
+            else:
+                return
+    def row_is_empty(self, row):
+        for variable in self.schema['properties'].keys():
+            if row.get(variable, ''):
+                return False
+        return True
     def get_validator(self, id, options={}):
         if id in VALIDATORS_DICT:
             return VALIDATORS_DICT[id](options)
