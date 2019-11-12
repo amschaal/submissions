@@ -4,7 +4,7 @@ from genomics.barcodes import get_all_conflicts
 import re
 
 class BarcodeValidator(BaseValidator):
-    regex = re.compile('^[ATGC,]*$')
+    regex = re.compile('^[atgcn,]*$')
     id = 'barcode'
     name = 'Barcode Validator'
     schema = [{'variable': 'samplename', 'label': 'Samplename variable', 'type': 'text'},
@@ -34,12 +34,12 @@ class BarcodeValidator(BaseValidator):
             if not BarcodeValidator.regex.match(b1):
                 if not idx in exceptions:
                     exceptions[idx] = []
-                exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain A,T,G,C'))
+                exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain a,t,g,c,n'))
             b2 = d.get(barcode2, '')
             if barcode2 and not BarcodeValidator.regex.match(b2):
                 if not idx in exceptions:
                     exceptions[idx] = []
-                exceptions[idx].append(ValidationError(barcode2, None, 'Barcodes should only contain A,T,G,C'))
+                exceptions[idx].append(ValidationError(barcode2, None, 'Barcodes should only contain a,t,g,c,n'))
 
             #Now go through barcode conflicts
             if idx in errors:
