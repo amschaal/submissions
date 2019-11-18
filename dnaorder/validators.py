@@ -101,14 +101,19 @@ class EnumValidator(BaseValidator):
     description = 'Constrain input to a list of choices.'
     uses_options = True
     supported_types = ['string']
+    def validate_all(self, variable, schema={}, data=[]):
+        self.multiple = schema['properties'][variable].get('multiple', False)
+        BaseValidator.validate_all(self, variable, schema=schema, data=data)
     def validate(self, variable, value, schema={}, data=[], row=[]):
         if not value:
             return
         choices = self.options.get('enum',[])
         if len(choices) == 0:
             return
+        if self.multiple and isinstance(value, str):
+            value = value.split(',')
         if isinstance(value, (list,tuple)):
-            bad_values = [v for v in value if v not in choices]
+            bad_values = [v for v in value if v.strip() not in choices]
             if len(bad_values) > 0:
                 raise ValidationError(variable, value, 'Value(s) "{0}" not in the acceptable values: {1}'.format(", ".join(bad_values), ", ".join(choices)))
         elif value not in choices:
