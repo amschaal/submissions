@@ -2,7 +2,7 @@ def hamming_distance(s1, s2):
 #     chars = len(s2) if len(s1) > len(s2) else len(s1)
 #     return sum(c1 != c2 for c1, c2 in zip(s1[:chars], s2[:chars]))
     assert len(s1) == len(s2)
-    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
+    return sum(c1.lower() != c2.lower() for c1, c2 in zip(s1, s2))
 
 """
 l1, l2: {'id':'id1', 'barcodes': {'P5':[...]}} 
