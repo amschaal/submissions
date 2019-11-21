@@ -34,12 +34,12 @@ class BarcodeValidator(BaseValidator):
             if not BarcodeValidator.regex.match(b1):
                 if not idx in exceptions:
                     exceptions[idx] = []
-                exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain a,t,g,c,n'))
+                exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain A,T,G,C,N'))
             b2 = d.get(barcode2, '')
             if barcode2 and not BarcodeValidator.regex.match(b2):
                 if not idx in exceptions:
                     exceptions[idx] = []
-                exceptions[idx].append(ValidationError(barcode2, None, 'Barcodes should only contain a,t,g,c,n'))
+                exceptions[idx].append(ValidationError(barcode2, None, 'Barcodes should only contain A,T,G,C,N'))
 
             #Now go through barcode conflicts
             if idx in errors:
