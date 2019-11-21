@@ -20,7 +20,7 @@ class UCDPaymentSerializer(serializers.Serializer):
             raise serializers.ValidationError({"payment_info":"Do not enter anything into payment info when choosing credit card!"})
         elif payment_type == Submission.PAYMENT_DAFIS:
             if not validate_dafis(payment_info):
-                raise serializers.ValidationError({"payment_info":"The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'."})
+                raise serializers.ValidationError({"payment_info":"The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account', e.g. '3-MYACCNT'"})
         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
             raise serializers.ValidationError({"payment_info":"Please enter payment details."})
         return data
