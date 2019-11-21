@@ -4,7 +4,7 @@ from genomics.barcodes import get_all_conflicts
 import re
 
 class BarcodeValidator(BaseValidator):
-    regex = re.compile('^[atgcnATGCN,]*$')
+    regex = re.compile('^[ATGCN,]*$')
     id = 'barcode'
     name = 'Barcode Validator'
     schema = [{'variable': 'samplename', 'label': 'Samplename variable', 'type': 'text'},
