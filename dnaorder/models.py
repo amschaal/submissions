@@ -69,6 +69,10 @@ class SubmissionType(models.Model):
     class Meta:
         ordering = ['sort_order', 'name']
         unique_together = (('lab','prefix'),)
+    def get_next_id(self):
+        return "{0}{1}".format(self.prefix, str(self.next_id).zfill(4))
+    def get_previous_id(self):
+        return "{0}{1}".format(self.prefix, str(self.next_id-1).zfill(4))
     def __str__(self):
         return "{name}".format(name=self.name)
 #     @property
@@ -131,7 +135,7 @@ class Submission(models.Model):
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'UCD KFS Account'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
-    internal_id = models.CharField(max_length=25)
+    internal_id = models.CharField(max_length=25, null=True)
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
@@ -164,11 +168,11 @@ class Submission(models.Model):
     comments = models.TextField(null=True, blank=True)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
-        if not self.internal_id:
+        if not self.cancelled and not self.internal_id:
 #             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
             
 #             prefix.current_id += 1
-            self.internal_id = "{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
+            self.internal_id = self.type.get_next_id() #"{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
             self.type.next_id += 1
             self.type.save()
         if not self.sample_schema:
@@ -197,6 +201,14 @@ class Submission(models.Model):
     def get_submitter_emails(self):
         emails = [c.email for c in self.contacts.all() if c.email] + [self.email, self.pi_email]
         return emails
+    def cancel(self):
+        self.cancelled = timezone.now()
+        # Try to rescue the id if we haven't moved on yet
+        if self.internal_id == self.type.get_previous_id():
+            self.type.next_id -= 1
+            self.type.save()
+        self.internal_id = None
+        self.save()
     def __str__(self):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:

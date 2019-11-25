@@ -82,8 +82,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if submission.locked and not request.user.is_staff:
             return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
         if not submission.cancelled:
-            submission.cancelled = timezone.now()
-            submission.save()
+            submission.cancel()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
     @action(detail=True, methods=['post'])
     def uncancel(self,request,pk):
