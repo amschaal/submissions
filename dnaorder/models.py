@@ -41,6 +41,7 @@ class Lab(models.Model):
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
     submission_page = models.TextField(default='', blank=True)
+    statuses = JSONField(default=list)
     submission_variables = JSONField(default=dict)
     sample_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
