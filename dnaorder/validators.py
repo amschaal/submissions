@@ -291,6 +291,8 @@ class SamplesheetValidator:
 #         return dict([(,)  for variable in self.schema['properties'].keys()])
 
 class SubmissionValidator(SamplesheetValidator):
+    def __init__(self, schema, data):
+        super(SubmissionValidator, self).__init__(schema, data, clear_empty_rows=False)
     def set_error(self, index, variable, message):
         if not variable in self.errors:
             self.errors[variable] = []
