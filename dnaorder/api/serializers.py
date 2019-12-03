@@ -134,15 +134,18 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 #             raise serializers.ValidationError("Please enter payment details.")
 #         return payment_info
     def validate_sample_data(self, sample_data):
-        if not sample_data or len(sample_data) < 1:
-            raise serializers.ValidationError("Please provide at least 1 sample.")
-        type = self.initial_data.get('type')
         schema = None
+        type = self.initial_data.get('type')
         if self.instance:
             schema = self.instance.sample_schema
         elif type:
             type = SubmissionType.objects.get(id=type)
             schema = type.sample_schema
+#         raise Exception(schema)
+        
+        if (not sample_data or len(sample_data) < 1) and schema and len(schema.get('order', [])) > 0:
+            raise serializers.ValidationError("Please provide at least 1 sample.")
+        
         if schema:
             validator = SamplesheetValidator(schema,sample_data)
             self._sample_errors, self._sample_warnings = validator.validate()
