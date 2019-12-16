@@ -23,13 +23,15 @@ class NotePermissions(permissions.BasePermission):
     
 class SubmissionPermissions(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.user.is_authenticated:
-            return True
-        if request.method in permissions.SAFE_METHODS and view.action != 'list': 
-            return True
-        if view.action == 'create': #right now we let people anonymously submit
-            return True
-        return False
+        if view.action == 'list' and not request.user.is_authenticated:
+            return False
+#         if request.user.is_authenticated:
+#             return True
+#         if request.method in permissions.SAFE_METHODS and view.action != 'list': 
+#             return True
+#         if view.action == 'create': #right now we let people anonymously submit
+#             return True
+        return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
