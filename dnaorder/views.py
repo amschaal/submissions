@@ -29,8 +29,16 @@ def login(request):
         print('authenticate?')
         remote_user = request.META.get('OIDC_CLAIM_username')
         print('remote_user', remote_user)
-        user = User.objects.filter(username=remote_user).first()
-        if user is not None:
+        if remote_user:
+#             user = User.objects.filter(username=remote_user).first()
+            user, created = User.objects.get_or_create(username=remote_user)
+            if created:
+                print('user created')
+                user.email = request.META.get('OIDC_CLAIM_email')
+                user.last_name = request.META.get('OIDC_CLAIM_family_name')
+                user.first_name = request.META.get('OIDC_CLAIM_given_name')
+                user.save()
+#             if user is not None:
             auth_login(request, user)
             return redirect('/submissions/')
         # Is this all wrong? I'm authenticating but the logic is in middleware...
