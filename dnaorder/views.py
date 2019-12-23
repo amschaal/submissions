@@ -44,8 +44,12 @@ def login(request):
         # Is this all wrong? I'm authenticating but the logic is in middleware...
 #         user = authenticate(request)
     return redirect('/')
-    
-#     else:
+
+def logout(request):
+    print('logout', request.user)
+    if request.user.is_authenticated:
+        auth_logout(request)
+    return redirect('/')
 
 @api_view(['POST'])
 @csrf_exempt
