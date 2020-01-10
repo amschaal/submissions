@@ -49,7 +49,7 @@ def logout(request):
     print('logout', request.user)
     if request.user.is_authenticated:
         auth_logout(request)
-    return redirect('/')
+    return redirect('/server/accounts/login/redirect?logout={}'.format(settings.BASE_URI))
 
 @api_view(['POST'])
 @csrf_exempt
