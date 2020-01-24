@@ -19,6 +19,7 @@ import tablib
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.models import User
+from dnaorder.import_utils import import_submission_url
 
 def login(request):
     print('login', request.user)
@@ -247,6 +248,13 @@ def validate_data(request,type_id=None):
     else:
         return Response({'errors':errors, 'warnings': warnings},status=500)
 
+@api_view(['GET','POST'])
+@permission_classes((AllowAny,))
+def import_submission(request):
+    url = request.query_params.get('url')
+    data = import_submission_url(url)
+    return Response({'submission':data})
+    
 @permission_classes((AllowAny,))
 def download(request, id):
     submission = Submission.objects.get(id=id)

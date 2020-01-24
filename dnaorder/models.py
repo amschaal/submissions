@@ -242,10 +242,10 @@ class Submission(models.Model):
             if user.is_superuser or self.participants.filter(username=user.username).exists():
                 permissions.append(Submission.PERMISSION_ADMIN)
         return permissions
-    def get_absolute_url(self):
+    def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
-        return '/submissions/{0}'.format(self.id)
+        return '{}/submissions/{}'.format(settings.BASE_URI if full_url else '', self.id)
 #     def set_status(self,status,commit=True):
 #         self.status = status
 #         if status.auto_lock:

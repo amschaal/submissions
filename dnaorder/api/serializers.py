@@ -251,8 +251,11 @@ class SubmissionSerializer(WritableSubmissionSerializer):
 #     status = SubmissionStatusSerializer()
     permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
+    url = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
+    def get_url(self, instance):
+        return instance.get_absolute_url(full_url=True)
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
