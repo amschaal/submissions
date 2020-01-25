@@ -11,5 +11,6 @@ def get_submission(URL):
 
 def import_submission_url(url):
     submission = get_submission(url)
+    
     print(submission)
     return submission

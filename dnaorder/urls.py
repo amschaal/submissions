@@ -43,7 +43,6 @@ urlpatterns = [
     url(r'^api/', include(api_urlpatterns)),
     url(r'^api/billing/', include(billing_urlpatterns)),
     url(r'^api/validate/$', views.validate_data, name='validate'),
-    url(r'^api/import/$', views.import_submission, name='import'),
     url(r'^api/login/$', views.login_view, name='api_login'),
     url(r'^api/logout/$', views.logout_view, name='logout'),
     url(r'^api/get_user/$', views.get_user, name='get_user'),

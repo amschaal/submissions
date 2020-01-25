@@ -247,13 +247,6 @@ def validate_data(request,type_id=None):
         return Response({'status':'success','message':'The data was successfully validated'})
     else:
         return Response({'errors':errors, 'warnings': warnings},status=500)
-
-@api_view(['GET','POST'])
-@permission_classes((AllowAny,))
-def import_submission(request):
-    url = request.query_params.get('url')
-    data = import_submission_url(url)
-    return Response({'submission':data})
     
 @permission_classes((AllowAny,))
 def download(request, id):
