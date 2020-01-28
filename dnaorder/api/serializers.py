@@ -265,7 +265,11 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
         print('ImportSubmissionSerializer', data, args, kwargs)
+        self.type = kwargs.pop('type', None)
         data['type'] = data['type']['id']
+        if self.type:
+            data['type'] = self.type
+#         del data['type']
         super(ImportSubmissionSerializer, self).__init__(*args, data=data, **kwargs)
     def validate_type(self, type_data):
         print('!!!!!!validate_type!!!!!', type_data)
