@@ -236,7 +236,48 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id']
         read_only_fields= ['lab','data']
+
+    """
+        first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    email = models.EmailField(max_length=75)
+    phone = models.CharField(max_length=20)
+    pi_first_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=50)
+    pi_email = models.EmailField(max_length=75)
+    pi_phone = models.CharField(max_length=20)
+    institute = models.CharField(max_length=75)
+#     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
+#     payment_info = models.CharField(max_length=250,null=True,blank=True)
+    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
+    submission_schema = JSONField(null=True,blank=True)
+    sample_schema = JSONField(null=True,blank=True)
+    submission_data = JSONField(default=dict)
+    sample_data = JSONField(null=True,blank=True)
+    sra_data = JSONField(null=True,blank=True)
+    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
+    biocore = models.BooleanField(default=False)
+    participants = models.ManyToManyField(User,blank=True)
+    data = JSONField(default=dict)
+    payment = JSONField(default=dict)
+    comments = models.TextField(null=True, blank=True)
+    """
+class ImportSubmissionSerializer(WritableSubmissionSerializer):
+    def __init__(self, data, *args, **kwargs):
+        print('ImportSubmissionSerializer', data, args, kwargs)
+        data['type'] = data['type']['id']
+        super(ImportSubmissionSerializer, self).__init__(*args, data=data, **kwargs)
+    def validate_type(self, type_data):
+        print('!!!!!!validate_type!!!!!', type_data)
         
+        
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sra_data','status','internal_id']
+        read_only_fields= ['lab','data']
+
 class LabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab

@@ -3,7 +3,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
-    TermSerializer
+    TermSerializer, ImportSubmissionSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term
 from rest_framework.decorators import permission_classes, action
@@ -49,40 +49,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             return [permission() for permission in self.permission_classes_by_action[self.action]]
         except KeyError: 
             return [permission() for permission in self.permission_classes]
-    """
-        first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    email = models.EmailField(max_length=75)
-    phone = models.CharField(max_length=20)
-    pi_first_name = models.CharField(max_length=50)
-    pi_last_name = models.CharField(max_length=50)
-    pi_email = models.EmailField(max_length=75)
-    pi_phone = models.CharField(max_length=20)
-    institute = models.CharField(max_length=75)
-#     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
-#     payment_info = models.CharField(max_length=250,null=True,blank=True)
-    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
-    submission_schema = JSONField(null=True,blank=True)
-    sample_schema = JSONField(null=True,blank=True)
-    submission_data = JSONField(default=dict)
-    sample_data = JSONField(null=True,blank=True)
-    sra_data = JSONField(null=True,blank=True)
-    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
-    biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True)
-    data = JSONField(default=dict)
-    payment = JSONField(default=dict)
-    comments = models.TextField(null=True, blank=True)
-    """
     @action(detail=False, methods=['post','get'])
     def import_submission(self, request):
         url = request.query_params.get('url')
         data = import_submission_url(url)
 #         data['type'] =  data['type']['id']
 #         del data['id']
-#         submission = WritableSubmissionSerializer(data=data)
-#         submission.is_valid()
-        return Response({'submission':data})
+        submission = ImportSubmissionSerializer(data=data)
+        submission.is_valid()
+        return Response({'submission':data, 'errors': submission.errors})
     @action(detail=True, methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
