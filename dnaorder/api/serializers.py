@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term
+    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
+    Import
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -271,15 +272,15 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
             data['type'] = self.type
 #         del data['type']
         super(ImportSubmissionSerializer, self).__init__(*args, data=data, **kwargs)
-    def validate_type(self, type_data):
-        print('!!!!!!validate_type!!!!!', type_data)
-        
+    def validate_type(self, type):
+        print('!!!!!!validate_type!!!!!', type)
+        return type
         
     def update(self, instance, validated_data):
         raise NotImplementedError
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id']
+        exclude = ['submitted','sra_data','status','internal_id','participants']
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
@@ -322,6 +323,13 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionFile
         exclude = []
+
+class ImportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Import
+        exclude = []
+        read_only_fields = ('id','created')
+
 
 class DraftSerializer(serializers.ModelSerializer):
     class Meta:

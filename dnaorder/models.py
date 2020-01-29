@@ -274,6 +274,13 @@ class Draft(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     
+class Import(models.Model):
+    id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    created = models.DateTimeField(auto_now_add=True)
+    url = models.URLField()
+    api_url = models.URLField()
+    data = JSONField(null=False,blank=False)
+    submission = models.ForeignKey(Submission, null=True, blank=True, on_delete=models.CASCADE)
 
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts', on_delete=models.CASCADE)
