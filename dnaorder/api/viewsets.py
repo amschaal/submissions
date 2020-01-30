@@ -142,16 +142,17 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['post','get'])
     def import_submission(self, request):
         url = request.query_params.get('url')
-#         type = int(request.query_params.get('type'))
         data = import_submission_url(url)
         instance = Import.objects.create(url=data['url'],api_url=url,data=data)
         serializer = ImportSerializer(instance)
-#         data['type'] =  data['type']['id']
-#         del data['id']
-#         submission = ImportSubmissionSerializer(data=data, type=type)
-#         if submission.is_valid():
-#             pass # submission.save()
-        return Response({'data':data, 'import': serializer.data})     
+        return Response({'data':data, 'import': serializer.data})
+    @action(detail=False, methods=['get'])
+    def get_submission(self, request):
+        url = request.query_params.get('url')
+        data = import_submission_url(url)
+#         instance = Import.objects.create(url=data['url'],api_url=url,data=data)
+#         serializer = ImportSerializer(data=data)
+        return Response({'data':data})
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
