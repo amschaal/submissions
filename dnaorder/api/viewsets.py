@@ -49,17 +49,17 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             return [permission() for permission in self.permission_classes_by_action[self.action]]
         except KeyError:
             return [permission() for permission in self.permission_classes]
-    @action(detail=False, methods=['post','get'])
-    def import_submission(self, request):
-        url = request.query_params.get('url')
-        type = int(request.query_params.get('type'))
-        data = import_submission_url(url)
-#         data['type'] =  data['type']['id']
-#         del data['id']
-        submission = ImportSubmissionSerializer(data=data, type=type)
-        if submission.is_valid():
-            pass # submission.save()
-        return Response({'submission':data, 'errors': submission.errors})
+#     @action(detail=False, methods=['post','get'])
+#     def import_submission(self, request):
+#         url = request.query_params.get('url')
+#         type = int(request.query_params.get('type'))
+#         data = import_submission_url(url)
+# #         data['type'] =  data['type']['id']
+# #         del data['id']
+#         submission = ImportSubmissionSerializer(data=data, type=type)
+#         if submission.is_valid():
+#             pass # submission.save()
+#         return Response({'submission':data, 'errors': submission.errors})
     @action(detail=True, methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()

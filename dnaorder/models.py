@@ -167,6 +167,8 @@ class Submission(models.Model):
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
     comments = models.TextField(null=True, blank=True)
+    import_url = models.URLField(null=True, blank=True)
+    import_data = JSONField(null=True, blank=True)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id:

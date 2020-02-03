@@ -169,6 +169,12 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(self._submission_errors)
             return validator.cleaned()
         return data
+    def validate_import_data(self, data=None):
+        if data:
+            for f in ['lab', 'participants']:
+                if f in data:
+                    del data[f]
+            return data
     def update_errors_and_warnings(self, instance):
         instance.data.update({'errors':{},'warnings':{}})
         if len(self._sample_errors):
