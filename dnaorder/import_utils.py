@@ -20,6 +20,8 @@ def import_submission_url(url):
     return submission
 
 def get_submission_api_url(url):
+    if url[:-1] != '/':
+        url += '/'
     if '/api/submissions/' in url:
         return url
     else:
