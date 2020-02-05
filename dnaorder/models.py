@@ -170,6 +170,7 @@ class Submission(models.Model):
 #     import_url = models.URLField(null=True, blank=True)
     import_internal_id = models.CharField(max_length=25, null=True)
     import_data = JSONField(null=True, blank=True)
+    import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id:
@@ -283,7 +284,6 @@ class Import(models.Model):
     url = models.URLField()
     api_url = models.URLField()
     data = JSONField(null=False,blank=False)
-    submission = models.ForeignKey(Submission, null=True, blank=True, on_delete=models.CASCADE)
 
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts', on_delete=models.CASCADE)
