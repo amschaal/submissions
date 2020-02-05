@@ -192,6 +192,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                                     'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
                                     'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                   }
+        if validated_data['import_data']:
+            import_request = Import.objects.filter(url=validated_data['import_data'].get('url',None)).order_by('-created').first()
+            validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
         self.update_errors_and_warnings(submission)
         for contact in contacts:
@@ -331,6 +334,9 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         exclude = []
 
 class ImportSerializer(serializers.ModelSerializer):
+    submissions = serializers.SerializerMethodField()
+    def get_submissions(self, obj):
+        return [{'id': s.id, 'internal_id': s.internal_id} for s in obj.submissions.all()]
     class Meta:
         model = Import
         exclude = []

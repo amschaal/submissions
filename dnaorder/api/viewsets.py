@@ -127,7 +127,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
 
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Import.objects.all()
+    queryset = Import.objects.all().prefetch_related('submissions')
     serializer_class = ImportSerializer
 #     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, ExcludeStatusFilter]
 #     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
