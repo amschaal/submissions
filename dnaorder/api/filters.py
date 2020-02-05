@@ -21,13 +21,3 @@ class ExcludeStatusFilter(filters.BaseFilterBackend):
         else:
             return queryset
 
-class hasSubmissions(filters.BaseFilterBackend):
-    """
-    Exclude submissions based on status
-    """
-    def filter_queryset(self, request, queryset, view):
-        has_submissions = view.request.query_params.get('has_submissions',None)
-        if has_submissions:
-            return queryset
-        else:
-            return queryset.filter(submissions__id__isnull=True)
