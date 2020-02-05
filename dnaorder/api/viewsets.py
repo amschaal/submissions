@@ -23,7 +23,8 @@ from django.utils import timezone
 from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from dnaorder.utils import get_site_lab
-from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
+from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter,\
+    hasSubmissions
 from dnaorder.import_utils import import_submission_url
 
 class SubmissionViewSet(viewsets.ModelViewSet):
@@ -129,8 +130,9 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
     serializer_class = ImportSerializer
-#     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, ExcludeStatusFilter]
+#     filter_backends = viewsets.ModelViewSet.filter_backends + [hasSubmissions]
 #     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    filter_fields = {'submissions__id': ['isnull']}
 #     search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
     ordering_fields = ['created']
 #     permission_classes = [SubmissionPermissions]
