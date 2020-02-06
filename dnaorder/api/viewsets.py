@@ -137,7 +137,10 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     def import_submission(self, request):
         url = request.query_params.get('url')
         data = import_submission_url(url)
-        instance = Import.objects.create(url=data['url'],api_url=url,data=data)
+        id = data['id']
+        instance = Import.objects.filter(id=id).first()
+        if not instance:
+            instance = Import.objects.create(id=id, url=data['url'], external_id=data['internal_id'], api_url=url,data=data)
         serializer = ImportSerializer(instance)
         return Response({'data':data, 'import': serializer.data})
     @action(detail=False, methods=['get'])

@@ -281,6 +281,7 @@ class Draft(models.Model):
 class Import(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     created = models.DateTimeField(auto_now_add=True)
+    external_id = models.CharField(max_length=25, null=True, blank=True)
     url = models.URLField()
     api_url = models.URLField()
     data = JSONField(null=False,blank=False)
