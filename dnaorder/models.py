@@ -167,6 +167,10 @@ class Submission(models.Model):
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
     comments = models.TextField(null=True, blank=True)
+#     import_url = models.URLField(null=True, blank=True)
+    import_internal_id = models.CharField(max_length=25, null=True)
+    import_data = JSONField(null=True, blank=True)
+    import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id:
@@ -242,10 +246,10 @@ class Submission(models.Model):
             if user.is_superuser or self.participants.filter(username=user.username).exists():
                 permissions.append(Submission.PERMISSION_ADMIN)
         return permissions
-    def get_absolute_url(self):
+    def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
-        return '/submissions/{0}'.format(self.id)
+        return '{}/submissions/{}'.format(settings.BASE_URI if full_url else '', self.id)
 #     def set_status(self,status,commit=True):
 #         self.status = status
 #         if status.auto_lock:
@@ -274,6 +278,12 @@ class Draft(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     
+class Import(models.Model):
+    id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
+    created = models.DateTimeField(auto_now_add=True)
+    url = models.URLField()
+    api_url = models.URLField()
+    data = JSONField(null=False,blank=False)
 
 class Contact(models.Model):
     submission = models.ForeignKey(Submission, related_name='contacts', on_delete=models.CASCADE)

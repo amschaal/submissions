@@ -54,7 +54,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.PersistentRemoteUserMiddleware',
+#     'django.contrib.auth.middleware.SessionMiddleware',
+    
+#     'django.contrib.auth.middleware.PersistentRemoteUserMiddleware',
+#     'dnaorder.middleware.OIDCMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

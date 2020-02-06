@@ -2,7 +2,7 @@ from rest_framework import routers
 from dnaorder.api.viewsets import SubmissionViewSet, SubmissionFileViewSet,\
     NoteViewSet, SubmissionTypeViewSet, UserViewSet, ValidatorViewSet,\
     StatusViewSet, DraftViewSet, LabViewSet, PrefixViewSet, VocabularyViewset,\
-    TermViewSet
+    TermViewSet, ImportViewSet
 
 router = routers.SimpleRouter()
 router.register(r'submissions', SubmissionViewSet)
@@ -13,6 +13,7 @@ router.register(r'users', UserViewSet)
 router.register(r'validators', ValidatorViewSet, basename='validators')
 router.register(r'statuses', StatusViewSet)
 router.register(r'drafts', DraftViewSet)
+router.register(r'imports', ImportViewSet)
 router.register(r'labs', LabViewSet)
 router.register(r'prefixes', PrefixViewSet)
 router.register(r'terms/(?P<vocabulary>[^/.]+)', TermViewSet)

@@ -11,14 +11,46 @@ from dnaorder.api.serializers import SubmissionSerializer, UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
 from dnaorder.spreadsheets import get_dataset, get_submission_dataset
 from django.http.response import HttpResponse
 import tablib
 from django.conf import settings
 from django.utils import timezone
+from django.contrib.auth.models import User
+from dnaorder.import_utils import import_submission_url
 
+def login(request):
+    print('login', request.user)
+    if request.user.is_authenticated:
+        print('is authenticated')
+        return redirect('/submissions/')
+    else:
+        print('authenticate?')
+        remote_user = request.META.get('OIDC_CLAIM_username')
+        print('remote_user', remote_user)
+        if remote_user:
+#             user = User.objects.filter(username=remote_user).first()
+            user, created = User.objects.get_or_create(username=remote_user)
+            if created:
+                print('user created')
+                user.email = request.META.get('OIDC_CLAIM_email')
+                user.last_name = request.META.get('OIDC_CLAIM_family_name')
+                user.first_name = request.META.get('OIDC_CLAIM_given_name')
+                user.save()
+#             if user is not None:
+            auth_login(request, user)
+            return redirect('/submissions/')
+        # Is this all wrong? I'm authenticating but the logic is in middleware...
+#         user = authenticate(request)
+    return redirect('/')
+
+def logout(request):
+    print('logout', request.user)
+    if request.user.is_authenticated:
+        auth_logout(request)
+    return redirect('/server/accounts/login/redirect?logout={}'.format(settings.BASE_URI))
 
 @api_view(['POST'])
 @csrf_exempt
@@ -31,7 +63,7 @@ def login_view(request):
     else:
         user = authenticate(request._request, username=username, password=password)
     if user is not None:
-        login(request._request, user)
+        auth_login(request._request, user)
         return Response({'status':'success','user':UserSerializer(instance=user).data})
     else:
         return Response({'message':'Authentication failed.'},status=500)
@@ -48,7 +80,7 @@ def get_user(request):
 
 @api_view(['POST'])
 def logout_view(request):
-    logout(request)
+    auth_logout(request)
     return Response({'status':'success'})
 
 # @api_view(['POST'])
@@ -215,7 +247,7 @@ def validate_data(request,type_id=None):
         return Response({'status':'success','message':'The data was successfully validated'})
     else:
         return Response({'errors':errors, 'warnings': warnings},status=500)
-
+    
 @permission_classes((AllowAny,))
 def download(request, id):
     submission = Submission.objects.get(id=id)

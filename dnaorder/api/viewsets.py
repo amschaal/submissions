@@ -3,9 +3,9 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
-    TermSerializer
+    TermSerializer, ImportSubmissionSerializer, ImportSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term
+    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
@@ -24,14 +24,15 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from dnaorder.utils import get_site_lab
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
+from dnaorder.import_utils import import_submission_url
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, ExcludeStatusFilter]
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
-    search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
-    ordering_fields = ['id','internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
+    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
@@ -46,8 +47,19 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         try:
             return [permission() for permission in self.permission_classes_by_action[self.action]]
-        except KeyError: 
+        except KeyError:
             return [permission() for permission in self.permission_classes]
+#     @action(detail=False, methods=['post','get'])
+#     def import_submission(self, request):
+#         url = request.query_params.get('url')
+#         type = int(request.query_params.get('type'))
+#         data = import_submission_url(url)
+# #         data['type'] =  data['type']['id']
+# #         del data['id']
+#         submission = ImportSubmissionSerializer(data=data, type=type)
+#         if submission.is_valid():
+#             pass # submission.save()
+#         return Response({'submission':data, 'errors': submission.errors})
     @action(detail=True, methods=['post'])
     def update_status(self,request,pk):
         submission = self.get_object()
@@ -113,7 +125,26 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         data = serializer.data
 #         del data['id'] #Hide this so that they have to check their email to confirm
 #         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
-        
+
+class ImportViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Import.objects.all().prefetch_related('submissions')
+    serializer_class = ImportSerializer
+    filter_fields = {'submissions__id': ['isnull']}
+#     search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    ordering_fields = ['created']
+#     permission_classes = [SubmissionPermissions]
+    @action(detail=False, methods=['post','get'])
+    def import_submission(self, request):
+        url = request.query_params.get('url')
+        data = import_submission_url(url)
+        instance = Import.objects.create(url=data['url'],api_url=url,data=data)
+        serializer = ImportSerializer(instance)
+        return Response({'data':data, 'import': serializer.data})
+    @action(detail=False, methods=['get'])
+    def get_submission(self, request):
+        url = request.query_params.get('url')
+        data = import_submission_url(url)
+        return Response({'data':data})
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')

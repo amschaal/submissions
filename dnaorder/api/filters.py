@@ -20,3 +20,4 @@ class ExcludeStatusFilter(filters.BaseFilterBackend):
             return queryset.exclude(status__iexact=exclude_status)
         else:
             return queryset
+

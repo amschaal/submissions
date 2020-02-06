@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term
+    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
+    Import
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -168,6 +169,12 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(self._submission_errors)
             return validator.cleaned()
         return data
+    def validate_import_data(self, data=None):
+        if data:
+            for f in ['lab', 'participants']:
+                if f in data:
+                    del data[f]
+            return data
     def update_errors_and_warnings(self, instance):
         instance.data.update({'errors':{},'warnings':{}})
         if len(self._sample_errors):
@@ -185,6 +192,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                                     'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
                                     'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                   }
+        if validated_data['import_data']:
+            import_request = Import.objects.filter(url=validated_data['import_data'].get('url',None)).order_by('-created').first()
+            validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
         self.update_errors_and_warnings(submission)
         for contact in contacts:
@@ -236,7 +246,52 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id']
         read_only_fields= ['lab','data']
+
+    """
+        first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    email = models.EmailField(max_length=75)
+    phone = models.CharField(max_length=20)
+    pi_first_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=50)
+    pi_email = models.EmailField(max_length=75)
+    pi_phone = models.CharField(max_length=20)
+    institute = models.CharField(max_length=75)
+#     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
+#     payment_info = models.CharField(max_length=250,null=True,blank=True)
+    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
+    submission_schema = JSONField(null=True,blank=True)
+    sample_schema = JSONField(null=True,blank=True)
+    submission_data = JSONField(default=dict)
+    sample_data = JSONField(null=True,blank=True)
+    sra_data = JSONField(null=True,blank=True)
+    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
+    biocore = models.BooleanField(default=False)
+    participants = models.ManyToManyField(User,blank=True)
+    data = JSONField(default=dict)
+    payment = JSONField(default=dict)
+    comments = models.TextField(null=True, blank=True)
+    """
+class ImportSubmissionSerializer(WritableSubmissionSerializer):
+    def __init__(self, data, *args, **kwargs):
+        print('ImportSubmissionSerializer', data, args, kwargs)
+        self.type = kwargs.pop('type', None)
+        data['type'] = data['type']['id']
+        if self.type:
+            data['type'] = self.type
+#         del data['type']
+        super(ImportSubmissionSerializer, self).__init__(*args, data=data, **kwargs)
+    def validate_type(self, type):
+        print('!!!!!!validate_type!!!!!', type)
+        return type
         
+    def update(self, instance, validated_data):
+        raise NotImplementedError
+    class Meta:
+        model = Submission
+        exclude = ['submitted','sra_data','status','internal_id','participants']
+        read_only_fields= ['lab','data']
+
 class LabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
@@ -251,8 +306,11 @@ class SubmissionSerializer(WritableSubmissionSerializer):
 #     status = SubmissionStatusSerializer()
     permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
+    url = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
+    def get_url(self, instance):
+        return instance.get_absolute_url(full_url=True)
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
@@ -274,6 +332,16 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionFile
         exclude = []
+
+class ImportSerializer(serializers.ModelSerializer):
+    submissions = serializers.SerializerMethodField()
+    def get_submissions(self, obj):
+        return [{'id': s.id, 'internal_id': s.internal_id} for s in obj.submissions.all()]
+    class Meta:
+        model = Import
+        exclude = []
+        read_only_fields = ('id','created')
+
 
 class DraftSerializer(serializers.ModelSerializer):
     class Meta:
