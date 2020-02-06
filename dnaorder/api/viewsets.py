@@ -130,7 +130,7 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
     serializer_class = ImportSerializer
     filter_fields = {'submissions__id': ['isnull']}
-#     search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
 #     permission_classes = [SubmissionPermissions]
     @action(detail=False, methods=['post','get'])
