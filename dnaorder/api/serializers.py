@@ -192,7 +192,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                                     'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
                                     'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                   }
-        if validated_data['import_data']:
+        if validated_data.get('import_data', None):
             import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
             validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
