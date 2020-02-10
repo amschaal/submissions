@@ -117,7 +117,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(lab=get_site_lab(self.request))
         emails.order_confirmed(instance, self.request)
-        if instance.biocore:
+        if hasattr(settings, 'BIOCORE_IMPORT_URL') and instance.biocore:
             try:
                 export_submission(instance, settings.BIOCORE_IMPORT_URL)
             except:
@@ -140,9 +140,9 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created']
     permission_classes = (AllowAny,)
 #     permission_classes = [SubmissionPermissions]
-    @action(detail=False, methods=['post','get'])
+    @action(detail=False, methods=['post'])
     def import_submission(self, request):
-        url = request.query_params.get('url')
+        url = request.data.get('url')
         data = import_submission_url(url)
         id = data['id']
         instance = Import.objects.filter(id=id).first()

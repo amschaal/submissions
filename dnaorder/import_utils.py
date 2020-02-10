@@ -10,6 +10,7 @@ def post_json_data(url, data, headers={'Content-Type':'application/json'}):
     POST data string to `url`, return page and headers
     """
     # if data is not in bytes, convert to it to utf-8 bytes
+    data = json.dumps(data)
     bindata = data if type(data) == bytes else data.encode('utf-8')
     # need Request to pass headers
     req = urllib.request.Request(url, bindata, headers)
@@ -42,4 +43,4 @@ def get_submission_api_url(url):
 
 def export_submission(submission, import_url):
     submission_url = submission.get_absolute_url(full_url=True)
-    post_json_data(import_url, {'url': submission_url})
+    resp = post_json_data(import_url, {'url': submission_url})
