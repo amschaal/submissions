@@ -24,7 +24,8 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from dnaorder.utils import get_site_lab
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
-from dnaorder.import_utils import import_submission_url
+from dnaorder.import_utils import import_submission_url, export_submission
+from django.conf import settings
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -116,6 +117,11 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(lab=get_site_lab(self.request))
         emails.order_confirmed(instance, self.request)
+        if instance.biocore:
+            try:
+                export_submission(instance, settings.BIOCORE_IMPORT_URL)
+            except:
+                pass
 #         emails.confirm_order(instance, self.request)
 #     def create(self, request, *args, **kwargs):
 #         serializer = self.get_serializer(data=request.data)
