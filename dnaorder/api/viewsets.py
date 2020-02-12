@@ -114,13 +114,21 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             emails.order_confirmed(submission, request)
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+    @action(detail=True, methods=['post'])
+    def samples_received(self,request,pk):
+        submission = self.get_object()
+        submission.samples_received = str(request.data.get('samples_received', timezone.now()))[:10]
+        submission.received_by = User.objects.get(id=request.data.get('received_by', request.user))
+        submission.save()
+        serializer = self.get_serializer(submission)
+        return Response({'submission':serializer.data})
     def perform_create(self, serializer):
         instance = serializer.save(lab=get_site_lab(self.request))
         emails.order_confirmed(instance, self.request)
         if hasattr(settings, 'BIOCORE_IMPORT_URL') and instance.biocore:
             try:
                 export_submission(instance, settings.BIOCORE_IMPORT_URL)
-            except:
+            except Exception as e:
                 pass
 #         emails.confirm_order(instance, self.request)
 #     def create(self, request, *args, **kwargs):
