@@ -24,18 +24,22 @@ class BarcodeValidator(BaseValidator):
                 if barcode2 and d.get(barcode2, False):
                     barcodes[barcode2] = d.get(barcode2).split(',')
                 libraries.append({'id': idx,'pool': d.get(pool,''),'barcodes': barcodes })
-        
+        print('conflicts', libraries, hamming_distance)
         errors = get_all_conflicts(libraries, hamming_distance)
         
         exceptions = {}
         for idx, d in enumerate(data):
             #First check to make sure regex matches
             b1 = d.get(variable, '')
+            if not b1:
+                continue
             if not BarcodeValidator.regex.match(b1):
                 if not idx in exceptions:
                     exceptions[idx] = []
                 exceptions[idx].append(ValidationError(variable, None, 'Barcodes should only contain A,T,G,C,N'))
             b2 = d.get(barcode2, '')
+            if not b2:
+                continue
             if barcode2 and not BarcodeValidator.regex.match(b2):
                 if not idx in exceptions:
                     exceptions[idx] = []
