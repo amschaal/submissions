@@ -116,6 +116,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     @action(detail=True, methods=['post'])
     def samples_received(self,request,pk):
+        if not request.user.is_staff:
+            return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
         submission = self.get_object()
         received = request.data.get('received')
         if not received:
