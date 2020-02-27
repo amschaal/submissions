@@ -24,7 +24,6 @@ class BarcodeValidator(BaseValidator):
                 if barcode2 and d.get(barcode2, False):
                     barcodes[barcode2] = d.get(barcode2).split(',')
                 libraries.append({'id': idx,'pool': d.get(pool,''),'barcodes': barcodes })
-        print('conflicts', libraries, hamming_distance)
         errors = get_all_conflicts(libraries, hamming_distance)
         
         exceptions = {}

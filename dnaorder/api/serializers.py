@@ -307,8 +307,11 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
+    received_by_name = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
+    def get_received_by_name(self,instance):
+        return str(instance.received_by)
     def get_url(self, instance):
         return instance.get_absolute_url(full_url=True)
     def get_permissions(self,instance):

@@ -117,10 +117,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def samples_received(self,request,pk):
         submission = self.get_object()
-        submission.samples_received = str(request.data.get('samples_received', timezone.now()))[:10]
-        submission.received_by = User.objects.get(id=request.data.get('received_by', request.user))
+        received = request.data.get('received')
+        if not received:
+            received = timezone.now()
+        submission.samples_received = str(received)[:10]
+        submission.received_by = User.objects.get(id=request.data.get('received_by', request.user.id))
         submission.save()
-        serializer = self.get_serializer(submission)
+        serializer = SubmissionSerializer(submission, context=self.get_serializer_context())
+#         serializer = self.get_serializer(submission)
         return Response({'submission':serializer.data})
     def perform_create(self, serializer):
         instance = serializer.save(lab=get_site_lab(self.request))
