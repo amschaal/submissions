@@ -32,6 +32,7 @@ class BaseValidator(object):
     supported_types = ['string','number','boolean']
     def __init__(self, options= {}):
         self.options = options
+        self.validation_class = ValidationWarning if self.options.get('warning') else ValidationError
         if not self.id:
             raise Exception('You must define "id" for each validator')
         if not self.name:
@@ -64,7 +65,7 @@ class UniqueValidator(BaseValidator):
         col = get_column(variable, data)
         valid = len([val for val in col if val == value and val is not None]) < 2
         if not valid:
-            raise ValidationError(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
+            raise self.validation_class(variable, value, 'Value "{0}" is not unique for column "{1}"'.format(value, variable))
 
 class RequiredValidator(BaseValidator):
     id = 'required'
@@ -75,7 +76,7 @@ class RequiredValidator(BaseValidator):
         if schema['properties'].get(variable,{}).get('internal', False):
             return
         if value is None or value == '':
-            raise ValidationError(variable, value,"This field is required.",skip_other_exceptions=True)
+            raise self.validation_class(variable, value,"This field is required.",skip_other_exceptions=True)
 
 class RegexValidator(BaseValidator):
     id = 'regex'
@@ -93,7 +94,7 @@ class RegexValidator(BaseValidator):
         if not hasattr(self, 'pattern'):
             return
         if not self.pattern.match(str(value)):
-            raise ValidationError(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
+            raise self.validation_class(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
 
 class EnumValidator(BaseValidator):
     id = 'enum'
@@ -115,9 +116,9 @@ class EnumValidator(BaseValidator):
         if isinstance(value, (list,tuple)):
             bad_values = [v for v in value if v.strip() not in choices]
             if len(bad_values) > 0:
-                raise ValidationError(variable, value, 'Value(s) "{0}" not in the acceptable values: {1}'.format(", ".join(bad_values), ", ".join(choices)))
+                raise self.validation_class(variable, value, 'Value(s) "{0}" not in the acceptable values: {1}'.format(", ".join(bad_values), ", ".join(choices)))
         elif value not in choices:
-            raise ValidationError(variable, value, 'Value "{0}" is not one of the acceptable values: {1}'.format(value, ", ".join(choices)))
+            raise self.validation_class(variable, value, 'Value "{0}" is not one of the acceptable values: {1}'.format(value, ", ".join(choices)))
 
 class NumberValidator(BaseValidator):
     id = 'number'
@@ -132,15 +133,15 @@ class NumberValidator(BaseValidator):
         try:
             float(value)
         except ValueError:
-            raise ValidationError(variable, value, 'Value "{0}" is not a number'.format(value))
+            raise self.validation_class(variable, value, 'Value "{0}" is not a number'.format(value))
         minimum = self.options.get('minimum', None)
         maximum = self.options.get('maximum', None)
         if minimum and maximum and (float(value) < minimum or float(value) > maximum):
-            raise ValidationError(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
+            raise self.validation_class(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
         if minimum and float(value) < minimum:
-            raise ValidationError(variable, value, 'The minimum value is {0}'.format(minimum))
+            raise self.validation_class(variable, value, 'The minimum value is {0}'.format(minimum))
         if maximum and float(value) > maximum:
-            raise ValidationError(variable, value, 'The maximum value is {0}'.format(maximum))
+            raise self.validation_class(variable, value, 'The maximum value is {0}'.format(maximum))
 
 class AdapterValidator(BaseValidator):
     id = 'adapter'
@@ -156,7 +157,7 @@ class AdapterValidator(BaseValidator):
         if library and library in self.errors:
 #             self.errors[library] -> {u'xyz23': [{u'distance': 0, u'xyz23': u'GTAATTGC', u'10xPN120262': u'GTAATTGC'}, {u'distance': 0, u'xyz23': u'AGTCGCTT', u'10xPN120262': u'AGTCGCTT'}, {u'distance': 0, u'xyz23': u'CACGAGAA', u'10xPN120262': u'CACGAGAA'}, {u'distance': 0, u'xyz23': u'TCGTCACG', u'10xPN120262': u'TCGTCACG'}]}
             error = 'Barcode conflicts with samples: {}'.format(', '.join(self.errors[library].keys()))
-            raise ValidationError(variable, value, error)
+            raise self.validation_class(variable, value, error)
     def _validate_all(self, schema, data):
         import json
         import urllib
@@ -180,7 +181,7 @@ class FooValidator(BaseValidator):
     name = 'Foo'
     def validate(self, variable, value, schema={}, data=[], row=[]):
         if value != 'foo':
-            raise ValidationError(variable, value, 'Value must be "foo"'.format(value, variable))
+            raise self.validation_class(variable, value, 'Value must be "foo"'.format(value, variable))
 
 def get_validators():
     from genomics.validators import BarcodeValidator
