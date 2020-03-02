@@ -299,7 +299,7 @@ class SubmissionValidator(SamplesheetValidator):
             self.errors[variable] = []
         self.errors[variable].append(message)
     def set_warning(self, index, variable, message):
-        if not variable in self.warning:
+        if not variable in self.warnings:
             self.warnings[variable] = []
         self.warnings[variable].append(message)
     def validate_values(self, variable, validators):
