@@ -68,6 +68,9 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         submission.set_status(status,commit=True)
         status = request.data.get('status', None)
         submission.status = status
+        if status.strip().lower() == 'samples received' and not submission.samples_received:
+            submission.samples_received = str(timezone.now())[:10]
+            submission.received_by = request.user
         submission.save()
         text = 'Submission status updated to "{status}".'.format(status=status)
         if request.data.get('email',False):
