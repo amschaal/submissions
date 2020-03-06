@@ -247,7 +247,7 @@ class SamplesheetValidator:
                 try:
                     validator.validate_all(variable, self.schema, data)
                 except MultiValidationException as e:
-                    print(e.exceptions)
+#                     print(e.exceptions)
                     for idx, exceptions in e.exceptions.items():
                         for exception in exceptions:
                             if isinstance(exception, ValidationError):

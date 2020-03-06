@@ -9,6 +9,7 @@ from dnaorder.dafis import validate_dafis
 from dnaorder import validators
 from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
+from rest_framework.exceptions import ValidationError
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -121,7 +122,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-    warnings = serializers.SerializerMethodField()
+#     warnings = serializers.SerializerMethodField()
 #     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer() 
 #     def validate_payment_info(self, payment_info):
@@ -175,17 +176,31 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 if f in data:
                     del data[f]
             return data
-    def update_errors_and_warnings(self, instance):
-        instance.data.update({'errors':{},'warnings':{}})
-        if len(self._sample_errors):
-            instance.data['errors']['sample_data']=self._sample_errors
-        if len(self._sample_warnings):
-            instance.data['warnings']['sample_data']=self._sample_warnings
-        if len(self._submission_errors):
-            instance.data['errors']['submission_data']=self._submission_errors
-        if len(self._submission_warnings):
-            instance.data['warnings']['submission_data']=self._submission_warnings
-        instance.save()
+    def get_warnings(self):
+        data = {}
+        if hasattr(self, '_sample_warnings') and len(self._sample_warnings):
+            data['sample_data']=self._sample_warnings
+        if hasattr(self, '_submission_warnings') and len(self._submission_warnings):
+            data['submission_data']=self._submission_warnings
+#         if len(data) > 0:
+#             raise serializers.ValidationError(data)
+        return data
+    def validate_warnings(self, data=None):
+        data = self.get_warnings()
+        return data if len(data) > 0 else None
+#     def update_errors_and_warnings(self, instance):
+#         print('SUBMISSION WARNINGS!!!', self._submission_warnings)
+#         if not self.warnings and (len(self._sample_warnings) or len(self._submission_warnings)):
+#             instance.warnings= {'submission_data':{},'sample_data':{}}
+# #         if len(self._sample_errors):
+# #             instance.data['errors']['sample_data']=self._sample_errors
+#         if len(self._sample_warnings):
+#             instance.warnings['sample_data']=self._sample_warnings
+# #         if len(self._submission_errors):
+# #             instance.data['errors']['submission_data']=self._submission_errors
+#         if len(self._submission_warnings):
+#             instance.warnings['submission_data']=self._submission_warnings
+#         instance.save()
     def create(self, validated_data):
         contacts = validated_data.pop('contacts')
         validated_data['data'] = {
@@ -196,7 +211,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
             validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
-        self.update_errors_and_warnings(submission)
+#         self.update_errors_and_warnings(submission)
         for contact in contacts:
             Contact.objects.create(submission=submission, **contact)
         return submission
@@ -214,8 +229,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 field.set(value)
             else:
                 setattr(instance, attr, value)
-        self.update_errors_and_warnings(instance)
-#         instance.save()
+#         self.update_errors_and_warnings(instance)
+        instance.save()
         
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:
@@ -240,8 +255,26 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         request = self._context.get('request')
         if request:
             return instance.editable(request.user)
-    def get_warnings(self, instance):
-        return instance.data.get('warnings') if instance and instance.data else {}
+#     def get_warnings(self, instance):
+#         return instance.data.get('warnings') if instance and instance.data else {}
+#     def validate(self, data):
+#         print("VALIDATE!!!!!", data)
+#         raise serializers.ValidationError({"warnings": {"foo":"bar"}})
+#         return data
+    def is_valid(self, raise_exception=False):
+        valid = serializers.ModelSerializer.is_valid(self, raise_exception=False)
+        print('is_valid 1', self.initial_data.keys())
+        # Needs "if warnings and not ignore_warnings or not valid"
+        
+        if not valid or not self.initial_data.get('ignore_warnings',False):
+            warnings = self.get_warnings()
+            if warnings: # need to have a special parameter to ignore warnings if no errors exist
+                if not hasattr(self, '_errors'):
+                    self._errors = {}
+                self._errors['warnings'] = warnings
+        if self._errors and raise_exception:
+            raise ValidationError(self.errors)
+        return valid
     class Meta:
         model = Submission
         exclude = ['submitted','sra_data','status','internal_id']
