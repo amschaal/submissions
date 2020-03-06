@@ -122,19 +122,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-#     warnings = serializers.SerializerMethodField()
-#     payment_info = serializers.CharField(allow_null=True, allow_blank=True, default='')
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer() 
-#     def validate_payment_info(self, payment_info):
-#         payment_type = self.initial_data.get('payment_type')
-#         if payment_type == Submission.PAYMENT_CREDIT_CARD and payment_info:
-#             raise serializers.ValidationError("Do not enter anything into payment info when choosing credit card!")
-#         elif payment_type == Submission.PAYMENT_DAFIS:
-#             if not validate_dafis(payment_info):
-#                 raise serializers.ValidationError("The account is invalid.  Please ensure that the chart and account are valid and in the form 'chart-account'.")
-#         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
-#             raise serializers.ValidationError("Please enter payment details.")
-#         return payment_info
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
@@ -182,25 +170,11 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             data['sample_data']=self._sample_warnings
         if hasattr(self, '_submission_warnings') and len(self._submission_warnings):
             data['submission_data']=self._submission_warnings
-#         if len(data) > 0:
-#             raise serializers.ValidationError(data)
         return data
     def validate_warnings(self, data=None):
+        #don't raise errors in here, only in is_valid
         data = self.get_warnings()
         return data if len(data) > 0 else None
-#     def update_errors_and_warnings(self, instance):
-#         print('SUBMISSION WARNINGS!!!', self._submission_warnings)
-#         if not self.warnings and (len(self._sample_warnings) or len(self._submission_warnings)):
-#             instance.warnings= {'submission_data':{},'sample_data':{}}
-# #         if len(self._sample_errors):
-# #             instance.data['errors']['sample_data']=self._sample_errors
-#         if len(self._sample_warnings):
-#             instance.warnings['sample_data']=self._sample_warnings
-# #         if len(self._submission_errors):
-# #             instance.data['errors']['submission_data']=self._submission_errors
-#         if len(self._submission_warnings):
-#             instance.warnings['submission_data']=self._submission_warnings
-#         instance.save()
     def create(self, validated_data):
         contacts = validated_data.pop('contacts')
         validated_data['data'] = {
@@ -239,31 +213,12 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             else:
                 Contact.objects.create(submission=instance, **c)
         return instance
-#     def update(self, instance, validated_data):
-#         return super(WritableSubmissionSerializer, self).update(instance, validated_data)
-#     def clean(self):
-#         cleaned_data = super(SubmissionForm, self).clean()
-#         sample_data = cleaned_data.get('sample_data')
-#         type = cleaned_data.get('type')
-#         if type and sample_data and len(sample_data) > 0:
-#             validator = SamplesheetValidator(type.sample_schema,sample_data)
-#             errors = validator.validate()
-#             if len(errors):
-#                 self.add_error('sample_data', 'Errors were found in the samplesheet')
-#                 self.errors['_sample_data'] = errors
     def get_editable(self,instance):
         request = self._context.get('request')
         if request:
             return instance.editable(request.user)
-#     def get_warnings(self, instance):
-#         return instance.data.get('warnings') if instance and instance.data else {}
-#     def validate(self, data):
-#         print("VALIDATE!!!!!", data)
-#         raise serializers.ValidationError({"warnings": {"foo":"bar"}})
-#         return data
     def is_valid(self, raise_exception=False):
         valid = serializers.ModelSerializer.is_valid(self, raise_exception=False)
-        print('is_valid 1', self.initial_data.keys())
         # Needs "if warnings and not ignore_warnings or not valid"
         
         if not valid or not self.initial_data.get('ignore_warnings',False):
@@ -280,31 +235,6 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         exclude = ['submitted','sra_data','status','internal_id']
         read_only_fields= ['lab','data']
 
-    """
-        first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    email = models.EmailField(max_length=75)
-    phone = models.CharField(max_length=20)
-    pi_first_name = models.CharField(max_length=50)
-    pi_last_name = models.CharField(max_length=50)
-    pi_email = models.EmailField(max_length=75)
-    pi_phone = models.CharField(max_length=20)
-    institute = models.CharField(max_length=75)
-#     payment_type = models.CharField(max_length=50,choices=PAYMENT_CHOICES)
-#     payment_info = models.CharField(max_length=250,null=True,blank=True)
-    type = models.ForeignKey(SubmissionType,related_name="submissions", on_delete=models.PROTECT)
-    submission_schema = JSONField(null=True,blank=True)
-    sample_schema = JSONField(null=True,blank=True)
-    submission_data = JSONField(default=dict)
-    sample_data = JSONField(null=True,blank=True)
-    sra_data = JSONField(null=True,blank=True)
-    notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
-    biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True)
-    data = JSONField(default=dict)
-    payment = JSONField(default=dict)
-    comments = models.TextField(null=True, blank=True)
-    """
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
         print('ImportSubmissionSerializer', data, args, kwargs)
