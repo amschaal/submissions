@@ -5,7 +5,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import
+    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
@@ -258,7 +258,19 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
-
+    @action(detail=True, methods=['post'])
+    def update_settings(self,request,pk):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
+        user = self.get_object()
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        key = request.data.get('key', None)
+        value = request.data.get('value', None)
+        if not key or not value:
+            return response.Response({'status':'error', 'message': 'Both "key" and "value" parameters are required'},status=403)
+        profile.settings[key] = value
+        profile.save()
+        return response.Response({'status':'success', 'settings':profile.settings})
 class StatusViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SubmissionStatus.objects.all().order_by('order')
     serializer_class = StatusSerializer

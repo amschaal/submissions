@@ -363,6 +363,10 @@ def send_note_email(sender, instance, created, **kwargs):
         instance.sent = True
         instance.save()
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    settings = JSONField(default=dict)
+
 def user_string(self):
     if self.first_name or self.last_name:
         return "{first} {last}".format(first=self.first_name, last=self.last_name)
