@@ -258,12 +258,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
-    @action(detail=True, methods=['post'])
-    def update_settings(self,request,pk):
+    @action(detail=False, methods=['post'])
+    def update_settings(self,request):
         if not request.user.is_authenticated:
             return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
-        user = self.get_object()
-        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
         key = request.data.get('key', None)
         value = request.data.get('value', None)
         if not key or not value:

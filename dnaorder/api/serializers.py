@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import
+    Import, UserProfile
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -10,6 +10,7 @@ from dnaorder import validators
 from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
+import profile
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -73,7 +74,13 @@ class ModelRelatedField(serializers.RelatedField):
     def to_representation(self, value):
         return self.serializer(value).data
 
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        exclude = ['user']
+
 class UserSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True)
     class Meta:
         model = User
         exclude = ['password']
