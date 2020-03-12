@@ -125,18 +125,29 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
         model = SubmissionStatus
         fields = ['id','name']
 
+class SamplesField(serializers.Field):
+    def to_representation(self, value):
+#         from pprint import pprint
+#         pprint(vars(self))
+#         print('representation', self.parent.instance)
+        if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
+            value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
+        return value
+    def to_internal_value(self, data):
+        return data
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
-    samples = serializers.SerializerMethodField(read_only=True)
-    def get_samples(self, instance):
-        if instance:
-            return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
-        else:
-            return []
+    sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
+#     def get_sample_data(self, instance):
+#         if instance:
+#             return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
+#         else:
+#             return []
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
@@ -222,7 +233,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         
         sample_data = validated_data.pop('sample_data')
         
-        
+        print('sample_data', sample_data)
         #Delete samples that no longer exist
         
         #What is the largest current suffix?
@@ -233,6 +244,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             row = i+1
             id = s.get('id',None)
             if not id: #create
+                print('CREATING row {}'.format(row), s)
                 suffix += 1
                 id = "{}_{}".format(instance.internal_id,str(suffix).zfill(3))
                 s['id'] = id
