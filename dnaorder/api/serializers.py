@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import, UserProfile
+    Import, UserProfile, Sample
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -11,6 +11,7 @@ from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
 import profile
+from openpyxl.cell import read_only
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -129,7 +130,13 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer() 
+    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    samples = serializers.SerializerMethodField(read_only=True)
+    def get_samples(self, instance):
+        if instance:
+            return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
+        else:
+            return []
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
@@ -213,6 +220,33 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 #         self.update_errors_and_warnings(instance)
         instance.save()
         
+        sample_data = validated_data.pop('sample_data')
+        
+        
+        #Delete samples that no longer exist
+        
+        #What is the largest current suffix?
+        last_sample = Sample.objects.filter(submission=instance).order_by('-id_suffix').first()
+        suffix = last_sample.id_suffix if last_sample else 0
+        
+        for i, s in enumerate(sample_data):
+            row = i+1
+            id = s.get('id',None)
+            if not id: #create
+                suffix += 1
+                id = "{}_{}".format(instance.internal_id,str(suffix).zfill(3))
+                s['id'] = id
+                sample = Sample.objects.create(id=id, id_suffix=suffix, submission=instance, name=s.get('sample_name',''),data=s,row=row)
+                print("CREATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+            else: #update
+                sample = Sample.objects.get(submission=instance,id=id)
+                sample.name = s.get('sample_name','')
+                sample.data=s
+                sample.row=row
+                sample.save()
+                print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+#             if
+            
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:
             if c.get('id', False):

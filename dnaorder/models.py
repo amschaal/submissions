@@ -275,6 +275,26 @@ def set_default_participants(sender, instance, created, **kwargs):
         for u in instance.type.default_participants.all():
             instance.participants.add(u)
 
+class Sample(models.Model):
+    id = models.CharField(max_length=50,primary_key=True)
+    id_suffix = models.PositiveIntegerField()
+    row = models.PositiveIntegerField()
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="samples")
+    name = models.CharField(max_length=50,db_index=True)
+#     received = models.DateField(null=True,blank=True,db_index=True)
+    data = JSONField(null=True,blank=True)
+    def __unicode__(self):
+        return self.id
+    def __str__(self):
+        return self.id
+#     def get_absolute_url(self):
+#         return reverse('sample', args=[str(self.id)])
+#     def directory(self,full=True):
+#         return call_directory_function('get_sample_directory',self,full=full)
+    class Meta:
+        unique_together = (('name', 'submission'),('row','submission'),('id_suffix','submission') )
+
+
 class Draft(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     data = JSONField(null=False,blank=False)
