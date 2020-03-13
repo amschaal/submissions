@@ -12,6 +12,7 @@ from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
 import profile
 from openpyxl.cell import read_only
+from random import sample
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -129,25 +130,38 @@ class SamplesField(serializers.Field):
     def to_representation(self, value):
 #         from pprint import pprint
 #         pprint(vars(self))
+#         print('value', value)
 #         print('representation', self.parent.instance)
         if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
             value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
+#         print('to_representation', self.parent.instance, len(value), Sample.objects.filter(submission=self.parent.instance).count())
         return value
     def to_internal_value(self, data):
         return data
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        print('many_init', args, kwargs)
+#         return super(WritableSubmissionSerializer, cls).many_init(*args, **kwargs)
+        kwargs['child'] = cls()
+        return WritableSubmissionSerializer(*args, **kwargs)
     def __init__(self,*args,**kwargs):
+#         if kwargs.get('many',False):
+        print('init', args, kwargs)
+        self.sample_data = serializers.SerializerMethodField()
         super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
+        
+            
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-#     def get_sample_data(self, instance):
-#         if instance:
-#             return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
-#         else:
-#             return []
+    def get_sample_data(self, instance):
+        if instance:
+            return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
+        else:
+            return []
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
@@ -210,6 +224,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
             validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
+        submission.update_samples(validated_data.pop('sample_data'))
 #         self.update_errors_and_warnings(submission)
         for contact in contacts:
             Contact.objects.create(submission=submission, **contact)
@@ -231,10 +246,15 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 #         self.update_errors_and_warnings(instance)
         instance.save()
         
+        instance.update_samples(validated_data.pop('sample_data'))
+        """
         sample_data = validated_data.pop('sample_data')
         
         print('sample_data', sample_data)
+        sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
         #Delete samples that no longer exist
+        print('sample_ids',sample_ids)
+        Sample.objects.filter(submission=instance).exclude(id__in=sample_ids).delete()
         
         #What is the largest current suffix?
         last_sample = Sample.objects.filter(submission=instance).order_by('-id_suffix').first()
@@ -258,6 +278,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 sample.save()
                 print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
 #             if
+        """
             
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:

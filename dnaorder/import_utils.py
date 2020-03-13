@@ -30,6 +30,7 @@ def import_submission_url(url):
     submission = get_submission(url)
     submission.pop('lab', None)
     submission.pop('participants', None)
+    submission.pop('received_by', None)
     print(submission)
     return submission
 
