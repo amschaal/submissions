@@ -143,9 +143,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     @classmethod
     def many_init(cls, *args, **kwargs):
         print('many_init', args, kwargs)
-#         return super(WritableSubmissionSerializer, cls).many_init(*args, **kwargs)
-        kwargs['child'] = cls()
-        return WritableSubmissionSerializer(*args, **kwargs)
+        return super(WritableSubmissionSerializer, cls).many_init(*args, **kwargs)
+#         kwargs['child'] = cls()
+#         return WritableSubmissionSerializer(*args, **kwargs)
     def __init__(self,*args,**kwargs):
 #         if kwargs.get('many',False):
         print('init', args, kwargs)
@@ -157,11 +157,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-    def get_sample_data(self, instance):
-        if instance:
-            return [s.data for s in Sample.objects.filter(submission=instance).order_by('row')]
-        else:
-            return []
+    sample_count = serializers.SerializerMethodField()
+    def get_sample_count(self,instance):
+        return len(instance.sample_data)
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
