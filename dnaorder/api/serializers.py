@@ -128,31 +128,13 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
 
 class SamplesField(serializers.Field):
     def to_representation(self, value):
-#         from pprint import pprint
-#         pprint(vars(self))
-#         print('value', value)
-#         print('representation', self.parent.instance)
         if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
             value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
-#         print('to_representation', self.parent.instance, len(value), Sample.objects.filter(submission=self.parent.instance).count())
         return value
     def to_internal_value(self, data):
         return data
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
-    @classmethod
-    def many_init(cls, *args, **kwargs):
-        print('many_init', args, kwargs)
-        return super(WritableSubmissionSerializer, cls).many_init(*args, **kwargs)
-#         kwargs['child'] = cls()
-#         return WritableSubmissionSerializer(*args, **kwargs)
-    def __init__(self,*args,**kwargs):
-#         if kwargs.get('many',False):
-        print('init', args, kwargs)
-        self.sample_data = serializers.SerializerMethodField()
-        super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
-        
-            
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
