@@ -138,7 +138,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
-    sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
+    #temporarily disable the following serializer
+#     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     sample_count = serializers.SerializerMethodField()
     def get_sample_count(self,instance):
         return len(instance.sample_data)
