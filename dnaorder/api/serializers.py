@@ -339,6 +339,14 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         model = Submission
         exclude = []
 
+# A more efficent serializer for lists.  Limit attributes with large data or querying.
+class ListSubmissionSerializer(SubmissionSerializer):
+    sample_data = None
+    lab = None
+    class Meta:
+        model = Submission
+        exclude = ['sample_data', 'lab', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()

@@ -3,7 +3,8 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
-    TermSerializer, ImportSubmissionSerializer, ImportSerializer
+    TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
+    ListSubmissionSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
 from rest_framework.decorators import permission_classes, action
@@ -43,7 +44,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
-        return SubmissionSerializer
+        return SubmissionSerializer if self.detail else ListSubmissionSerializer
 #         return viewsets.ModelViewSet.get_serializer_class(self)
     def get_permissions(self):
         try:
