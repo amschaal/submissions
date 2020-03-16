@@ -217,6 +217,34 @@ class Submission(models.Model):
             self.type.save()
         self.internal_id = None
         self.save()
+    def update_samples(self, sample_data):
+        print('sample_data', sample_data)
+        sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
+        #Delete samples that no longer exist
+        print('sample_ids',sample_ids)
+        Sample.objects.filter(submission=self).exclude(id__in=sample_ids).delete()
+        
+        #What is the largest current suffix?
+        last_sample = Sample.objects.filter(submission=self).order_by('-id_suffix').first()
+        suffix = last_sample.id_suffix if last_sample else 0
+        
+        for i, s in enumerate(sample_data):
+            row = i+1
+            id = s.get('id',None)
+            if not id: #create
+                print('CREATING row {}'.format(row), s)
+                suffix += 1
+                id = "{}_{}".format(self.internal_id,str(suffix).zfill(3))
+                s['id'] = id
+                sample = Sample.objects.create(id=id, id_suffix=suffix, submission=self, name=s.get('sample_name',''),data=s,row=row)
+                print("CREATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+            else: #update
+                sample = Sample.objects.get(submission=self,id=id)
+                sample.name = s.get('sample_name','')
+                sample.data=s
+                sample.row=row
+                sample.save()
+                print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
     def __str__(self):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
@@ -274,6 +302,26 @@ def set_default_participants(sender, instance, created, **kwargs):
     if created and instance.type.default_participants.count() > 0:
         for u in instance.type.default_participants.all():
             instance.participants.add(u)
+
+class Sample(models.Model):
+    id = models.CharField(max_length=50,primary_key=True)
+    id_suffix = models.PositiveIntegerField()
+    row = models.PositiveIntegerField()
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="samples")
+    name = models.CharField(max_length=50,db_index=True)
+#     received = models.DateField(null=True,blank=True,db_index=True)
+    data = JSONField(null=True,blank=True)
+    def __unicode__(self):
+        return self.id
+    def __str__(self):
+        return self.id
+#     def get_absolute_url(self):
+#         return reverse('sample', args=[str(self.id)])
+#     def directory(self,full=True):
+#         return call_directory_function('get_sample_directory',self,full=full)
+    class Meta:
+        unique_together = (('name', 'submission'),('id_suffix','submission'))
+
 
 class Draft(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)

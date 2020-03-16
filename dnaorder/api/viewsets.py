@@ -3,7 +3,8 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
-    TermSerializer, ImportSubmissionSerializer, ImportSerializer
+    TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
+    ListSubmissionSerializer
 from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
 from rest_framework.decorators import permission_classes, action
@@ -43,13 +44,19 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
-        return SubmissionSerializer
+        return SubmissionSerializer if self.detail else ListSubmissionSerializer
 #         return viewsets.ModelViewSet.get_serializer_class(self)
     def get_permissions(self):
         try:
             return [permission() for permission in self.permission_classes_by_action[self.action]]
         except KeyError:
             return [permission() for permission in self.permission_classes]
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             return self.get_paginated_response([self.get_serializer(s).data for s in page])
+#         return Response([self.get_serializer(s).data for s in queryset])
 #     @action(detail=False, methods=['post','get'])
 #     def import_submission(self, request):
 #         url = request.query_params.get('url')

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import, UserProfile
+    Import, UserProfile, Sample
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -11,6 +11,8 @@ from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
 import profile
+from openpyxl.cell import read_only
+from random import sample
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -124,12 +126,23 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
         model = SubmissionStatus
         fields = ['id','name']
 
+class SamplesField(serializers.Field):
+    def to_representation(self, value):
+        if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
+            value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
+        return value
+    def to_internal_value(self, data):
+        return data
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
-    def __init__(self,*args,**kwargs):
-        super(WritableSubmissionSerializer, self).__init__(*args, **kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer() 
+    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    #temporarily disable the following serializer
+#     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
+    sample_count = serializers.SerializerMethodField()
+    def get_sample_count(self,instance):
+        return len(instance.sample_data)
     def validate_sample_data(self, sample_data):
         schema = None
         type = self.initial_data.get('type')
@@ -192,6 +205,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
             validated_data['import_request'] = import_request
         submission = Submission.objects.create(**validated_data)
+        submission.update_samples(validated_data.pop('sample_data'))
 #         self.update_errors_and_warnings(submission)
         for contact in contacts:
             Contact.objects.create(submission=submission, **contact)
@@ -213,6 +227,40 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
 #         self.update_errors_and_warnings(instance)
         instance.save()
         
+        instance.update_samples(validated_data.pop('sample_data'))
+        """
+        sample_data = validated_data.pop('sample_data')
+        
+        print('sample_data', sample_data)
+        sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
+        #Delete samples that no longer exist
+        print('sample_ids',sample_ids)
+        Sample.objects.filter(submission=instance).exclude(id__in=sample_ids).delete()
+        
+        #What is the largest current suffix?
+        last_sample = Sample.objects.filter(submission=instance).order_by('-id_suffix').first()
+        suffix = last_sample.id_suffix if last_sample else 0
+        
+        for i, s in enumerate(sample_data):
+            row = i+1
+            id = s.get('id',None)
+            if not id: #create
+                print('CREATING row {}'.format(row), s)
+                suffix += 1
+                id = "{}_{}".format(instance.internal_id,str(suffix).zfill(3))
+                s['id'] = id
+                sample = Sample.objects.create(id=id, id_suffix=suffix, submission=instance, name=s.get('sample_name',''),data=s,row=row)
+                print("CREATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+            else: #update
+                sample = Sample.objects.get(submission=instance,id=id)
+                sample.name = s.get('sample_name','')
+                sample.data=s
+                sample.row=row
+                sample.save()
+                print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+#             if
+        """
+            
         Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
         for c in contacts:
             if c.get('id', False):
@@ -292,6 +340,14 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         model = Submission
         exclude = []
 
+# A more efficent serializer for lists.  Limit attributes with large data or querying.
+class ListSubmissionSerializer(SubmissionSerializer):
+    sample_data = None
+    lab = None
+    class Meta:
+        model = Submission
+        exclude = ['sample_data', 'lab', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()

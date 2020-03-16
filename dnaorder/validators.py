@@ -283,7 +283,7 @@ class SamplesheetValidator:
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
         cleaned = []
         for idx, row in enumerate(self.data):
-            cleaned.append(dict([(variable,row.get(variable, None))  for variable in self.schema['properties'].keys()]))
+            cleaned.append(dict([(variable,row.get(variable, None))  for variable in (list(self.schema['properties'].keys())+['id'])]))
 #             value = row.get(variable, None)
         return cleaned
 #         for variable in self.schema['properties'].keys():
