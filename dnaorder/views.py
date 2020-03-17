@@ -76,7 +76,7 @@ def get_user(request):
         user = request.user
         return Response({'status':'success','user':UserSerializer(instance=user).data})
     else:
-        return Response({'message':'Not authenticated.'},status=500)
+        return Response({'message':'Not authenticated.'},status=403)
 
 @api_view(['POST'])
 def logout_view(request):
