@@ -13,6 +13,7 @@ from rest_framework.exceptions import ValidationError
 import profile
 from openpyxl.cell import read_only
 from random import sample
+from django.db import transaction
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -196,78 +197,48 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         data = self.get_warnings()
         return data if len(data) > 0 else None
     def create(self, validated_data):
-        contacts = validated_data.pop('contacts')
-        validated_data['data'] = {
-                                    'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
-                                    'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
-                                  }
-        if validated_data.get('import_data', None):
-            import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
-            validated_data['import_request'] = import_request
-        submission = Submission.objects.create(**validated_data)
-        submission.update_samples(validated_data.pop('sample_data'))
-#         self.update_errors_and_warnings(submission)
-        for contact in contacts:
-            Contact.objects.create(submission=submission, **contact)
-        return submission
+        with transaction.atomic():
+            contacts = validated_data.pop('contacts')
+            validated_data['data'] = {
+                                        'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+                                        'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
+                                      }
+            if validated_data.get('import_data', None):
+                import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
+                validated_data['import_request'] = import_request
+            submission = Submission.objects.create(**validated_data)
+            submission.update_samples(validated_data.pop('sample_data'))
+    #         self.update_errors_and_warnings(submission)
+            for contact in contacts:
+                Contact.objects.create(submission=submission, **contact)
+            return submission
     def update(self, instance, validated_data):
-        contacts = validated_data.pop('contacts')
-        info = serializers.model_meta.get_field_info(instance)
-
-        # Simply set each attribute on the instance, and then save it.
-        # Note that unlike `.create()` we don't need to treat many-to-many
-        # relationships as being a special case. During updates we already
-        # have an instance pk for the relationships to be associated with.
-        for attr, value in validated_data.items():
-            if attr in info.relations and info.relations[attr].to_many:
-                field = getattr(instance, attr)
-                field.set(value)
-            else:
-                setattr(instance, attr, value)
-#         self.update_errors_and_warnings(instance)
-        instance.save()
-        
-        instance.update_samples(validated_data.pop('sample_data'))
-        """
-        sample_data = validated_data.pop('sample_data')
-        
-        print('sample_data', sample_data)
-        sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
-        #Delete samples that no longer exist
-        print('sample_ids',sample_ids)
-        Sample.objects.filter(submission=instance).exclude(id__in=sample_ids).delete()
-        
-        #What is the largest current suffix?
-        last_sample = Sample.objects.filter(submission=instance).order_by('-id_suffix').first()
-        suffix = last_sample.id_suffix if last_sample else 0
-        
-        for i, s in enumerate(sample_data):
-            row = i+1
-            id = s.get('id',None)
-            if not id: #create
-                print('CREATING row {}'.format(row), s)
-                suffix += 1
-                id = "{}_{}".format(instance.internal_id,str(suffix).zfill(3))
-                s['id'] = id
-                sample = Sample.objects.create(id=id, id_suffix=suffix, submission=instance, name=s.get('sample_name',''),data=s,row=row)
-                print("CREATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
-            else: #update
-                sample = Sample.objects.get(submission=instance,id=id)
-                sample.name = s.get('sample_name','')
-                sample.data=s
-                sample.row=row
-                sample.save()
-                print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
-#             if
-        """
+        with transaction.atomic():
+            contacts = validated_data.pop('contacts')
+            info = serializers.model_meta.get_field_info(instance)
+    
+            # Simply set each attribute on the instance, and then save it.
+            # Note that unlike `.create()` we don't need to treat many-to-many
+            # relationships as being a special case. During updates we already
+            # have an instance pk for the relationships to be associated with.
+            for attr, value in validated_data.items():
+                if attr in info.relations and info.relations[attr].to_many:
+                    field = getattr(instance, attr)
+                    field.set(value)
+                else:
+                    setattr(instance, attr, value)
+    #         self.update_errors_and_warnings(instance)
+            instance.save()
             
-        Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
-        for c in contacts:
-            if c.get('id', False):
-                Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
-            else:
-                Contact.objects.create(submission=instance, **c)
-        return instance
+            instance.update_samples(validated_data.pop('sample_data'))
+                
+            Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
+            for c in contacts:
+                if c.get('id', False):
+                    Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
+                else:
+                    Contact.objects.create(submission=instance, **c)
+            return instance
     def get_editable(self,instance):
         request = self._context.get('request')
         if request:
