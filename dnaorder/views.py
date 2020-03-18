@@ -66,7 +66,7 @@ def login_view(request):
         auth_login(request._request, user)
         return Response({'status':'success','user':UserSerializer(instance=user).data})
     else:
-        return Response({'message':'Authentication failed.'},status=500)
+        return Response({'message':'Authentication failed.'},status=400)
 
 @api_view(['GET'])
 @csrf_exempt
@@ -246,7 +246,7 @@ def validate_data(request,type_id=None):
     if len(errors) == 0 and len(warnings) == 0:
         return Response({'status':'success','message':'The data was successfully validated'})
     else:
-        return Response({'errors':errors, 'warnings': warnings},status=500)
+        return Response({'errors':errors, 'warnings': warnings},status=400)
     
 @permission_classes((AllowAny,))
 def download(request, id):
