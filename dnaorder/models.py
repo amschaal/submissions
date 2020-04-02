@@ -217,6 +217,7 @@ class Submission(models.Model):
             self.type.save()
         self.internal_id = None
         self.save()
+        self.samples.all().delete() #delete associated samples
     def update_samples(self, sample_data):
         print('sample_data', sample_data)
         sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
