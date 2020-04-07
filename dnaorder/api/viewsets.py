@@ -261,7 +261,7 @@ class NoteViewSet(viewsets.ModelViewSet):
 #     def perform_create(self, serializer):
 #         serializer.save()
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all().order_by('id')
+    queryset = User.objects.all().order_by('last_name', 'first_name')
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
