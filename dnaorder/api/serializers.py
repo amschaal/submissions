@@ -298,7 +298,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
-        return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all()]
+        return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
         return str(instance.received_by) if instance.received_by else None
     def get_url(self, instance):
