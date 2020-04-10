@@ -126,6 +126,7 @@ class NumberValidator(BaseValidator):
     description = 'Only allow numbers, optionally within a certain range.'
     uses_options = True
     supported_types = ['number']
+    schema = [{'variable': 'minimum', 'label': 'Minimum', 'type': 'number'}, {'variable': 'maximum', 'label': 'Maximum', 'type': 'number'}]
     def validate(self, variable, value, schema={}, data=[], row=[]):
 #         vschema = schema['properties'][variable]
         if not value and value != 0:
@@ -134,8 +135,16 @@ class NumberValidator(BaseValidator):
             float(value)
         except ValueError:
             raise self.validation_class(variable, value, 'Value "{0}" is not a number'.format(value))
-        minimum = self.options.get('minimum', None)
+        
         maximum = self.options.get('maximum', None)
+        try:
+            minimum = float(self.options.get('minimum'))
+        except:
+            minimum = None
+        try:
+            maximum = float(self.options.get('maximum'))
+        except:
+            maximum = None
         if minimum and maximum and (float(value) < minimum or float(value) > maximum):
             raise self.validation_class(variable, value, 'Value must be in the range {0} - {1}'.format(minimum,maximum))
         if minimum and float(value) < minimum:
