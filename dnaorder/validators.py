@@ -55,6 +55,21 @@ class BaseValidator(object):
     def serialize(self):
         return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
 
+class TableValidator(BaseValidator):
+    id = 'table'
+    name = 'Table'
+    description = 'Validate a table based on a schema.'
+    uses_options = False
+    def validate_all(self, variable, schema={}, data=[]):
+        print('TableValidator.validate')
+        print('variable', variable)
+        print('schema', schema)
+        print('data', data)
+        print('options', self.options)
+        validator = SamplesheetValidator(self.options.get('schema'), data)
+        errors, warnings = validator.validate()
+        print('TableValidator.validate_all', errors, warnings)
+
 # Custom validators
 class UniqueValidator(BaseValidator):
     id = 'unique'
@@ -194,7 +209,7 @@ class FooValidator(BaseValidator):
 
 def get_validators():
     from genomics.validators import BarcodeValidator
-    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator, TableValidator]
 
 VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
@@ -266,8 +281,10 @@ class SamplesheetValidator:
 #                                 if e.skip_other_exceptions:
 #                                     break
     def get_validators(self, variable):
+        #If table, validate based on schema only
+        if self.schema['properties'][variable].get('type', False) == 'table':
+            return [self.get_validator(TableValidator.id, {'schema': self.schema['properties'][variable].get('schema')})]
         #Add validators configured by the user
-#         print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
         if variable in self.schema.get('required', []):
