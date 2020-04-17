@@ -1,6 +1,8 @@
 import re
 
-
+"""
+    ValidationException validates a single value
+"""
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -11,6 +13,12 @@ class ValidationException(Exception):
 class MultiValidationException(Exception):
     def __init__(self, exceptions, skip_other_exceptions=False):
         self.exceptions = exceptions
+        self.skip_other_exceptions = skip_other_exceptions
+
+class TableValidationException(Exception):
+    def __init__(self, errors, warnings, skip_other_exceptions=False):
+        self.errors = errors if len(errors) else None
+        self.warnings = warnings if len(warnings) else None
         self.skip_other_exceptions = skip_other_exceptions
 
 class ValidationError(ValidationException):
@@ -64,11 +72,19 @@ class TableValidator(BaseValidator):
         print('TableValidator.validate')
         print('variable', variable)
         print('schema', schema)
-        print('data', data)
         print('options', self.options)
-        validator = SamplesheetValidator(self.options.get('schema'), data)
-        errors, warnings = validator.validate()
-        print('TableValidator.validate_all', errors, warnings)
+        print('data', data)
+        for idx, d in enumerate(data):
+            table = d.get(variable, None)
+            if table:
+                print('table', table)
+                validator = SamplesheetValidator(self.options.get('schema'), table)
+                errors, warnings = validator.validate()
+                print('TableValidator.validate_all', errors, warnings)
+#         if len(errors) or len(warnings):
+#             raise TableValidationException(errors, warnings, True)
+#         if len(errors):
+#             raise self.validation_class(variable, data, )
 
 # Custom validators
 class UniqueValidator(BaseValidator):
@@ -215,7 +231,7 @@ VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
-class SamplesheetValidator:
+class SamplesheetValidator: #TableValidator (List of Objects)
     def __init__(self, schema, data, clear_empty_rows=True):
         self.errors = {}
         self.warnings = {}
@@ -237,18 +253,18 @@ class SamplesheetValidator:
     def get_validator(self, id, options={}):
         if id in VALIDATORS_DICT:
             return VALIDATORS_DICT[id](options)
-    def set_error(self, index, variable, message):
+    def set_error(self, index, variable, error):
         if not index in self.errors:
             self.errors[index] = {}
         if not variable in self.errors[index]:
             self.errors[index][variable] = []
-        self.errors[index][variable].append(message)
-    def set_warning(self, index, variable, message):
+        self.errors[index][variable].append(error)
+    def set_warning(self, index, variable, warning):
         if not index in self.warnings:
             self.warnings[index] = {}
         if not variable in self.warnings[index]:
             self.warnings[index][variable] = []
-        self.warnings[index][variable].append(message)
+        self.warnings[index][variable].append(warning)
     def validate_values(self, variable, validators):
         for idx, row in enumerate(self.data):
             value = row.get(variable, None)
@@ -266,6 +282,19 @@ class SamplesheetValidator:
                             break
     def validate_all(self, variable, validators):
         data = self.data if isinstance(self.data, list) else [self.data]
+        if self.schema['properties'][variable].get('type', False) == 'table':
+            schema = self.schema['properties'][variable].get('schema')
+            for idx, d in enumerate(data):
+                table = d.get(variable, None)
+                if table:
+                    print('table', table)
+                    validator = SamplesheetValidator(schema, table)
+                    errors, warnings = validator.validate()
+                    print('Validate All Table', errors, warnings)
+                    if len(errors):
+                        self.set_error(idx, variable, errors)
+                    if len(warnings):
+                        self.set_warning(idx, variable, warnings)
         for validator in validators:
             if validator:
                 try:
@@ -278,12 +307,18 @@ class SamplesheetValidator:
                                 self.set_error(idx, exception.variable, exception.message)
                             elif isinstance(exception, ValidationWarning):
                                 self.set_warning(idx, exception.variable, exception.message)
+#                 except TableValidationException as e:
+#                     if e.errors:
+#                         self.set_error(idx, variable, e.errors)
+#                     if e.warnings:
+#                         self.set_warning(idx, variable, e.warnings)
+#                     break #
 #                                 if e.skip_other_exceptions:
 #                                     break
     def get_validators(self, variable):
         #If table, validate based on schema only
-        if self.schema['properties'][variable].get('type', False) == 'table':
-            return [self.get_validator(TableValidator.id, {'schema': self.schema['properties'][variable].get('schema')})]
+#         if self.schema['properties'][variable].get('type', False) == 'table':
+#             return [self.get_validator(TableValidator.id, {'schema': self.schema['properties'][variable].get('schema')})]
         #Add validators configured by the user
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
@@ -317,7 +352,7 @@ class SamplesheetValidator:
 #             self.validate_values(variable, validators)
 #         return dict([(,)  for variable in self.schema['properties'].keys()])
 
-class SubmissionValidator(SamplesheetValidator):
+class SubmissionValidator(SamplesheetValidator): #Object validator
     def __init__(self, schema, data):
         super(SubmissionValidator, self).__init__(schema, data, clear_empty_rows=False)
     def set_error(self, index, variable, message):
@@ -342,6 +377,11 @@ class SubmissionValidator(SamplesheetValidator):
                     self.set_error(e.variable, e.message)
                     if e.skip_other_exceptions:
                         break
+                except TableValidationException as e:
+                    if e.errors:
+                        self.set_error(variable, e.errors)
+                    if e.warnings:
+                        self.set_warning(variable, e.warnings)
     def cleaned(self):
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
         return dict([(variable,self.data.get(variable, None))  for variable in self.schema['properties'].keys()])
