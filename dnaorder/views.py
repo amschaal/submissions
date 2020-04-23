@@ -247,7 +247,7 @@ def validate_data(request,type_id=None):
         return Response({'status':'success','message':'The data was successfully validated'})
     else:
         return Response({'errors':errors, 'warnings': warnings},status=400)
-    
+
 @permission_classes((AllowAny,))
 def download(request, id):
     submission = Submission.objects.get(id=id)

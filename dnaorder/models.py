@@ -43,7 +43,7 @@ class Lab(models.Model):
     submission_page = models.TextField(default='', blank=True)
     statuses = JSONField(default=list)
     submission_variables = JSONField(default=dict)
-    sample_variables = JSONField(default=dict)
+    table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
     def __str__(self):
         return self.name

@@ -225,7 +225,7 @@ class FooValidator(BaseValidator):
 
 def get_validators():
     from genomics.validators import BarcodeValidator
-    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator, TableValidator]
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
 
 VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])

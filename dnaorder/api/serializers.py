@@ -98,21 +98,21 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
 #     def get_sample_schema(self,instance):
 #         translate_schema(instance.sample_schema)
 #         return instance.sample_schema
-    def validate_examples(self, data):
-        sample_schema = self.initial_data.get('sample_schema',{})
-        validator = SamplesheetValidator(sample_schema, data)
-        errors, warnings = validator.validate()
-        if len(errors):
-            raise serializers.ValidationError('Examples did not validate.')
-#             
-#             self.add_error('sample_data', 'Errors were found in the samplesheet')
-#                 self.errors['_sample_data'] = errors
-#         raise serializers.ValidationError('Examples did not validate.')
-        return data
+#     def validate_examples(self, data):
+#         sample_schema = self.initial_data.get('sample_schema',{})
+#         validator = SamplesheetValidator(sample_schema, data)
+#         errors, warnings = validator.validate()
+#         if len(errors):
+#             raise serializers.ValidationError('Examples did not validate.')
+# #             
+# #             self.add_error('sample_data', 'Errors were found in the samplesheet')
+# #                 self.errors['_sample_data'] = errors
+# #         raise serializers.ValidationError('Examples did not validate.')
+#         return data
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text', 'default_participants']
+        fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
         read_only_fields = ('updated','lab')
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -127,13 +127,13 @@ class SubmissionStatusSerializer(serializers.ModelSerializer):
         model = SubmissionStatus
         fields = ['id','name']
 
-class SamplesField(serializers.Field):
-    def to_representation(self, value):
-        if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
-            value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
-        return value
-    def to_internal_value(self, data):
-        return data
+# class SamplesField(serializers.Field):
+#     def to_representation(self, value):
+#         if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
+#             value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
+#         return value
+#     def to_internal_value(self, data):
+#         return data
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
@@ -141,29 +141,29 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-    sample_count = serializers.SerializerMethodField()
-    def get_sample_count(self,instance):
-        return len(instance.sample_data)
-    def validate_sample_data(self, sample_data):
-        schema = None
-        type = self.initial_data.get('type')
-        if self.instance:
-            schema = self.instance.sample_schema
-        elif type:
-            type = SubmissionType.objects.get(id=type)
-            schema = type.sample_schema
-#         raise Exception(schema)
-        
-        if (not sample_data or len(sample_data) < 1) and schema and len(schema.get('order', [])) > 0:
-            raise serializers.ValidationError("Please provide at least 1 sample.")
-        
-        if schema:
-            validator = SamplesheetValidator(schema,sample_data)
-            self._sample_errors, self._sample_warnings = validator.validate()
-            if len(self._sample_errors):
-                raise serializers.ValidationError(self._sample_errors)
-            return validator.cleaned()
-        return sample_data
+#     sample_count = serializers.SerializerMethodField()
+#     def get_sample_count(self,instance):
+#         return len(instance.sample_data)
+#     def validate_sample_data(self, sample_data):
+#         schema = None
+#         type = self.initial_data.get('type')
+#         if self.instance:
+#             schema = self.instance.sample_schema
+#         elif type:
+#             type = SubmissionType.objects.get(id=type)
+#             schema = type.sample_schema
+# #         raise Exception(schema)
+#         
+#         if (not sample_data or len(sample_data) < 1) and schema and len(schema.get('order', [])) > 0:
+#             raise serializers.ValidationError("Please provide at least 1 sample.")
+#         
+#         if schema:
+#             validator = SamplesheetValidator(schema,sample_data)
+#             self._sample_errors, self._sample_warnings = validator.validate()
+#             if len(self._sample_errors):
+#                 raise serializers.ValidationError(self._sample_errors)
+#             return validator.cleaned()
+#         return sample_data
     def validate_submission_data(self, data={}):
         type = self.initial_data.get('type')
         schema = None
@@ -187,8 +187,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             return data
     def get_warnings(self):
         data = {}
-        if hasattr(self, '_sample_warnings') and len(self._sample_warnings):
-            data['sample_data']=self._sample_warnings
+#         if hasattr(self, '_sample_warnings') and len(self._sample_warnings):
+#             data['sample_data']=self._sample_warnings
         if hasattr(self, '_submission_warnings') and len(self._submission_warnings):
             data['submission_data']=self._submission_warnings
         return data
@@ -200,14 +200,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             contacts = validated_data.pop('contacts')
             validated_data['data'] = {
-                                        'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+#                                         'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
                                         'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                       }
             if validated_data.get('import_data', None):
                 import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
                 validated_data['import_request'] = import_request
             submission = Submission.objects.create(**validated_data)
-            submission.update_samples(validated_data.pop('sample_data'))
+#             submission.update_samples(validated_data.pop('sample_data'))
     #         self.update_errors_and_warnings(submission)
             for contact in contacts:
                 Contact.objects.create(submission=submission, **contact)
@@ -230,7 +230,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     #         self.update_errors_and_warnings(instance)
             instance.save()
             
-            instance.update_samples(validated_data.pop('sample_data'))
+#             instance.update_samples(validated_data.pop('sample_data'))
                 
             Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
             for c in contacts:
