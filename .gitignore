@@ -102,3 +102,4 @@ ENV/
 
 media/
 /node_modules/
+/submissions/

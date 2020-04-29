@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
-from dnaorder.spreadsheets import get_dataset, get_submission_dataset
+from dnaorder.spreadsheets import get_dataset, get_submission_dataset, get_cols
 from django.http.response import HttpResponse
 import tablib
 from django.conf import settings
@@ -264,10 +264,16 @@ def download(request, id):
         filename = "{0}.samples.{1}".format(submission.id,format)
     else: #all
         submission_data = get_submission_dataset(submission)
-        sample_data = get_dataset(submission.sample_schema, submission.sample_data)
         submission_data.title = "Submission"
-        sample_data.title = "Samples"
-        dataset = tablib.Databook((submission_data,sample_data))
+        table_cols = get_cols(submission.submission_schema, table=True)
+        tables = [submission_data]
+        for col in table_cols:
+            table_data = get_dataset(submission.submission_schema.get('properties',{}).get(col,{}).get('schema',{}), submission.submission_data.get(col, []))
+            table_data.title = col
+            tables.append(table_data)
+#         sample_data = get_dataset(submission.sample_schema, submission.sample_data)
+#         sample_data.title = "Samples"
+        dataset = tablib.Databook(tables)
         format = 'xlsx'
         filename = "{0}.{1}".format(submission.id,format)
     content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
