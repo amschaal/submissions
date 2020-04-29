@@ -253,16 +253,13 @@ def download(request, id):
     submission = Submission.objects.get(id=id)
     data = request.GET.get('data','combined')#samples or submission
     format = request.GET.get('format','xlsx')
-    format = format if format in ['xls','xlsx','csv','tsv','json'] else 'xls'
+    format = format if format in ['xls','xlsx','csv','tsv','json'] else 'xlsx'
     filename = None
     
     if data == 'submission':
         dataset = get_submission_dataset(submission)
-        filename = "{0}.submission.{1}".format(submission.id,format)
-    elif data == 'samples': #samples
-        dataset = get_dataset(submission.sample_schema, submission.sample_data)
-        filename = "{0}.samples.{1}".format(submission.id,format)
-    else: #all
+        filename = "{0}.submission.{1}".format(submission.internal_id,format)
+    elif data == 'all': #samples
         submission_data = get_submission_dataset(submission)
         submission_data.title = "Submission"
         table_cols = get_cols(submission.submission_schema, table=True)
@@ -271,11 +268,13 @@ def download(request, id):
             table_data = get_dataset(submission.submission_schema.get('properties',{}).get(col,{}).get('schema',{}), submission.submission_data.get(col, []))
             table_data.title = col
             tables.append(table_data)
-#         sample_data = get_dataset(submission.sample_schema, submission.sample_data)
-#         sample_data.title = "Samples"
         dataset = tablib.Databook(tables)
         format = 'xlsx'
-        filename = "{0}.{1}".format(submission.id,format)
+        filename = "{0}.{1}".format(submission.internal_id,format)
+    else: #all
+        dataset = get_dataset(submission.submission_schema.get('properties',{}).get(data,{}).get('schema',{}), submission.submission_data.get(data, []))
+        dataset.title = data
+        filename = "{0}.{1}.{2}".format(submission.internal_id,data,format)
     content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
     response_kwargs = {
             'content_type': content_types[format]
