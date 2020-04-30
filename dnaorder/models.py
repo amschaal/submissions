@@ -7,7 +7,6 @@ import re
 import os
 from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
-from dnaorder.fields import EmailListField, EmailArrayField
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver

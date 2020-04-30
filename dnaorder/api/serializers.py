@@ -141,8 +141,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-#     sample_count = serializers.SerializerMethodField()
-#     def get_sample_count(self,instance):
+#     table_count = serializers.SerializerMethodField()
+#     def get_table_count(self,instance):
 #         return len(instance.sample_data)
 #     def validate_sample_data(self, sample_data):
 #         schema = None
