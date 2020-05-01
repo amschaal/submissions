@@ -14,6 +14,8 @@ import profile
 from openpyxl.cell import read_only
 from random import sample
 from django.db import transaction
+from schema.utils import Schema
+from _collections import OrderedDict
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -141,9 +143,11 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-#     table_count = serializers.SerializerMethodField()
-#     def get_table_count(self,instance):
-#         return len(instance.sample_data)
+    table_count = serializers.SerializerMethodField()
+    def get_table_count(self,instance):
+        schema = Schema(instance.submission_schema)
+        tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
+        return {schema.variable_title(v):len(d) if isinstance(d, list) else 0 for v,d in tables.items()}
 #     def validate_sample_data(self, sample_data):
 #         schema = None
 #         type = self.initial_data.get('type')
