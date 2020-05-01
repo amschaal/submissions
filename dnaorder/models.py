@@ -2,18 +2,14 @@ from django.db import models
 import uuid
 from django.utils import timezone
 from django.contrib.postgres.fields.jsonb import JSONField
-from django.forms.fields import RegexField
 import re
 import os
-from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
-from django.db.models.signals import post_save
-from django.template.defaultfilters import default
 from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
@@ -159,7 +155,6 @@ class Submission(models.Model):
     sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
-    sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)

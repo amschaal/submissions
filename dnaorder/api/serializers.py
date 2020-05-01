@@ -262,7 +262,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return valid
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id']
+        exclude = ['submitted','status','internal_id']
         read_only_fields= ['lab','data']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
@@ -282,7 +282,7 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
         raise NotImplementedError
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id','participants']
+        exclude = ['submitted','status','internal_id','participants']
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
