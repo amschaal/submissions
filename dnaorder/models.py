@@ -289,7 +289,7 @@ class Submission(models.Model):
             if self.type.default_participants.count() > 0:
                 participants = [u.email for u in self.type.default_participants.all()]
             else:
-                participants = ['dnatech@ucdavis.edu']
+                participants = [settings.LAB_EMAIL]
         return participants
 
 @receiver(signals.post_save, sender=Submission)

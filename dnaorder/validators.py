@@ -69,18 +69,18 @@ class TableValidator(BaseValidator):
     description = 'Validate a table based on a schema.'
     uses_options = False
     def validate_all(self, variable, schema={}, data=[]):
-        print('TableValidator.validate')
-        print('variable', variable)
-        print('schema', schema)
-        print('options', self.options)
-        print('data', data)
+#         print('TableValidator.validate')
+#         print('variable', variable)
+#         print('schema', schema)
+#         print('options', self.options)
+#         print('data', data)
         for idx, d in enumerate(data):
             table = d.get(variable, None)
             if table:
-                print('table', table)
+#                 print('table', table)
                 validator = SamplesheetValidator(self.options.get('schema'), table)
                 errors, warnings = validator.validate()
-                print('TableValidator.validate_all', errors, warnings)
+#                 print('TableValidator.validate_all', errors, warnings)
 #         if len(errors) or len(warnings):
 #             raise TableValidationException(errors, warnings, True)
 #         if len(errors):
@@ -287,10 +287,10 @@ class SamplesheetValidator: #TableValidator (List of Objects)
             for idx, d in enumerate(data):
                 table = d.get(variable, None)
                 if table:
-                    print('table', table)
+#                     print('table', table)
                     validator = SamplesheetValidator(schema, table)
                     errors, warnings = validator.validate()
-                    print('Validate All Table', errors, warnings)
+#                     print('Validate All Table', errors, warnings)
                     if len(errors):
                         self.set_error(idx, variable, errors)
                     if len(warnings):
