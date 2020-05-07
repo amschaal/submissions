@@ -3,7 +3,7 @@ import re
 """
     ValidationException validates a single value
 """
-from dnaorder.models import Term
+from dnaorder.models import Term, Vocabulary
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -69,7 +69,7 @@ class TermValidator(BaseValidator):
     name = 'Vocabulary Term'
     description = 'Validate agains a controlled vocabulary'
     uses_options = True
-    schema = [{'variable': 'vocab', 'label': 'Vocabulary', 'type': 'text'},
+    schema = [{'variable': 'vocab', 'label': 'Vocabulary', 'type': 'text', 'enum': Vocabulary.objects.values_list('id', flat=True)},
               ]
     supported_types = ['string']
     def __init__(self, options={}):
@@ -80,6 +80,20 @@ class TermValidator(BaseValidator):
             return
         if not Term.objects.filter(vocabulary=self.vocab, value=value).exists():
             raise self.validation_class(variable, value, 'Value "{0}" does not match any terms in the vocabulary: {1}'.format(value, self.vocab))
+
+class VocabularyValidator(BaseValidator):
+    id = 'vocab'
+    name = 'Validate Vocabulary Database Selection'
+    description = 'Validate that the user chose a valid vocabulary database'
+    supported_types = ['string']
+    def __init__(self, options={}):
+        super(VocabularyValidator, self).__init__(options)
+        if not hasattr(VocabularyValidator,'vocabularies'):
+            VocabularyValidator.vocabularies = Vocabulary.objects.values_list('id', flat=True)
+    def validate(self, variable, value, schema={}, data=[], row=[]):
+        if value not in VocabularyValidator.vocabularies:
+            raise self.validation_class(variable, value, '"{0}" is not a valid selection'.format(value))
+
 
 
 class TableValidator(BaseValidator):
@@ -245,7 +259,7 @@ class FooValidator(BaseValidator):
 
 def get_validators():
     from genomics.validators import BarcodeValidator
-    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, TermValidator, BarcodeValidator]
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, TermValidator, VocabularyValidator, BarcodeValidator]
 
 VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
