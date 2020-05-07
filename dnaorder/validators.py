@@ -3,6 +3,7 @@ import re
 """
     ValidationException validates a single value
 """
+from dnaorder.models import Term
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -63,11 +64,30 @@ class BaseValidator(object):
     def serialize(self):
         return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
 
+class TermValidator(BaseValidator):
+    id = 'term'
+    name = 'Vocabulary Term'
+    description = 'Validate agains a controlled vocabulary'
+    uses_options = True
+    schema = [{'variable': 'vocab', 'label': 'Vocabulary', 'type': 'text'},
+              ]
+    supported_types = ['string']
+    def __init__(self, options={}):
+        super(TermValidator, self).__init__(options)
+        self.vocab = self.options.get('vocab',None)
+    def validate(self, variable, value, schema={}, data=[], row=[]):
+        if not hasattr(self, 'vocab'):
+            return
+        if not Term.objects.filter(vocabulary=self.vocab, value=value).exists():
+            raise self.validation_class(variable, value, 'Value "{0}" does not match any terms in the vocabulary: {1}'.format(value, self.vocab))
+
+
 class TableValidator(BaseValidator):
     id = 'table'
     name = 'Table'
     description = 'Validate a table based on a schema.'
     uses_options = False
+    supported_types = []
     def validate_all(self, variable, schema={}, data=[]):
 #         print('TableValidator.validate')
 #         print('variable', variable)
@@ -225,7 +245,7 @@ class FooValidator(BaseValidator):
 
 def get_validators():
     from genomics.validators import BarcodeValidator
-    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
+    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, TermValidator, BarcodeValidator]
 
 VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
