@@ -287,7 +287,7 @@ class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
-        return response.Response([v().serialize() for v in VALIDATORS])
+        return response.Response([v.serialize() for v in VALIDATORS])
 
 class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')

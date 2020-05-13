@@ -62,8 +62,9 @@ class BaseValidator(object):
         if len(exceptions) > 0:
             raise MultiValidationException(exceptions)
         # @todo: return cleaned data
-    def serialize(self):
-        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
+    @classmethod
+    def serialize(cls):
+        return {'id': cls.id, 'name': cls.name, 'description': cls.description, 'uses_options': cls.uses_options, 'schema': cls.schema, 'supported_types': cls.supported_types}
 
 class TermValidator(BaseValidator):
     id = 'term'
