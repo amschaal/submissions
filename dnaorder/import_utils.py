@@ -17,13 +17,16 @@ def post_json_data(url, data, headers={'Content-Type':'application/json'}):
     resp = urllib.request.urlopen(req)
     return resp.read(), resp.getheaders()
 
-def get_submission(URL):
+def get_data(URL):
     with urllib.request.urlopen(URL) as url:
         print(URL)
         data = url if isinstance(url, str) else url.read().decode('utf-8')
         print(data)
         data = json.loads(data)#url.read().decode()
         return data
+
+def get_submission(URL):
+    return get_data(URL)
 
 def import_submission_url(url):
     url = get_submission_api_url(url)
@@ -41,6 +44,16 @@ def get_submission_api_url(url):
         return url
     else:
         return url.replace('/submissions/','/server/api/submissions/')
+
+def get_submission_schema(url): #takes either submission or submission type URL
+    if url[:-1] != '/':
+        url += '/'
+    if '/submissions/' in url:
+        url = get_submission_api_url(url)
+    elif '/submission_type/' in url:
+        url = url.replace('/submission_type/','/server/api/submission_types/')
+    data = get_data(url)
+    return data.get('submission_schema')
 
 def export_submission(submission, import_url):
     submission_url = submission.get_absolute_url(full_url=True)

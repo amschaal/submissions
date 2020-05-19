@@ -25,7 +25,8 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from dnaorder.utils import get_site_lab
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
-from dnaorder.import_utils import import_submission_url, export_submission
+from dnaorder.import_utils import import_submission_url, export_submission,\
+    get_submission_schema
 from django.conf import settings
 
 class SubmissionViewSet(viewsets.ModelViewSet):
@@ -200,6 +201,11 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
             return [permission() for permission in self.permission_classes]
     def perform_create(self, serializer):
         return serializer.save(lab=get_site_lab(self.request))
+    @action(detail=False, methods=['get'])
+    def get_submission_schema(self, request):
+        url = request.query_params.get('url')
+        schema = get_submission_schema(url)
+        return Response(schema)
 #     @detail_route(methods=['post'])
 #     def validate_data(self,request, pk):
 #         submission_type = self.get_object()
