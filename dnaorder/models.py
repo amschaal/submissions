@@ -96,15 +96,16 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
-class SubmissionStatus(models.Model):
-    order = models.PositiveSmallIntegerField()
-    name = models.CharField(max_length=40)
-    auto_lock = models.BooleanField(default=False)
-    def __str__(self):
-        return self.name
-    class Meta:
-        verbose_name_plural = "Submission Statuses"
-        ordering = ['order']
+# #Deprected/Obsolete: remove
+# class SubmissionStatus(models.Model):
+#     order = models.PositiveSmallIntegerField()
+#     name = models.CharField(max_length=40)
+#     auto_lock = models.BooleanField(default=False)
+#     def __str__(self):
+#         return self.name
+#     class Meta:
+#         verbose_name_plural = "Submission Statuses"
+#         ordering = ['order']
 
 class Submission(models.Model):
 #     STATUS_SUBMITTED = 'submitted'

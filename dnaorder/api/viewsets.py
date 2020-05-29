@@ -1,11 +1,11 @@
 from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
+    UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
     ListSubmissionSerializer
-from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
+from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
@@ -283,11 +283,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         profile.settings[key] = value
         profile.save()
         return response.Response({'status':'success', 'settings':profile.settings})
-class StatusViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SubmissionStatus.objects.all().order_by('order')
-    serializer_class = StatusSerializer
-    ordering_fields = ['order']
-    permission_classes = (AllowAny,)
+# class StatusViewSet(viewsets.ReadOnlyModelViewSet):
+#     queryset = SubmissionStatus.objects.all().order_by('order')
+#     serializer_class = StatusSerializer
+#     ordering_fields = ['order']
+#     permission_classes = (AllowAny,)
 
 class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):

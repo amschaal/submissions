@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
+    Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
     Import, UserProfile, Sample
 import os
 from django.contrib.auth.models import User
@@ -124,10 +124,10 @@ class ContactSerializer(serializers.ModelSerializer):
         exclude = ['submission']
         read_only_fields = ('id',)
 
-class SubmissionStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubmissionStatus
-        fields = ['id','name']
+# class SubmissionStatusSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = SubmissionStatus
+#         fields = ['id','name']
 
 # class SamplesField(serializers.Field):
 #     def to_representation(self, value):
@@ -384,10 +384,10 @@ class NoteSerializer(serializers.ModelSerializer):
         model = Note
         exclude = []
 
-class StatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubmissionStatus
-        fields = ['id', 'order', 'name']
+# class StatusSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = SubmissionStatus
+#         fields = ['id', 'order', 'name']
         
 class VocabularySerializer(serializers.ModelSerializer):
     class Meta:

@@ -14,13 +14,14 @@ from django.conf import settings
 from django.contrib.auth.models import User
 
 def login(request):
+    print('process request', request.META)
     print('login', request.user)
     if request.user.is_authenticated:
         print('is authenticated')
         return redirect('/submissions/')
     else:
-        print('authenticate?')
-        remote_user = request.META.get('OIDC_CLAIM_username')
+        print('authenticate?', request.META)
+        remote_user = request.META.get('OIDC_CLAIM_username', request.META.get('OIDC_CLAIM_email'))
         print('remote_user', remote_user)
         if remote_user:
 #             user = User.objects.filter(username=remote_user).first()
