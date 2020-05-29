@@ -1,8 +1,0 @@
-{% extends 'base.html' %}
-{% block content %}
-<h3>Submission complete!</h3>
-<p>Your submission was completed at {{submission.submitted|date}}.  Your submission id is {{submission.id}}, and details and status can be viewed <a href="{% url 'submission' id=submission.id%}">here</a>.  Communications regarding the submission will be sent to {{submission.email}}.  To inquire on the status of the submission, contact dnatech@ucdavis.edu.</p>
-<p>The following samples have been submitted:</p>
-<p>{% for s in samples%}{{s}}{%if not forloop.last%}, {%endif%}{% endfor %}</p>
-<p>If you'd like to create another submission, <a href="{% url 'submission' %}">click here</a>.</p>
-{% endblock %}

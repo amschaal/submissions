@@ -2,19 +2,14 @@ from django.db import models
 import uuid
 from django.utils import timezone
 from django.contrib.postgres.fields.jsonb import JSONField
-from django.forms.fields import RegexField
 import re
 import os
-from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
-from dnaorder.fields import EmailListField, EmailArrayField
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
-from django.db.models.signals import post_save
-from django.template.defaultfilters import default
 from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
@@ -43,7 +38,7 @@ class Lab(models.Model):
     submission_page = models.TextField(default='', blank=True)
     statuses = JSONField(default=list)
     submission_variables = JSONField(default=dict)
-    sample_variables = JSONField(default=dict)
+    table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
     def __str__(self):
         return self.name
@@ -101,15 +96,16 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
-class SubmissionStatus(models.Model):
-    order = models.PositiveSmallIntegerField()
-    name = models.CharField(max_length=40)
-    auto_lock = models.BooleanField(default=False)
-    def __str__(self):
-        return self.name
-    class Meta:
-        verbose_name_plural = "Submission Statuses"
-        ordering = ['order']
+# #Deprected/Obsolete: remove
+# class SubmissionStatus(models.Model):
+#     order = models.PositiveSmallIntegerField()
+#     name = models.CharField(max_length=40)
+#     auto_lock = models.BooleanField(default=False)
+#     def __str__(self):
+#         return self.name
+#     class Meta:
+#         verbose_name_plural = "Submission Statuses"
+#         ordering = ['order']
 
 class Submission(models.Model):
 #     STATUS_SUBMITTED = 'submitted'
@@ -160,10 +156,11 @@ class Submission(models.Model):
     sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
-    sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True)
+    samples_received = models.DateField(null=True, blank=True)
+    received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
     comments = models.TextField(null=True, blank=True)
@@ -171,6 +168,7 @@ class Submission(models.Model):
     import_internal_id = models.CharField(max_length=25, null=True)
     import_data = JSONField(null=True, blank=True)
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
+    warnings = JSONField(null=True, blank=True)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id:
@@ -214,6 +212,35 @@ class Submission(models.Model):
             self.type.save()
         self.internal_id = None
         self.save()
+        self.samples.all().delete() #delete associated samples
+    def update_samples(self, sample_data):
+        print('sample_data', sample_data)
+        sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
+        #Delete samples that no longer exist
+        print('sample_ids',sample_ids)
+        Sample.objects.filter(submission=self).exclude(id__in=sample_ids).delete()
+        
+        #What is the largest current suffix?
+        last_sample = Sample.objects.filter(submission=self).order_by('-id_suffix').first()
+        suffix = last_sample.id_suffix if last_sample else 0
+        
+        for i, s in enumerate(sample_data):
+            row = i+1
+            id = s.get('id',None)
+            if not id: #create
+                print('CREATING row {}'.format(row), s)
+                suffix += 1
+                id = "{}_{}".format(self.internal_id,str(suffix).zfill(3))
+                s['id'] = id
+                sample = Sample.objects.create(id=id, id_suffix=suffix, submission=self, name=s.get('sample_name',''),data=s,row=row)
+                print("CREATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
+            else: #update
+                sample = Sample.objects.get(submission=self,id=id)
+                sample.name = s.get('sample_name','')
+                sample.data=s
+                sample.row=row
+                sample.save()
+                print("UPDATE {}: id: {}, name: {}".format(row,id,s.get('sample_name','""')))
     def __str__(self):
         return '{id}: {submitted} - {type} - {pi_first_name} {pi_last_name}'.format(id=self.id,submitted=self.submitted,type=str(self.type),pi_first_name=self.pi_first_name,pi_last_name=self.pi_last_name)
     class Meta:
@@ -263,7 +290,7 @@ class Submission(models.Model):
             if self.type.default_participants.count() > 0:
                 participants = [u.email for u in self.type.default_participants.all()]
             else:
-                participants = ['dnatech@ucdavis.edu']
+                participants = [settings.LAB_EMAIL]
         return participants
 
 @receiver(signals.post_save, sender=Submission)
@@ -271,6 +298,26 @@ def set_default_participants(sender, instance, created, **kwargs):
     if created and instance.type.default_participants.count() > 0:
         for u in instance.type.default_participants.all():
             instance.participants.add(u)
+
+class Sample(models.Model):
+    id = models.CharField(max_length=50,primary_key=True)
+    id_suffix = models.PositiveIntegerField()
+    row = models.PositiveIntegerField()
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="samples")
+    name = models.CharField(max_length=50,db_index=True)
+#     received = models.DateField(null=True,blank=True,db_index=True)
+    data = JSONField(null=True,blank=True)
+    def __unicode__(self):
+        return self.id
+    def __str__(self):
+        return self.id
+#     def get_absolute_url(self):
+#         return reverse('sample', args=[str(self.id)])
+#     def directory(self,full=True):
+#         return call_directory_function('get_sample_directory',self,full=full)
+    class Meta:
+        unique_together = (('name', 'submission'),('id_suffix','submission'))
+
 
 class Draft(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
@@ -281,6 +328,7 @@ class Draft(models.Model):
 class Import(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     created = models.DateTimeField(auto_now_add=True)
+    external_id = models.CharField(max_length=25, null=True, blank=True)
     url = models.URLField()
     api_url = models.URLField()
     data = JSONField(null=False,blank=False)
@@ -358,6 +406,10 @@ def send_note_email(sender, instance, created, **kwargs):
         emails.note_email(instance)
         instance.sent = True
         instance.save()
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    settings = JSONField(default=dict)
 
 def user_string(self):
     if self.first_name or self.last_name:

@@ -1,11 +1,12 @@
 from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
-    UserSerializer, StatusSerializer, WritableSubmissionSerializer,\
+    UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
-    TermSerializer, ImportSubmissionSerializer, ImportSerializer
-from dnaorder.models import Submission, SubmissionFile, SubmissionStatus, Note,\
-    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import
+    TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
+    ListSubmissionSerializer
+from dnaorder.models import Submission, SubmissionFile, Note,\
+    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny,\
@@ -24,7 +25,9 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from dnaorder.utils import get_site_lab
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
-from dnaorder.import_utils import import_submission_url
+from dnaorder.import_utils import import_submission_url, export_submission,\
+    get_submission_schema
+from django.conf import settings
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -42,13 +45,19 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
-        return SubmissionSerializer
+        return SubmissionSerializer if self.detail else ListSubmissionSerializer
 #         return viewsets.ModelViewSet.get_serializer_class(self)
     def get_permissions(self):
         try:
             return [permission() for permission in self.permission_classes_by_action[self.action]]
         except KeyError:
             return [permission() for permission in self.permission_classes]
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             return self.get_paginated_response([self.get_serializer(s).data for s in page])
+#         return Response([self.get_serializer(s).data for s in queryset])
 #     @action(detail=False, methods=['post','get'])
 #     def import_submission(self, request):
 #         url = request.query_params.get('url')
@@ -67,6 +76,9 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         submission.set_status(status,commit=True)
         status = request.data.get('status', None)
         submission.status = status
+        if status.strip().lower() == 'samples received' and not submission.samples_received:
+            submission.samples_received = str(timezone.now())[:10]
+            submission.received_by = request.user
         submission.save()
         text = 'Submission status updated to "{status}".'.format(status=status)
         if request.data.get('email',False):
@@ -113,9 +125,28 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             emails.order_confirmed(submission, request)
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+    @action(detail=True, methods=['post'])
+    def samples_received(self,request,pk):
+        if not request.user.is_staff:
+            return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
+        submission = self.get_object()
+        received = request.data.get('received')
+        if not received:
+            received = timezone.now()
+        submission.samples_received = str(received)[:10]
+        submission.received_by = User.objects.get(id=request.data.get('received_by', request.user.id))
+        submission.save()
+        serializer = SubmissionSerializer(submission, context=self.get_serializer_context())
+#         serializer = self.get_serializer(submission)
+        return Response({'submission':serializer.data})
     def perform_create(self, serializer):
         instance = serializer.save(lab=get_site_lab(self.request))
         emails.order_confirmed(instance, self.request)
+        if hasattr(settings, 'BIOCORE_IMPORT_URL') and instance.biocore:
+            try:
+                export_submission(instance, settings.BIOCORE_IMPORT_URL)
+            except Exception as e:
+                pass
 #         emails.confirm_order(instance, self.request)
 #     def create(self, request, *args, **kwargs):
 #         serializer = self.get_serializer(data=request.data)
@@ -130,14 +161,18 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
     serializer_class = ImportSerializer
     filter_fields = {'submissions__id': ['isnull']}
-#     search_fields = ('id', 'internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
+    permission_classes = (AllowAny,)
 #     permission_classes = [SubmissionPermissions]
-    @action(detail=False, methods=['post','get'])
+    @action(detail=False, methods=['post'])
     def import_submission(self, request):
-        url = request.query_params.get('url')
+        url = request.data.get('url')
         data = import_submission_url(url)
-        instance = Import.objects.create(url=data['url'],api_url=url,data=data)
+        id = data['id']
+        instance = Import.objects.filter(id=id).first()
+        if not instance:
+            instance = Import.objects.create(id=id, url=data['url'], external_id=data['internal_id'], api_url=url,data=data)
         serializer = ImportSerializer(instance)
         return Response({'data':data, 'import': serializer.data})
     @action(detail=False, methods=['get'])
@@ -166,6 +201,11 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
             return [permission() for permission in self.permission_classes]
     def perform_create(self, serializer):
         return serializer.save(lab=get_site_lab(self.request))
+    @action(detail=False, methods=['get'])
+    def get_submission_schema(self, request):
+        url = request.query_params.get('url')
+        schema = get_submission_schema(url)
+        return Response(schema)
 #     @detail_route(methods=['post'])
 #     def validate_data(self,request, pk):
 #         submission_type = self.get_object()
@@ -227,22 +267,33 @@ class NoteViewSet(viewsets.ModelViewSet):
 #     def perform_create(self, serializer):
 #         serializer.save()
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all().order_by('id')
+    queryset = User.objects.all().order_by('last_name', 'first_name')
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
-
-class StatusViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SubmissionStatus.objects.all().order_by('order')
-    serializer_class = StatusSerializer
-    ordering_fields = ['order']
-    permission_classes = (AllowAny,)
+    @action(detail=False, methods=['post'])
+    def update_settings(self,request):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        key = request.data.get('key', None)
+        value = request.data.get('value', None)
+        if not key or not value:
+            return response.Response({'status':'error', 'message': 'Both "key" and "value" parameters are required'},status=403)
+        profile.settings[key] = value
+        profile.save()
+        return response.Response({'status':'success', 'settings':profile.settings})
+# class StatusViewSet(viewsets.ReadOnlyModelViewSet):
+#     queryset = SubmissionStatus.objects.all().order_by('order')
+#     serializer_class = StatusSerializer
+#     ordering_fields = ['order']
+#     permission_classes = (AllowAny,)
 
 class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
-        return response.Response([v().serialize() for v in VALIDATORS])
+        return response.Response([v.serialize() for v in VALIDATORS])
 
 class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')

@@ -1,4 +1,4 @@
-A new comment has been added to submission {{note.submission.internal_id}}:
+A new comment has been added to submission {{note.submission.internal_id}} (submitted by {{note.submission.first_name}} {{note.submission.last_name}}).  {% if note.created_by %}{{note.created_by}}{% else %}Anonymous{% endif %} wrote:
 {{note.text|safe}}
 
 You can view submission details and any other comments on the submission page:
