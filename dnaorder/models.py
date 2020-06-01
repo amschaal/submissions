@@ -29,7 +29,14 @@ class PrefixID(models.Model):
     def __str__(self):
         return self.generate_id()
 
+class Institution(models.Model):
+    id = models.CharField(primary_key=True, max_length=15)
+    name = models.CharField(max_length=50)
+    site = models.OneToOneField(Site, on_delete=models.PROTECT)
+
 class Lab(models.Model):
+    institution = models.ForeignKey(Institution, on_delete=models.PROTECT, null=True)
+    lab_id = models.SlugField(null=True)
     name = models.CharField(max_length=50)
     email = models.EmailField()
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
@@ -42,9 +49,11 @@ class Lab(models.Model):
     users = models.ManyToManyField(User, related_name='labs')
     def __str__(self):
         return self.name
+    class Meta:
+        unique_together = (('institution', 'lab_id'))
 
 class SubmissionType(models.Model):
-    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submission_types')
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)

@@ -31,3 +31,15 @@ class hasSubmissions(filters.BaseFilterBackend):
             return queryset
         else:
             return queryset.filter(submissions__id__isnull=True)
+
+class LabFilter(filters.BaseFilterBackend):
+    """
+    Make consistent lab=<lab_id> query parameter
+    """
+    def filter_queryset(self, request, queryset, view):
+        lab = view.request.query_params.get('lab', None)
+        lab_filter = getattr(view, 'lab_filter', None) # e.g. lab_query = 'lab__lab_id'
+        if lab and lab_filter:
+            return queryset.filter(**{lab_filter: lab})
+        else:
+            return queryset

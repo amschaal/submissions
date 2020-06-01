@@ -4,15 +4,16 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
-    ListSubmissionSerializer
+    ListSubmissionSerializer, InstitutionSerializer, LabListSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
-    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile
+    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile,\
+    Institution
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated, AllowAny,\
-    IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
-    ReadOnlyPermissions, SubmissionPermissions, DraftPermissions
+    ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
+    IsStaffPermission, IsSuperuserPermission
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -23,8 +24,9 @@ from django.db.models.aggregates import Count
 from django.utils import timezone
 from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
-from dnaorder.utils import get_site_lab
-from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter
+from dnaorder.utils import get_site_lab, get_site_institution
+from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter,\
+    LabFilter
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
@@ -32,16 +34,18 @@ from django.conf import settings
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
-    filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, ExcludeStatusFilter]
+    filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, ExcludeStatusFilter, LabFilter]
     filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
+    lab_filter = 'lab__lab_id'
     ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
-        queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
-        lab = get_site_lab(self.request)
-        return queryset.filter(lab=lab)
+        return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+#         queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+#         lab = get_site_lab(self.request)
+#         return queryset.filter(lab=lab)
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
@@ -183,15 +187,18 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
 
 class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
+    filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
     serializer_class = SubmissionTypeSerializer
     permission_classes = [ReadOnlyPermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')
     filter_fields = {'active':['exact']}
-    def get_queryset(self):
-        queryset = viewsets.ModelViewSet.get_queryset(self)
-        lab = get_site_lab(self.request)
-        return queryset.filter(lab=lab)
+    lab_filter = 'lab__lab_id'
+#     def get_queryset(self):
+#         return viewsets.ModelViewSet.get_queryset(self)
+#         queryset = viewsets.ModelViewSet.get_queryset(self)
+#         lab = get_site_lab(self.request)
+#         return queryset.filter(lab=lab)
     def get_permissions(self):
         try:
             # return permission_classes depending on `action` 
@@ -225,12 +232,12 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
-        if self.request.user.is_authenticated:
-            return queryset
-        else:
-            if not submission:
-                raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
-            return queryset.filter(submission=submission)
+#         if self.request.user.is_authenticated:
+#             return queryset
+#         else:
+        if not submission:
+            raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
+        return queryset.filter(submission=submission)
 #     def get_permissions(self):
 #         if self.action == 'list':
 #             permission_classes = [IsAuthenticated]
@@ -251,12 +258,12 @@ class NoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
-        if self.request.user.is_authenticated:
-            return queryset
-        else:
-            if not submission:
-                raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
-            return queryset.filter(submission=submission,public=True)
+#         if self.request.user.is_authenticated:
+#             return queryset
+#         else:
+        if not submission:
+            raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
+        return queryset.filter(submission=submission,public=True)
 #     def create(self, request, *args, **kwargs):
 #         serializer = self.get_serializer(data=request.data)
 #         serializer.is_valid(raise_exception=True)
@@ -302,18 +309,37 @@ class DraftViewSet(viewsets.ModelViewSet):
 
 class LabViewSet(viewsets.ModelViewSet):
     queryset = Lab.objects.all()
-    serializer_class = LabSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+#     serializer_class = LabListSerializer
+    permission_classes = (IsStaffPermission,)
+    lookup_field = 'lab_id'
+    def get_serializer_class(self):
+        if self.request.method in ['PATCH', 'POST', 'PUT']:
+            return LabSerializer
+        return LabSerializer if self.detail else LabListSerializer
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+        institution = get_site_institution(self.request)
+        return queryset.filter(institution=institution)
     @action(detail=False, methods=['get'])
     def default(self, request):
         lab = get_site_lab(request)
         serializer = self.get_serializer(lab, many=False)
         return Response(serializer.data)
 
+class InstitutionViewSet(viewsets.ModelViewSet):
+    queryset = Institution.objects.all()
+    serializer_class = InstitutionSerializer
+    permission_classes = (IsSuperuserPermission,)
+    @action(detail=False, methods=['get'])
+    def default(self, request):
+        institution = get_site_institution(request)
+        serializer = self.get_serializer(institution, many=False)
+        return Response(serializer.data)
+
 class PrefixViewSet(viewsets.ModelViewSet):
     queryset = PrefixID.objects.all()
     serializer_class = PrefixSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsStaffPermission,)
     filter_fields = {'lab_id':['exact']}
 #     def get_queryset(self):
 #         queryset = viewsets.ModelViewSet.get_queryset(self)
