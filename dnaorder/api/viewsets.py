@@ -42,10 +42,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [SubmissionPermissions]
     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
-        return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
-#         queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
-#         lab = get_site_lab(self.request)
-#         return queryset.filter(lab=lab)
+#         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+        queryset = viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+        institution = get_site_institution(self.request)
+        return queryset.filter(lab__institution=institution)
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
