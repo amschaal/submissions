@@ -12,6 +12,7 @@ from django.http.response import HttpResponse
 import tablib
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.sites.shortcuts import get_current_site
 
 def login(request):
     print('process request', request.META)
@@ -43,7 +44,8 @@ def logout(request):
     print('logout', request.user)
     if request.user.is_authenticated:
         auth_logout(request)
-    return redirect('/server/accounts/login/redirect?logout={}'.format(settings.BASE_URI))
+    site = get_current_site(request)
+    return redirect('/server/accounts/login/redirect?logout=https://{}/'.format(site.domain))
 
 @api_view(['POST'])
 @csrf_exempt
