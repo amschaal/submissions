@@ -34,6 +34,14 @@ class Institution(models.Model):
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
 
+class InstitutionPermission(models.Model):
+    PERMISSION_ADMIN = 'admin'
+    PERMISSION_MANAGE = 'manage'
+    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
+    user = models.ForeignKey(User)
+    institution = models.ForeignKey(Institution)
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
+
 class Lab(models.Model):
     institution = models.ForeignKey(Institution, on_delete=models.PROTECT, null=True)
     lab_id = models.SlugField(null=True)
@@ -51,6 +59,15 @@ class Lab(models.Model):
         return self.name
     class Meta:
         unique_together = (('institution', 'lab_id'))
+
+class LabPermission(models.Model):
+    PERMISSION_ADMIN = 'admin'
+    PERMISSION_MANAGE_TYPES = 'manage_types'
+    PERMISSION_MANAGE_SUBMISSIONS = 'manage_submissions'
+    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE_TYPES, 'Manage submission types'), (PERMISSION_MANAGE_SUBMISSIONS, 'Manage submissions'))
+    user = models.ForeignKey(User)
+    institution = models.ForeignKey(Institution)
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class SubmissionType(models.Model):
     lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submission_types')
@@ -167,7 +184,8 @@ class Submission(models.Model):
     sample_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True)
+    participants = models.ManyToManyField(User,blank=True, reverse='+')
+    users = models.ManyToManyField(User,blank=True, reverse="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
     data = JSONField(default=dict)
