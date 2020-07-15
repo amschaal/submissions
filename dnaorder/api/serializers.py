@@ -286,11 +286,11 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
-    submission_types = SubmissionTypeSerializer(many=True)
+    submission_types = SubmissionTypeSerializer(many=True, read_only=True)
     class Meta:
         model = Lab
         exclude = []
-        read_only_fields = ('name', 'site', 'payment_type_id')
+        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types')
 
 class LabListSerializer(serializers.ModelSerializer):
     class Meta:

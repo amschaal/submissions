@@ -38,8 +38,8 @@ class InstitutionPermission(models.Model):
     PERMISSION_ADMIN = 'admin'
     PERMISSION_MANAGE = 'manage'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
-    user = models.ForeignKey(User)
-    institution = models.ForeignKey(Institution)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class Lab(models.Model):
@@ -65,8 +65,8 @@ class LabPermission(models.Model):
     PERMISSION_MANAGE_TYPES = 'manage_types'
     PERMISSION_MANAGE_SUBMISSIONS = 'manage_submissions'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE_TYPES, 'Manage submission types'), (PERMISSION_MANAGE_SUBMISSIONS, 'Manage submissions'))
-    user = models.ForeignKey(User)
-    institution = models.ForeignKey(Institution)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class SubmissionType(models.Model):
@@ -157,7 +157,7 @@ class Submission(models.Model):
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'UCD KFS Account'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
-    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submissions')
     internal_id = models.CharField(max_length=25, null=True)
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
@@ -184,8 +184,8 @@ class Submission(models.Model):
     sample_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True, reverse='+')
-    users = models.ManyToManyField(User,blank=True, reverse="submissions")
+    participants = models.ManyToManyField(User,blank=True, related_name='+')
+    users = models.ManyToManyField(User,blank=True, related_name="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
     data = JSONField(default=dict)
@@ -196,6 +196,13 @@ class Submission(models.Model):
     import_data = JSONField(null=True, blank=True)
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     warnings = JSONField(null=True, blank=True)
+#     @staticmethod
+#     def user_queryset(self, request=None):
+#         from dnaorder.utils import get_site_institution
+#         if not request.user:
+#             return Submission.objects.none()
+#         institution = get_site_institution(self.request)
+#         return queryset.filter(lab__institution=institution)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id:
