@@ -322,7 +322,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
-            return instance.get_user_permissions(self.context['request'].user)
+            return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
         exclude = []

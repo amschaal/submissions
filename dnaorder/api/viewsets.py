@@ -49,8 +49,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         lab = self.request.query_params.get('lab', None)
         if lab:
             queryset = queryset.filter(lab__lab_id=lab)
-            #if not admin
-            queryset = queryset.filter(lab__users__id=self.request.user.id)
+            if not self.request.user.is_superuser:
+                queryset = queryset.filter(lab__users__id=self.request.user.id)
         return queryset.select_related('lab').distinct()
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:

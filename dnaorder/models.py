@@ -55,6 +55,10 @@ class Lab(models.Model):
     submission_variables = JSONField(default=dict)
     table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
+#     def user_permissions(self, user):
+#         permissions = []
+#         if self.users.filter(id=user.id).exists():
+#             permissions.append(LabPermission.PERMISSION_MANAGE_SUBMISSIONS, )
     def __str__(self):
         return self.name
     class Meta:
@@ -149,6 +153,8 @@ class Submission(models.Model):
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
     PERMISSION_ADMIN = 'ADMIN'
+    PERMISSION_MODIFY = 'MODIFY'
+    PERMISSION_VIEW = 'VIEW'
     PAYMENT_DAFIS = 'DaFIS'
     PAYMENT_UC = 'UC Chart String'
     PAYMENT_CREDIT_CARD = 'Credit Card'
@@ -196,6 +202,16 @@ class Submission(models.Model):
     import_data = JSONField(null=True, blank=True)
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     warnings = JSONField(null=True, blank=True)
+    def permissions(self, user):
+        if user.is_superuser or self.participants.filter(username=user.username).exists():
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+        elif self.lab.users.filter(username=user.username).exists():
+            return [Submission.PERMISSION_VIEW]
+        elif self.users.filter(username=user.username).exists():
+            return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+        else:
+            return []
+    
 #     @staticmethod
 #     def user_queryset(self, request=None):
 #         from dnaorder.utils import get_site_institution
@@ -301,12 +317,12 @@ class Submission(models.Model):
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
-    def get_user_permissions(self, user):
-        permissions = []
-        if user:
-            if user.is_superuser or self.participants.filter(username=user.username).exists():
-                permissions.append(Submission.PERMISSION_ADMIN)
-        return permissions
+#     def get_user_permissions(self, user):
+#         permissions = []
+#         if user:
+#             if user.is_superuser or self.participants.filter(username=user.username).exists():
+#                 permissions.append(Submission.PERMISSION_ADMIN)
+#         return permissions
     def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
