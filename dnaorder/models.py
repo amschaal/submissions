@@ -13,6 +13,7 @@ from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
+from django.db.models.query_utils import Q
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
@@ -211,7 +212,22 @@ class Submission(models.Model):
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:
             return []
-    
+    @staticmethod
+    def get_queryset(institution=None, user=None):
+#         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+        if not user:
+            return Submission.objects.none()
+        queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
+        if not user.is_superuser:
+            queryset = queryset.filter(Q(lab__users__username=user.username)|Q(users__username=user.username)|Q(participants__username=user.username))
+        return queryset.select_related('lab').distinct()
+#         if lab:
+#             queryset = queryset.filter(lab__lab_id=lab)
+#             if not user.is_superuser:
+#                 queryset = queryset.filter(lab__users__username=user.username)
+#         else:
+#             queryset = queryset.filter(users__username=user.username)
+#         return queryset.select_related('lab').distinct()
 #     @staticmethod
 #     def user_queryset(self, request=None):
 #         from dnaorder.utils import get_site_institution
