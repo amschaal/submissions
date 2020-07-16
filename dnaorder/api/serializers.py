@@ -16,6 +16,7 @@ from random import sample
 from django.db import transaction
 from schema.utils import Schema
 from _collections import OrderedDict
+from dnaorder.utils import assign_submission
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -215,6 +216,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     #         self.update_errors_and_warnings(submission)
             for contact in contacts:
                 Contact.objects.create(submission=submission, **contact)
+            assign_submission(submission)
             return submission
     def update(self, instance, validated_data):
         with transaction.atomic():
@@ -242,6 +244,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
                 else:
                     Contact.objects.create(submission=instance, **c)
+            assign_submission(instance)
             return instance
     def get_editable(self,instance):
         request = self._context.get('request')
@@ -262,7 +265,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return valid
     class Meta:
         model = Submission
-        exclude = ['submitted','status','internal_id']
+        exclude = ['submitted','status','internal_id','users']
         read_only_fields= ['lab','data']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
@@ -313,6 +316,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     participant_names = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
+    users = UserSerializer(many=True, read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):

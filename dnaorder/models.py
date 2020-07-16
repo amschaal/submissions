@@ -485,6 +485,12 @@ def user_string(self):
 User.__str__ = user_string
 User.__str__ = user_string
 
+@receiver(signals.post_save, sender=User)
+def user_created_assign_submissions(sender, instance, created, **kwargs):
+    from dnaorder.utils import assign_submissions
+    if instance.email: #May want to put this as a hook on a "validated email" model instead.
+        assign_submissions(instance)
+
 class Vocabulary(models.Model):
     id = models.CharField(max_length=30, primary_key=True)
     name = models.CharField(max_length=50)

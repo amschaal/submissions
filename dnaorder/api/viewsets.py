@@ -44,16 +44,6 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         institution = get_site_institution(self.request)
         return Submission.get_queryset(institution=institution, user=self.request.user)
-# #         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
-#         queryset = viewsets.ModelViewSet.get_queryset(self)
-#         institution = get_site_institution(self.request)
-#         queryset = queryset.filter(lab__institution=institution)
-#         lab = self.request.query_params.get('lab', None)
-#         if lab:
-#             queryset = queryset.filter(lab__lab_id=lab)
-#             if not self.request.user.is_superuser:
-#                 queryset = queryset.filter(lab__users__id=self.request.user.id)
-#         return queryset.select_related('lab').distinct()
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
