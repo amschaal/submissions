@@ -9,6 +9,16 @@ class ParticipatingFilter(filters.BaseFilterBackend):
             return queryset.filter(participants__in=[request.user])
         else:
             return queryset
+class MySubmissionsFilter(filters.BaseFilterBackend):
+    """
+    Only show submissions in which the user is a submitter or PI
+    """
+    def filter_queryset(self, request, queryset, view):
+        my_submissions = view.request.query_params.get('my_submissions',None)
+        if my_submissions is not None:
+            return queryset.filter(users__in=[request.user])
+        else:
+            return queryset
 
 class ExcludeStatusFilter(filters.BaseFilterBackend):
     """

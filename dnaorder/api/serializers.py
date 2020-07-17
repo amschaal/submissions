@@ -85,8 +85,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         exclude = ['user']
 
+class LabListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        fields = ['name', 'id', 'lab_id']
+
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    labs = LabListSerializer(read_only=True, many=True)
     class Meta:
         model = User
         exclude = ['password']
@@ -295,10 +301,6 @@ class LabSerializer(serializers.ModelSerializer):
         exclude = []
         read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types')
 
-class LabListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lab
-        fields = ['name', 'id', 'lab_id']
         
 class InstitutionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -334,10 +336,10 @@ class SubmissionSerializer(WritableSubmissionSerializer):
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
     sample_data = None
-    lab = None
+    lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'lab', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
         
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
