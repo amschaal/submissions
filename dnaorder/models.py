@@ -477,6 +477,11 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     settings = JSONField(default=dict)
 
+class UserEmail(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='emails')
+    email = models.EmailField() # must be validated before entry
+    validated = models.DateTimeField(null=True)
+
 def user_string(self):
     if self.first_name or self.last_name:
         return "{first} {last}".format(first=self.first_name, last=self.last_name)

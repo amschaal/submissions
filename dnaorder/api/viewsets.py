@@ -30,6 +30,9 @@ from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter,\
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
+import uuid
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -294,6 +297,30 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 #     ordering_fields = ['order']
 #     permission_classes = (AllowAny,)
 
+class UserEmailViewSet(viewsets.ViewSet):
+    permission_classes = (IsAuthenticated,)
+    @action(detail=False, methods=['post', 'get'])
+    def claim(self, request):
+        email = request.data.get('email', '')
+        email = request.query_params.get('email', '')
+        try:
+            validate_email( email )
+        except ValidationError:
+            return response.Response({'status':'error', 'message': 'Please enter a valid email address.'}, status=403)
+        email_token = str(uuid.uuid4())[-12:]
+        request_id = str(uuid.uuid4())[-12:]
+        request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
+        return response.Response({'status':'success', 'email': email, 'session': request.session['email_request']})
+    @action(detail=False, methods=['post', 'get'])
+    def validate(self,request):
+        token = request.data.get('token', '')
+        token = request.query_params.get('token', '')
+        email_request = request.session.get('email_request')
+        if not email_request or token != email_request['token']:
+            return response.Response({'status':'error', 'message': 'Provided token is invalid.'}, status=403)
+        email = email_request['email']
+        return response.Response({'status':'success', 'email': email, 'message': 'Email "{}" added to your account'.format(email)})
+            
 class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)
