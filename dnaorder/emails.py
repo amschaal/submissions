@@ -39,3 +39,13 @@ def note_email(note):
         note.emails,
         fail_silently=False,
     )
+
+def claim_email(email, token):
+    body = render_to_string('emails/claim_email.txt',{'email': email, 'token': token})
+    send_mail(
+        'Confirm request to add email to your account',
+        body,
+        settings.LAB_EMAIL,
+        [email],
+        fail_silently=False,
+    )    

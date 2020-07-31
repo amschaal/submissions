@@ -33,6 +33,7 @@ from django.conf import settings
 import uuid
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from dnaorder.emails import claim_email
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -316,6 +317,7 @@ class UserEmailViewSet(viewsets.ViewSet):
         email_token = str(uuid.uuid4())[-12:]
         request_id = str(uuid.uuid4())[-12:]
         request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
+        claim_email(email, email_token)
         return response.Response({'status':'success', 'email': email, 'message': 'Please check email "{}" for a confirmation code'.format(email)})
     @action(detail=False, methods=['post', 'get'])
     def validate(self,request):
