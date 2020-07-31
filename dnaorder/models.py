@@ -479,8 +479,8 @@ class UserProfile(models.Model):
 
 class UserEmail(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='emails')
-    email = models.EmailField() # must be validated before entry
-    validated = models.DateTimeField(null=True)
+    email = models.EmailField(unique=True) # must be validated before entry
+    validated = models.DateTimeField(null=True, auto_now_add=True)
 
 def user_string(self):
     if self.first_name or self.last_name:

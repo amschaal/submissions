@@ -7,7 +7,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile,\
-    Institution
+    Institution, UserEmail
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -301,16 +301,22 @@ class UserEmailViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
     @action(detail=False, methods=['post', 'get'])
     def claim(self, request):
-        email = request.data.get('email', '')
-        email = request.query_params.get('email', '')
+        email = request.data.get('email', '').lower()
+        email = request.query_params.get('email', '').lower()
         try:
             validate_email( email )
         except ValidationError:
             return response.Response({'status':'error', 'message': 'Please enter a valid email address.'}, status=403)
+        user_email = UserEmail.objects.filter(email__iexact=email).first()
+        if user_email:
+            if user_email.user == request.user:
+                return response.Response({'status':'error', 'message': 'You have already claimed email "{}".'.format(email)}, status=403)
+            else:
+                return response.Response({'status':'error', 'message': 'Email "{}" has already been claimed.'.format(email)}, status=403)
         email_token = str(uuid.uuid4())[-12:]
         request_id = str(uuid.uuid4())[-12:]
         request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
-        return response.Response({'status':'success', 'email': email, 'session': request.session['email_request']})
+        return response.Response({'status':'success', 'email': email, 'message': 'Please check email "{}" for a confirmation code'.format(email)})
     @action(detail=False, methods=['post', 'get'])
     def validate(self,request):
         token = request.data.get('token', '')
@@ -319,6 +325,8 @@ class UserEmailViewSet(viewsets.ViewSet):
         if not email_request or token != email_request['token']:
             return response.Response({'status':'error', 'message': 'Provided token is invalid.'}, status=403)
         email = email_request['email']
+        UserEmail.objects.create(user=request.user, email=email)
+        del request.session['email_request']
         return response.Response({'status':'success', 'email': email, 'message': 'Email "{}" added to your account'.format(email)})
             
 class ValidatorViewSet(viewsets.ViewSet):
