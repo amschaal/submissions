@@ -330,7 +330,13 @@ class UserEmailViewSet(viewsets.ViewSet):
         UserEmail.objects.create(user=request.user, email=email)
         del request.session['email_request']
         return response.Response({'status':'success', 'email': email, 'message': 'Email "{}" added to your account'.format(email)})
-            
+    @action(detail=False, methods=['post', 'get'])
+    def set_primary(self,request):
+        email = request.data.get('email', '')
+        user_email = UserEmail.objects.get(user=request.user, email__iexact=email)
+        user_email.user.email = user_email.email
+        user_email.user.save()
+        return response.Response({'status':'success', 'message': 'Email "{}" has been set as your primary email.'.format(email)})
 class ValidatorViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)

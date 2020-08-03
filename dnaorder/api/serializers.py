@@ -93,6 +93,9 @@ class LabListSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
     labs = LabListSerializer(read_only=True, many=True)
+    emails = serializers.SerializerMethodField()
+    def get_emails(self, instance):
+        return [e.email for e in instance.emails.all()]
     class Meta:
         model = User
         exclude = ['password']
