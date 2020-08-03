@@ -300,10 +300,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class UserEmailViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
-    @action(detail=False, methods=['post', 'get'])
+    @action(detail=False, methods=['post'])
     def claim(self, request):
-        email = request.data.get('email', '').lower()
-        email = request.query_params.get('email', '').lower()
+        email = request.data.get('email', '')
         try:
             validate_email( email )
         except ValidationError:
@@ -319,10 +318,9 @@ class UserEmailViewSet(viewsets.ViewSet):
         request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
         claim_email(email, email_token)
         return response.Response({'status':'success', 'email': email, 'message': 'Please check email "{}" for a confirmation code'.format(email)})
-    @action(detail=False, methods=['post', 'get'])
+    @action(detail=False, methods=['post'])
     def validate(self,request):
         token = request.data.get('token', '')
-        token = request.query_params.get('token', '')
         email_request = request.session.get('email_request')
         if not email_request or token != email_request['token']:
             return response.Response({'status':'error', 'message': 'Provided token is invalid.'}, status=403)
