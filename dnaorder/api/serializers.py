@@ -100,6 +100,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         exclude = ['password']
 
+class WritableUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
 #     submission_schema = serializers.SerializerMethodField()
@@ -184,8 +189,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if self.instance:
             schema = self.instance.submission_schema
         elif type:
-            type = SubmissionType.objects.get(id=type)
-            schema = type.submission_schema
+            self._type = SubmissionType.objects.get(id=type)
+            schema = self._type.submission_schema
         if schema:
             validator = SubmissionValidator(schema,data)
             self._submission_errors, self._submission_warnings = validator.validate()
@@ -220,6 +225,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if validated_data.get('import_data', None):
                 import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
                 validated_data['import_request'] = import_request
+#             if hasattr(self, '_type'):
+            validated_data['lab'] = self._type.lab
             submission = Submission.objects.create(**validated_data)
 #             submission.update_samples(validated_data.pop('sample_data'))
     #         self.update_errors_and_warnings(submission)

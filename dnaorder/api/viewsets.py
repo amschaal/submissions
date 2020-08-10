@@ -4,7 +4,8 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
-    ListSubmissionSerializer, InstitutionSerializer, LabListSerializer
+    ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
+    WritableUserSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail
@@ -146,7 +147,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         serializer = self.get_serializer(submission)
         return Response({'submission':serializer.data})
     def perform_create(self, serializer):
-        instance = serializer.save(lab=get_site_lab(self.request))
+#         instance = serializer.save(lab=get_site_lab(self.request))
+        instance = serializer.save()
         emails.order_confirmed(instance, self.request)
         if hasattr(settings, 'BIOCORE_IMPORT_URL') and instance.biocore:
             try:
@@ -292,6 +294,14 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         profile.settings[key] = value
         profile.save()
         return response.Response({'status':'success', 'settings':profile.settings})
+#     @action(detail=False, methods=['post'])
+#     def update_profile(self,request):
+#         if not request.user.is_authenticated:
+#             return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
+#         serializer = WritableUserSerializer(request.user, data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(serializer.data)
 # class StatusViewSet(viewsets.ReadOnlyModelViewSet):
 #     queryset = SubmissionStatus.objects.all().order_by('order')
 #     serializer_class = StatusSerializer
