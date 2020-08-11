@@ -17,8 +17,5 @@ def assign_submission(submission):
         submission.users.add(user)
         submission.save()
 
-def get_base_uri(request):
-    return request.build_absolute_uri('/')
-
 def get_lab_uri(lab):
     return 'https://{}'.format(lab.institution.site.domain)
