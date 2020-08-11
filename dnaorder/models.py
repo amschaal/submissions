@@ -508,3 +508,13 @@ class Term(models.Model):
     class Meta:
         ordering = ['vocabulary', 'value']
         unique_together = (('vocabulary','value'),)
+
+# consider this library as a different approach: https://github.com/coddingtonbear/django-mailbox
+# class Email(models.Model):
+#     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='lab_emails')
+#     submission = models.ForeignKey(Submission, null=True, on_delete=models.CASCADE, related_name='submission_emails')
+#     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='sent_emails')
+#     from_address = models.EmailField()
+#     to_addresses = ArrayField(models.EmailField())
+#     subject = models.CharField(max_length=250)
+#     body = models.TextField()
