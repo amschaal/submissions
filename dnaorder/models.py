@@ -14,6 +14,7 @@ from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
 from django.db.models.query_utils import Q
+from dnaorder.utils import get_lab_uri
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
@@ -48,7 +49,7 @@ class Lab(models.Model):
     lab_id = models.SlugField(null=True)
     name = models.CharField(max_length=50)
     email = models.EmailField()
-    site = models.OneToOneField(Site, on_delete=models.PROTECT)
+#     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
     submission_page = models.TextField(default='', blank=True)
@@ -342,7 +343,7 @@ class Submission(models.Model):
     def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
-        return '{}/submissions/{}'.format(settings.BASE_URI if full_url else '', self.id)
+        return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
 #     def set_status(self,status,commit=True):
 #         self.status = status
 #         if status.auto_lock:

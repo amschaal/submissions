@@ -1,5 +1,8 @@
 from rest_framework import permissions
 
+def is_lab_member(lab, user):
+    return lab.users.filter(id=user.id).exists()
+
 class SubmissionFilePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -13,6 +16,14 @@ class ReadOnlyPermissions(permissions.BasePermission):
             return True
         # May not modify file unless submission is "editable".
         return request.user.is_staff
+
+class SubmissionTypePermissions(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # May not modify file unless submission is "editable".
+        return is_lab_member(obj.lab, request.user)
+
 
 class NotePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):

@@ -130,7 +130,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubmissionType
         fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
-        read_only_fields = ('updated','lab')
+        read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)

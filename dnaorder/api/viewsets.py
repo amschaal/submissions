@@ -14,7 +14,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
-    IsStaffPermission, IsSuperuserPermission, NotePermissions
+    IsStaffPermission, IsSuperuserPermission, NotePermissions,\
+    SubmissionTypePermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -24,8 +25,7 @@ from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
 from rest_framework.response import Response
-from django.contrib.sites.shortcuts import get_current_site
-from dnaorder.utils import get_site_lab, get_site_institution
+from dnaorder.utils import get_site_institution
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter,\
     LabFilter, MySubmissionsFilter
 from dnaorder.import_utils import import_submission_url, export_submission,\
@@ -195,7 +195,7 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
     filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
     serializer_class = SubmissionTypeSerializer
-    permission_classes = [ReadOnlyPermissions]
+    permission_classes = [SubmissionTypePermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')
     filter_fields = {'active':['exact']}
@@ -212,8 +212,8 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
         except KeyError: 
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
-    def perform_create(self, serializer):
-        return serializer.save(lab=get_site_lab(self.request))
+#     def perform_create(self, serializer):
+#         return serializer.save(lab=get_site_lab(self.request))
     @action(detail=False, methods=['get'])
     def get_submission_schema(self, request):
         url = request.query_params.get('url')
@@ -371,11 +371,11 @@ class LabViewSet(viewsets.ModelViewSet):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         institution = get_site_institution(self.request)
         return queryset.filter(institution=institution)
-    @action(detail=False, methods=['get'])
-    def default(self, request):
-        lab = get_site_lab(request)
-        serializer = self.get_serializer(lab, many=False)
-        return Response(serializer.data)
+#     @action(detail=False, methods=['get'])
+#     def default(self, request):
+#         lab = get_site_lab(request)
+#         serializer = self.get_serializer(lab, many=False)
+#         return Response(serializer.data)
 
 class InstitutionViewSet(viewsets.ModelViewSet):
     queryset = Institution.objects.all()
