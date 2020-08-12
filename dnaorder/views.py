@@ -1,5 +1,5 @@
 from django.shortcuts import redirect
-from dnaorder.models import SubmissionType, Submission
+from dnaorder.models import SubmissionType, Submission, UserEmail
 from rest_framework.decorators import api_view, permission_classes
 from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
@@ -22,7 +22,9 @@ def login(request):
         return redirect('/submissions/')
     else:
         print('authenticate?', request.META)
-        remote_user = request.META.get('OIDC_CLAIM_username', request.META.get('OIDC_CLAIM_email'))
+        # Should probably be relying on REMOTE USER using the following config in apache
+        #OIDCRemoteUserClaim preferred_username
+        remote_user = request.META.get('OIDC_CLAIM_preferred_username', request.META.get('OIDC_CLAIM_email'))
         print('remote_user', remote_user)
         if remote_user:
 #             user = User.objects.filter(username=remote_user).first()
@@ -33,6 +35,7 @@ def login(request):
                 user.last_name = request.META.get('OIDC_CLAIM_family_name')
                 user.first_name = request.META.get('OIDC_CLAIM_given_name')
                 user.save()
+                UserEmail.objects.create(user=user, email=user.email)
 #             if user is not None:
             auth_login(request, user)
             return redirect('/submissions/')
