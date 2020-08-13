@@ -23,11 +23,25 @@ def default_schema():
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
 class PrefixID(models.Model):
-    lab = models.ForeignKey('Lab', null=True, related_name='prefixes', on_delete=models.CASCADE)
+    lab = models.ForeignKey('Lab', related_name='prefixes', on_delete=models.CASCADE)
     prefix = models.CharField(max_length=15)
-    current_id = models.PositiveIntegerField(default=0)
-    def generate_id(self, minimum_digits=4):
-        return '{prefix}{id}'.format(prefix=self.prefix,id=str(self.current_id).zfill(minimum_digits))
+    next_id = models.PositiveIntegerField(default=0)
+    num_digits = models.PositiveSmallIntegerField(default=4)
+    class Meta:
+        unique_together = (('lab', 'prefix'))
+    def generate_id(self, check_duplicates = False, update_id=False):
+        id = self.next_id
+        while True:
+            full_id = self.format_id(self.prefix, id, self.num_digits)
+            if not check_duplicates or not Submission.objects.filter(lab=self.lab, internal_id__iexact=full_id).exists():
+                if update_id:
+                    self.next_id = id + 1
+                    self.save()
+                return full_id
+            id +=1
+    @staticmethod
+    def format_id(prefix, id, num_digits):
+        return '{prefix}{id}'.format(prefix=prefix,id=str(id).zfill(num_digits))
     def __str__(self):
         return self.generate_id()
 
@@ -85,6 +99,7 @@ class SubmissionType(models.Model):
     sort_order = models.PositiveIntegerField(default=1)
     prefix = models.CharField(max_length=15)
     next_id = models.PositiveIntegerField(default=1)
+    default_id = models.ForeignKey(PrefixID, null=True, on_delete=models.SET_NULL)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
@@ -238,13 +253,14 @@ class Submission(models.Model):
 #         return queryset.filter(lab__institution=institution)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
-        if not self.cancelled and not self.internal_id:
+        if not self.cancelled and not self.internal_id and self.type.default_id:
 #             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
             
 #             prefix.current_id += 1
-            self.internal_id = self.type.get_next_id() #"{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
-            self.type.next_id += 1
-            self.type.save()
+            self.internal_id = self.type.default_id.generate_id(True, True)
+#             self.internal_id = self.type.get_next_id() #"{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
+#             self.type.next_id += 1
+#             self.type.save()
         if not self.sample_schema:
             self.sample_schema = self.type.sample_schema
         if not self.submission_schema:

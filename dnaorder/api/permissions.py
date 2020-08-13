@@ -24,6 +24,13 @@ class SubmissionTypePermissions(permissions.BasePermission):
         # May not modify file unless submission is "editable".
         return is_lab_member(obj.lab, request.user)
 
+class PrefixPermissions(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # May not modify file unless submission is "editable".
+        return is_lab_member(obj.lab, request.user)
+
 
 class NotePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):

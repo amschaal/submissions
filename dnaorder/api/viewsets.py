@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
-    SubmissionTypePermissions
+    SubmissionTypePermissions, PrefixPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -390,8 +390,9 @@ class InstitutionViewSet(viewsets.ModelViewSet):
 class PrefixViewSet(viewsets.ModelViewSet):
     queryset = PrefixID.objects.all()
     serializer_class = PrefixSerializer
-    permission_classes = (IsStaffPermission,)
+    permission_classes = (PrefixPermissions,)
     filter_fields = {'lab_id':['exact']}
+    
 #     def get_queryset(self):
 #         queryset = viewsets.ModelViewSet.get_queryset(self)
 #         lab = get_site_lab(self.request)
