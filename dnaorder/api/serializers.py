@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import, UserProfile, Sample, Institution
+    Note, Contact, Draft, Lab, Vocabulary, Term,\
+    Import, UserProfile, Sample, Institution, ProjectID
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -381,10 +381,10 @@ class DraftSerializer(serializers.ModelSerializer):
         exclude = []
         read_only_fields = ('id','created','updated')
         
-class PrefixSerializer(serializers.ModelSerializer):
+class ProjectIDSerializer(serializers.ModelSerializer):
     generate_id = serializers.CharField(read_only=True)
     class Meta:
-        model = PrefixID
+        model = ProjectID
         exclude = []
 #         read_only_fields = ('lab',)
         

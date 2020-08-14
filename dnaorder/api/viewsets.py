@@ -2,20 +2,20 @@ from rest_framework import viewsets, response, status
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
-    DraftSerializer, LabSerializer, PrefixSerializer, VocabularySerializer,\
+    DraftSerializer, LabSerializer,  VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
-    WritableUserSerializer
+    WritableUserSerializer, ProjectIDSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
-    SubmissionType, Draft, Lab, PrefixID, Vocabulary, Term, Import, UserProfile,\
-    Institution, UserEmail
+    SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
+    Institution, UserEmail, ProjectID
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
-    SubmissionTypePermissions, PrefixPermissions
+    SubmissionTypePermissions, ProjectIDPermissions
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -98,19 +98,33 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
     @action(detail=True, methods=['post'])
-    def lock(self,request,pk):
+    def update_id(self, request, pk):
+        submission = self.get_object()
+        prefix_id = request.data.get('prefix_id', None)
+        prefix = ProjectID.objects.get(id=prefix_id, lab=submission.lab)
+        submission.internal_id = prefix.generate_id(True, True)
+        submission.save()
+        text = 'Assigned new submission ID "{}".'.format(submission.internal_id)
+        if request.data.get('email',False):
+            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
+            return response.Response({'status':'success','internal_id':submission.internal_id,'message':'ID updated. Email sent to "{0}".'.format(submission.email)})
+        else:
+            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
+        return response.Response({'status':'success','internal_id':submission.internal_id,'message':'ID updated.'})
+    @action(detail=True, methods=['post'])
+    def lock(self, request, pk):
         submission = self.get_object()
         submission.locked = True
         submission.save()
         return response.Response({'status':'success','locked':True,'message':'Submission locked.'})
     @action(detail=True, methods=['post'])
-    def unlock(self,request,pk):
+    def unlock(self, request, pk):
         submission = self.get_object()
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
     @action(detail=True, methods=['post'])
-    def cancel(self,request,pk):
+    def cancel(self, request, pk):
         submission = self.get_object()
         if submission.locked and not request.user.is_staff:
             return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
@@ -118,7 +132,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             submission.cancel()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
     @action(detail=True, methods=['post'])
-    def uncancel(self,request,pk):
+    def uncancel(self, request, pk):
         submission = self.get_object()
         if not request.user.is_staff:
             return response.Response({'status':'error', 'message': 'Only staff may "uncancel" a submission.'},status=403)
@@ -126,7 +140,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
     @action(detail=True, methods=['post'])
-    def confirm(self,request,pk):
+    def confirm(self, request, pk):
         submission = self.get_object()
         if not submission.confirmed:
             submission.confirmed = timezone.now()
@@ -135,7 +149,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
     @action(detail=True, methods=['post'])
-    def samples_received(self,request,pk):
+    def samples_received(self, request, pk):
         if not request.user.is_staff:
             return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
         submission = self.get_object()
@@ -387,10 +401,10 @@ class InstitutionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
 
-class PrefixViewSet(viewsets.ModelViewSet):
-    queryset = PrefixID.objects.all()
-    serializer_class = PrefixSerializer
-    permission_classes = (PrefixPermissions,)
+class ProjectIDViewSet(viewsets.ModelViewSet):
+    queryset = ProjectID.objects.all()
+    serializer_class = ProjectIDSerializer
+    permission_classes = (ProjectIDPermissions,)
     filter_fields = {'lab_id':['exact']}
     
 #     def get_queryset(self):

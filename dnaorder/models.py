@@ -22,13 +22,14 @@ def default_schema():
 # class PaymentType(models.Model):
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
-class PrefixID(models.Model):
+class ProjectID(models.Model):
     lab = models.ForeignKey('Lab', related_name='prefixes', on_delete=models.CASCADE)
     prefix = models.CharField(max_length=15)
     next_id = models.PositiveIntegerField(default=0)
     num_digits = models.PositiveSmallIntegerField(default=4)
     class Meta:
         unique_together = (('lab', 'prefix'))
+        ordering = ('lab', 'prefix')
     def generate_id(self, check_duplicates = False, update_id=False):
         id = self.next_id
         while True:
@@ -99,7 +100,7 @@ class SubmissionType(models.Model):
     sort_order = models.PositiveIntegerField(default=1)
     prefix = models.CharField(max_length=15)
     next_id = models.PositiveIntegerField(default=1)
-    default_id = models.ForeignKey(PrefixID, null=True, on_delete=models.SET_NULL)
+    default_id = models.ForeignKey(ProjectID, null=True, on_delete=models.SET_NULL)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
@@ -254,13 +255,7 @@ class Submission(models.Model):
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id and self.type.default_id:
-#             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
-            
-#             prefix.current_id += 1
             self.internal_id = self.type.default_id.generate_id(True, True)
-#             self.internal_id = self.type.get_next_id() #"{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
-#             self.type.next_id += 1
-#             self.type.save()
         if not self.sample_schema:
             self.sample_schema = self.type.sample_schema
         if not self.submission_schema:
