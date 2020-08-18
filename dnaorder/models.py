@@ -98,8 +98,8 @@ class SubmissionType(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
-    prefix = models.CharField(max_length=15)
-    next_id = models.PositiveIntegerField(default=1)
+    prefix = models.CharField(max_length=15, null=True, blank=True) # Deprecated: using default_id going forward
+    next_id = models.PositiveIntegerField(default=1) # Deprecated: using default_id going forward
     default_id = models.ForeignKey(ProjectID, null=True, on_delete=models.SET_NULL)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
