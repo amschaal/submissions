@@ -56,6 +56,17 @@ class SubmissionPermissions(permissions.BasePermission):
         # May not modify file unless submission is "editable".
         return obj.editable(request.user)
 
+class IsLabMember(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if not request.user.is_authenticated:
+            return False
+        if hasattr(obj, 'submission') and hasattr(obj.submission, 'lab'):
+            return is_lab_member(obj.submission.lab, request.user)
+        elif hasattr(obj, 'lab'):
+            return is_lab_member(obj.lab, request.user)
+        return False
+            
+
 class DraftPermissions(SubmissionPermissions):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:

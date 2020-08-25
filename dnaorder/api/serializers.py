@@ -103,7 +103,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserListSerializer(UserSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'emails', 'email']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
 
 class WritableUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -161,6 +161,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    participants = UserListSerializer(many=True, read_only=True)
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
@@ -287,7 +288,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','status','internal_id','users']
-        read_only_fields= ['lab','data']
+        read_only_fields= ['lab','data', 'participants']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):

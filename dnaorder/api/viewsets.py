@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
-    SubmissionTypePermissions, ProjectIDPermissions
+    SubmissionTypePermissions, ProjectIDPermissions, IsLabMember
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -78,7 +78,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         if submission.is_valid():
 #             pass # submission.save()
 #         return Response({'submission':data, 'errors': submission.errors})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    def update_participants(self,request, pk):
+        submission = self.get_object()
+        participants = [p if isinstance(p, int) else p['id'] for p in request.data.get('participants', [])]
+        submission.participants.set(participants)
+#         submission.save()
+        return response.Response({'status':'success', 'message':'Participants updated.'})
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def update_status(self,request,pk):
         submission = self.get_object()
 #         status = SubmissionStatus.objects.get(id=request.data.get('status'))
@@ -97,7 +104,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def update_id(self, request, pk):
         submission = self.get_object()
         prefix_id = request.data.get('prefix_id', None)
@@ -111,13 +118,13 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','internal_id':submission.internal_id,'message':'ID updated.'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def lock(self, request, pk):
         submission = self.get_object()
         submission.locked = True
         submission.save()
         return response.Response({'status':'success','locked':True,'message':'Submission locked.'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def unlock(self, request, pk):
         submission = self.get_object()
         submission.locked = False
@@ -131,7 +138,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if not submission.cancelled:
             submission.cancel()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def uncancel(self, request, pk):
         submission = self.get_object()
         if not request.user.is_staff:
@@ -148,10 +155,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             emails.order_confirmed(submission, request)
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def samples_received(self, request, pk):
-        if not request.user.is_staff:
-            return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
+#         if not request.user.is_staff:
+#             return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
         submission = self.get_object()
         received = request.data.get('received')
         if not received:
