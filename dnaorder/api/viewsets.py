@@ -5,7 +5,7 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
-    WritableUserSerializer, ProjectIDSerializer
+    WritableUserSerializer, ProjectIDSerializer, UserListSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID
@@ -298,6 +298,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
+    search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
+    def get_serializer_class(self):
+        return UserSerializer if self.detail else UserListSerializer
     @action(detail=False, methods=['post'])
     def update_settings(self,request):
         if not request.user.is_authenticated:

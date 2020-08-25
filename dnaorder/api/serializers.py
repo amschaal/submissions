@@ -100,6 +100,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         exclude = ['password']
 
+class UserListSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'emails', 'email']
+
 class WritableUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -306,6 +311,7 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
 
 class LabSerializer(serializers.ModelSerializer):
     submission_types = SubmissionTypeSerializer(many=True, read_only=True)
+    users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
     class Meta:
         model = Lab
         exclude = []
