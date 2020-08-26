@@ -107,9 +107,9 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def update_id(self, request, pk):
         submission = self.get_object()
-        prefix_id = request.data.get('prefix_id', None)
-        prefix = ProjectID.objects.get(id=prefix_id, lab=submission.lab)
-        submission.internal_id = prefix.generate_id(True, True)
+        project_id = request.data.get('project_id', None)
+        project_id = ProjectID.objects.get(id=project_id, lab=submission.lab)
+        submission.internal_id = project_id.generate_id(True, True)
         submission.save()
         text = 'Assigned new submission ID "{}".'.format(submission.internal_id)
         if request.data.get('email',False):
