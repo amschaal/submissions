@@ -60,6 +60,8 @@ class IsLabMember(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         if hasattr(obj, 'submission') and hasattr(obj.submission, 'lab'):
             return is_lab_member(obj.submission.lab, request.user)
         elif hasattr(obj, 'lab'):

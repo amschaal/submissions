@@ -45,7 +45,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     lab_filter = 'lab__lab_id'
     ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
-    permission_classes_by_action = {'cancel': [AllowAny]}
+#     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
         if self.detail:
             return Submission.objects.all().select_related('lab')
@@ -56,11 +56,11 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             return WritableSubmissionSerializer
         return SubmissionSerializer if self.detail else ListSubmissionSerializer
 #         return viewsets.ModelViewSet.get_serializer_class(self)
-    def get_permissions(self):
-        try:
-            return [permission() for permission in self.permission_classes_by_action[self.action]]
-        except KeyError:
-            return [permission() for permission in self.permission_classes]
+#     def get_permissions(self):
+#         try:
+#             return [permission() for permission in self.permission_classes_by_action[self.action]]
+#         except KeyError:
+#             return [permission() for permission in self.permission_classes]
 #     def list(self, request, *args, **kwargs):
 #         queryset = self.filter_queryset(self.get_queryset())
 #         page = self.paginate_queryset(queryset)
@@ -130,7 +130,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def cancel(self, request, pk):
         submission = self.get_object()
         if submission.locked and not request.user.is_staff:
@@ -146,7 +146,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.cancelled = None
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def confirm(self, request, pk):
         submission = self.get_object()
         if not submission.confirmed:
