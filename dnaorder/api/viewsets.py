@@ -1,4 +1,4 @@
-from rest_framework import viewsets, response, status
+from rest_framework import viewsets, response, status, mixins
 from dnaorder.api.serializers import SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
@@ -382,10 +382,10 @@ class DraftViewSet(viewsets.ModelViewSet):
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
 
-class LabViewSet(viewsets.ModelViewSet):
+class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
-    permission_classes = (IsStaffPermission,)
+    permission_classes = (IsLabMember,)
     lookup_field = 'lab_id'
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
