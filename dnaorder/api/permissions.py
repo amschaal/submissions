@@ -61,6 +61,8 @@ class SubmissionPermissions(permissions.BasePermission):
 class IsLabMember(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         from dnaorder.models import Lab
+        if request.method in permissions.SAFE_METHODS:
+            return True
         if not request.user.is_authenticated:
             return False
         if request.user.is_superuser:
