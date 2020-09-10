@@ -1,6 +1,8 @@
 from rest_framework import permissions
 
-def is_lab_member(lab, user):
+def is_lab_member(lab, user, use_superuser=True):
+    if use_superuser and user.is_superuser:
+        return True
     return lab.users.filter(id=user.id).exists()
 
 class SubmissionFilePermissions(permissions.BasePermission):
