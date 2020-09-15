@@ -50,6 +50,9 @@ class Institution(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
+    def from_email(self, addr='no-reply'):
+        return '"{} Core Omics" <{}@{}>'.format(self.name, addr, self.site.domain)
+
 
 class InstitutionPermission(models.Model):
     PERMISSION_ADMIN = 'admin'
@@ -78,6 +81,8 @@ class Lab(models.Model):
 #             permissions.append(LabPermission.PERMISSION_MANAGE_SUBMISSIONS, )
     def __str__(self):
         return self.name
+    def from_email(self):
+        return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
     class Meta:
         unique_together = (('institution', 'lab_id'))
 
@@ -273,7 +278,7 @@ class Submission(models.Model):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
     def get_lab_from_email(self):
-        return '"{}" <{}@{}>'.format(self.lab.name, self.lab.lab_id, self.lab.institution.site.domain)
+        return self.lab.from_email()
     def get_participant_emails(self):
         emails = [p.email for p in self.participants.all() if p.email]
         if len(emails) == 0:

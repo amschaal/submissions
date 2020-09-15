@@ -352,7 +352,7 @@ class UserEmailViewSet(viewsets.ViewSet):
         email_token = str(uuid.uuid4())[-12:]
         request_id = str(uuid.uuid4())[-12:]
         request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
-        claim_email(email, email_token)
+        claim_email(request, email, email_token)
         return response.Response({'status':'success', 'email': email, 'message': 'Please check email "{}" for a confirmation code'.format(email)})
     @action(detail=False, methods=['post'])
     def validate(self,request):
