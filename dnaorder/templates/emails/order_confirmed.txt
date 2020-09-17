@@ -11,4 +11,4 @@ Your submission request from {{submission.submitted|date}} has been received.  Y
 
 Thank you,
 
-The DNA Technologies Core
+{{submission.lab.name}}
