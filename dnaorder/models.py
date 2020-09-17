@@ -51,7 +51,7 @@ class Institution(models.Model):
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     def from_email(self, addr='no-reply'):
-        return '"{} Core Omics" <{}@{}>'.format(self.name, addr, self.site.domain)
+        return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
 
 
 class InstitutionPermission(models.Model):
@@ -82,7 +82,8 @@ class Lab(models.Model):
     def __str__(self):
         return self.name
     def from_email(self):
-        return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
+        return '"{} No-Reply" <{}@{}>'.format(self.name, 'no-reply', self.institution.site.domain)
+#         return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
     class Meta:
         unique_together = (('institution', 'lab_id'))
 
@@ -373,7 +374,7 @@ class Submission(models.Model):
             if self.type.default_participants.count() > 0:
                 participants = [u.email for u in self.type.default_participants.all()]
             else:
-                participants = [settings.LAB_EMAIL]
+                participants = [self.lab.from_email()]
         return participants
 
 @receiver(signals.post_save, sender=Submission)
