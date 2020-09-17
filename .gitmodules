@@ -1,0 +1,3 @@
+[submodule "spa"]
+	path = spa
+	url = git@github.com:amschaal/submissions-spa-2.git

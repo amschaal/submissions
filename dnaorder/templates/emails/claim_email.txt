@@ -1,0 +1,2 @@
+To continue adding this email to your account, please enter the following confirmation code into the page as instructed:
+{{token}}

@@ -1,5 +1,10 @@
 from rest_framework import permissions
 
+def is_lab_member(lab, user, use_superuser=True):
+    if use_superuser and user.is_superuser:
+        return True
+    return lab.users.filter(id=user.id).exists()
+
 class SubmissionFilePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -13,6 +18,21 @@ class ReadOnlyPermissions(permissions.BasePermission):
             return True
         # May not modify file unless submission is "editable".
         return request.user.is_staff
+
+class SubmissionTypePermissions(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # May not modify file unless submission is "editable".
+        return is_lab_member(obj.lab, request.user)
+
+class ProjectIDPermissions(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # May not modify file unless submission is "editable".
+        return is_lab_member(obj.lab, request.user)
+
 
 class NotePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -38,6 +58,24 @@ class SubmissionPermissions(permissions.BasePermission):
         # May not modify file unless submission is "editable".
         return obj.editable(request.user)
 
+class IsLabMember(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        from dnaorder.models import Lab
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        if isinstance(obj, Lab):
+            return is_lab_member(obj, request.user)
+        if hasattr(obj, 'submission') and hasattr(obj.submission, 'lab'):
+            return is_lab_member(obj.submission.lab, request.user)
+        elif hasattr(obj, 'lab'):
+            return is_lab_member(obj.lab, request.user)
+        return False
+            
+
 class DraftPermissions(SubmissionPermissions):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -53,3 +91,27 @@ class DraftPermissions(SubmissionPermissions):
 # 
 #         # Instance must have an attribute named `owner`.
 #         return obj.owner == request.user
+
+class IsStaffPermission(permissions.BasePermission):
+    """
+    The request is authenticated as staff, or is a read-only request.
+    """
+
+    def has_permission(self, request, view):
+        return bool(
+            request.method in permissions.SAFE_METHODS or
+            request.user and
+            request.user.is_staff
+        )
+
+class IsSuperuserPermission(permissions.BasePermission):
+    """
+    The request is authenticated as a superuser, or is a read-only request.
+    """
+
+    def has_permission(self, request, view):
+        return bool(
+            request.method in permissions.SAFE_METHODS or
+            request.user and
+            request.user.is_superuser
+        )

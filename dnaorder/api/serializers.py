@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    SubmissionStatus, Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import, UserProfile, Sample
+    Note, Contact, Draft, Lab, Vocabulary, Term,\
+    Import, UserProfile, Sample, Institution, ProjectID
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -14,6 +14,9 @@ import profile
 from openpyxl.cell import read_only
 from random import sample
 from django.db import transaction
+from schema.utils import Schema
+from _collections import OrderedDict
+from dnaorder.utils import assign_submission
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -82,11 +85,30 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         exclude = ['user']
 
+class LabListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        fields = ['name', 'id', 'lab_id']
+
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    labs = LabListSerializer(read_only=True, many=True)
+    emails = serializers.SerializerMethodField()
+    def get_emails(self, instance):
+        return [e.email for e in instance.emails.all()]
     class Meta:
         model = User
         exclude = ['password']
+
+class UserListSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+
+class WritableUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
@@ -98,22 +120,22 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
 #     def get_sample_schema(self,instance):
 #         translate_schema(instance.sample_schema)
 #         return instance.sample_schema
-    def validate_examples(self, data):
-        sample_schema = self.initial_data.get('sample_schema',{})
-        validator = SamplesheetValidator(sample_schema, data)
-        errors, warnings = validator.validate()
-        if len(errors):
-            raise serializers.ValidationError('Examples did not validate.')
-#             
-#             self.add_error('sample_data', 'Errors were found in the samplesheet')
-#                 self.errors['_sample_data'] = errors
-#         raise serializers.ValidationError('Examples did not validate.')
-        return data
+#     def validate_examples(self, data):
+#         sample_schema = self.initial_data.get('sample_schema',{})
+#         validator = SamplesheetValidator(sample_schema, data)
+#         errors, warnings = validator.validate()
+#         if len(errors):
+#             raise serializers.ValidationError('Examples did not validate.')
+# #             
+# #             self.add_error('sample_data', 'Errors were found in the samplesheet')
+# #                 self.errors['_sample_data'] = errors
+# #         raise serializers.ValidationError('Examples did not validate.')
+#         return data
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','sample_schema','submission_help','sample_help','updated','submission_count','confirmation_text', 'default_participants']
-        read_only_fields = ('updated','lab')
+        fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
+        read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
@@ -122,56 +144,59 @@ class ContactSerializer(serializers.ModelSerializer):
         exclude = ['submission']
         read_only_fields = ('id',)
 
-class SubmissionStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubmissionStatus
-        fields = ['id','name']
+# class SubmissionStatusSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = SubmissionStatus
+#         fields = ['id','name']
 
-class SamplesField(serializers.Field):
-    def to_representation(self, value):
-        if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
-            value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
-        return value
-    def to_internal_value(self, data):
-        return data
+# class SamplesField(serializers.Field):
+#     def to_representation(self, value):
+#         if hasattr(self, 'parent') and hasattr(self.parent,'instance'):
+#             value = [s.data for s in Sample.objects.filter(submission=self.parent.instance).order_by('row')]
+#         return value
+#     def to_internal_value(self, data):
+#         return data
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    participants = UserListSerializer(many=True, read_only=True)
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
-    sample_count = serializers.SerializerMethodField()
-    def get_sample_count(self,instance):
-        return len(instance.sample_data)
-    def validate_sample_data(self, sample_data):
-        schema = None
-        type = self.initial_data.get('type')
-        if self.instance:
-            schema = self.instance.sample_schema
-        elif type:
-            type = SubmissionType.objects.get(id=type)
-            schema = type.sample_schema
-#         raise Exception(schema)
-        
-        if (not sample_data or len(sample_data) < 1) and schema and len(schema.get('order', [])) > 0:
-            raise serializers.ValidationError("Please provide at least 1 sample.")
-        
-        if schema:
-            validator = SamplesheetValidator(schema,sample_data)
-            self._sample_errors, self._sample_warnings = validator.validate()
-            if len(self._sample_errors):
-                raise serializers.ValidationError(self._sample_errors)
-            return validator.cleaned()
-        return sample_data
+    table_count = serializers.SerializerMethodField()
+    def get_table_count(self,instance):
+        schema = Schema(instance.submission_schema)
+        tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
+        return {schema.variable_title(v):len(d) if isinstance(d, list) else 0 for v,d in tables.items()}
+#     def validate_sample_data(self, sample_data):
+#         schema = None
+#         type = self.initial_data.get('type')
+#         if self.instance:
+#             schema = self.instance.sample_schema
+#         elif type:
+#             type = SubmissionType.objects.get(id=type)
+#             schema = type.sample_schema
+# #         raise Exception(schema)
+#         
+#         if (not sample_data or len(sample_data) < 1) and schema and len(schema.get('order', [])) > 0:
+#             raise serializers.ValidationError("Please provide at least 1 sample.")
+#         
+#         if schema:
+#             validator = SamplesheetValidator(schema,sample_data)
+#             self._sample_errors, self._sample_warnings = validator.validate()
+#             if len(self._sample_errors):
+#                 raise serializers.ValidationError(self._sample_errors)
+#             return validator.cleaned()
+#         return sample_data
     def validate_submission_data(self, data={}):
         type = self.initial_data.get('type')
         schema = None
         if self.instance:
             schema = self.instance.submission_schema
         elif type:
-            type = SubmissionType.objects.get(id=type)
-            schema = type.submission_schema
+            self._type = SubmissionType.objects.get(id=type)
+            schema = self._type.submission_schema
         if schema:
             validator = SubmissionValidator(schema,data)
             self._submission_errors, self._submission_warnings = validator.validate()
@@ -187,8 +212,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             return data
     def get_warnings(self):
         data = {}
-        if hasattr(self, '_sample_warnings') and len(self._sample_warnings):
-            data['sample_data']=self._sample_warnings
+#         if hasattr(self, '_sample_warnings') and len(self._sample_warnings):
+#             data['sample_data']=self._sample_warnings
         if hasattr(self, '_submission_warnings') and len(self._submission_warnings):
             data['submission_data']=self._submission_warnings
         return data
@@ -200,17 +225,20 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             contacts = validated_data.pop('contacts')
             validated_data['data'] = {
-                                        'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+#                                         'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
                                         'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
                                       }
             if validated_data.get('import_data', None):
                 import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
                 validated_data['import_request'] = import_request
+#             if hasattr(self, '_type'):
+            validated_data['lab'] = self._type.lab
             submission = Submission.objects.create(**validated_data)
-            submission.update_samples(validated_data.pop('sample_data'))
+#             submission.update_samples(validated_data.pop('sample_data'))
     #         self.update_errors_and_warnings(submission)
             for contact in contacts:
                 Contact.objects.create(submission=submission, **contact)
+            assign_submission(submission)
             return submission
     def update(self, instance, validated_data):
         with transaction.atomic():
@@ -230,7 +258,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     #         self.update_errors_and_warnings(instance)
             instance.save()
             
-            instance.update_samples(validated_data.pop('sample_data'))
+#             instance.update_samples(validated_data.pop('sample_data'))
                 
             Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
             for c in contacts:
@@ -238,6 +266,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
                 else:
                     Contact.objects.create(submission=instance, **c)
+            assign_submission(instance)
             return instance
     def get_editable(self,instance):
         request = self._context.get('request')
@@ -258,8 +287,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return valid
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id']
-        read_only_fields= ['lab','data']
+        exclude = ['submitted','status','internal_id','users']
+        read_only_fields= ['lab','data', 'participants']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
@@ -278,14 +307,23 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
         raise NotImplementedError
     class Meta:
         model = Submission
-        exclude = ['submitted','sra_data','status','internal_id','participants']
+        exclude = ['submitted','status','internal_id','participants']
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
+    submission_types = SubmissionTypeSerializer(many=True, read_only=True)
+    users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
     class Meta:
         model = Lab
         exclude = []
-        read_only_fields = ('name', 'site', 'payment_type_id')
+        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types')
+
+        
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institution
+        exclude = []
+        read_only_fields = ('name', 'site')
 
 class SubmissionSerializer(WritableSubmissionSerializer):
 #     def __init__(self, *args, **kwargs):
@@ -297,6 +335,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     participant_names = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
+    users = UserSerializer(many=True, read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
@@ -306,7 +345,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
-            return instance.get_user_permissions(self.context['request'].user)
+            return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
         exclude = []
@@ -314,10 +353,10 @@ class SubmissionSerializer(WritableSubmissionSerializer):
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
     sample_data = None
-    lab = None
+    lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'lab', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
         
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
@@ -349,11 +388,12 @@ class DraftSerializer(serializers.ModelSerializer):
         exclude = []
         read_only_fields = ('id','created','updated')
         
-class PrefixSerializer(serializers.ModelSerializer):
+class ProjectIDSerializer(serializers.ModelSerializer):
+    generate_id = serializers.CharField(read_only=True)
     class Meta:
-        model = PrefixID
+        model = ProjectID
         exclude = []
-        read_only_fields = ('lab',)
+#         read_only_fields = ('lab',)
         
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
@@ -380,10 +420,10 @@ class NoteSerializer(serializers.ModelSerializer):
         model = Note
         exclude = []
 
-class StatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubmissionStatus
-        fields = ['id', 'order', 'name']
+# class StatusSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = SubmissionStatus
+#         fields = ['id', 'order', 'name']
         
 class VocabularySerializer(serializers.ModelSerializer):
     class Meta:

@@ -2,22 +2,19 @@ from django.db import models
 import uuid
 from django.utils import timezone
 from django.contrib.postgres.fields.jsonb import JSONField
-from django.forms.fields import RegexField
 import re
 import os
-from django.contrib.postgres.fields.ranges import FloatRangeField
 import datetime
-from dnaorder.fields import EmailListField, EmailArrayField
 from django.contrib.auth.models import User
 from django.db.models import signals
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
-from django.db.models.signals import post_save
-from django.template.defaultfilters import default
 from django.contrib.sites.models import Site
 from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
+from django.db.models.query_utils import Q
+from dnaorder.utils import get_lab_uri
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
@@ -25,39 +22,90 @@ def default_schema():
 # class PaymentType(models.Model):
 #     id = models.CharField(max_length=30, primary_key=True) # ie: 'stratocore'|'Dafis'|...
 
-class PrefixID(models.Model):
-    lab = models.ForeignKey('Lab', null=True, related_name='prefixes', on_delete=models.CASCADE)
+class ProjectID(models.Model):
+    lab = models.ForeignKey('Lab', related_name='prefixes', on_delete=models.CASCADE)
     prefix = models.CharField(max_length=15)
-    current_id = models.PositiveIntegerField(default=0)
-    def generate_id(self, minimum_digits=4):
-        return '{prefix}{id}'.format(prefix=self.prefix,id=str(self.current_id).zfill(minimum_digits))
+    next_id = models.PositiveIntegerField(default=0)
+    num_digits = models.PositiveSmallIntegerField(default=4)
+    class Meta:
+        unique_together = (('lab', 'prefix'))
+        ordering = ('lab', 'prefix')
+    def generate_id(self, check_duplicates = False, update_id=False):
+        id = self.next_id
+        while True:
+            full_id = self.format_id(self.prefix, id, self.num_digits)
+            if not check_duplicates or not Submission.objects.filter(lab=self.lab, internal_id__iexact=full_id).exists():
+                if update_id:
+                    self.next_id = id + 1
+                    self.save()
+                return full_id
+            id +=1
+    @staticmethod
+    def format_id(prefix, id, num_digits):
+        return '{prefix}{id}'.format(prefix=prefix,id=str(id).zfill(num_digits))
     def __str__(self):
         return self.generate_id()
 
+class Institution(models.Model):
+    id = models.CharField(primary_key=True, max_length=15)
+    name = models.CharField(max_length=50)
+    site = models.OneToOneField(Site, on_delete=models.PROTECT)
+    def from_email(self, addr='no-reply'):
+        return '"{} Core Omics" <{}@{}>'.format(self.name, addr, self.site.domain)
+
+
+class InstitutionPermission(models.Model):
+    PERMISSION_ADMIN = 'admin'
+    PERMISSION_MANAGE = 'manage'
+    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
+
 class Lab(models.Model):
+    institution = models.ForeignKey(Institution, on_delete=models.PROTECT, null=True)
+    lab_id = models.SlugField(null=True)
     name = models.CharField(max_length=50)
     email = models.EmailField()
-    site = models.OneToOneField(Site, on_delete=models.PROTECT)
+#     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
     home_page = models.TextField(default='')
     submission_page = models.TextField(default='', blank=True)
     statuses = JSONField(default=list)
     submission_variables = JSONField(default=dict)
-    sample_variables = JSONField(default=dict)
+    table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
+#     def user_permissions(self, user):
+#         permissions = []
+#         if self.users.filter(id=user.id).exists():
+#             permissions.append(LabPermission.PERMISSION_MANAGE_SUBMISSIONS, )
     def __str__(self):
         return self.name
+    def from_email(self):
+        return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
+    class Meta:
+        unique_together = (('institution', 'lab_id'))
+
+class LabPermission(models.Model):
+    PERMISSION_ADMIN = 'admin'
+    PERMISSION_MANAGE_TYPES = 'manage_types'
+    PERMISSION_MANAGE_SUBMISSIONS = 'manage_submissions'
+    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE_TYPES, 'Manage submission types'), (PERMISSION_MANAGE_SUBMISSIONS, 'Manage submissions'))
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class SubmissionType(models.Model):
-    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submission_types')
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
-    prefix = models.CharField(max_length=15)
-    next_id = models.PositiveIntegerField(default=1)
+    prefix = models.CharField(max_length=15, null=True, blank=True) # Deprecated: using default_id going forward
+    next_id = models.PositiveIntegerField(default=1) # Deprecated: using default_id going forward
+    default_id = models.ForeignKey(ProjectID, null=True, on_delete=models.SET_NULL)
     sample_identifier = models.CharField(max_length=25,default='sample_name')
     exclude_fields = models.TextField(blank=True)
     submission_help = models.TextField(null=True,blank=True)
@@ -101,15 +149,16 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
-class SubmissionStatus(models.Model):
-    order = models.PositiveSmallIntegerField()
-    name = models.CharField(max_length=40)
-    auto_lock = models.BooleanField(default=False)
-    def __str__(self):
-        return self.name
-    class Meta:
-        verbose_name_plural = "Submission Statuses"
-        ordering = ['order']
+# #Deprected/Obsolete: remove
+# class SubmissionStatus(models.Model):
+#     order = models.PositiveSmallIntegerField()
+#     name = models.CharField(max_length=40)
+#     auto_lock = models.BooleanField(default=False)
+#     def __str__(self):
+#         return self.name
+#     class Meta:
+#         verbose_name_plural = "Submission Statuses"
+#         ordering = ['order']
 
 class Submission(models.Model):
 #     STATUS_SUBMITTED = 'submitted'
@@ -127,6 +176,8 @@ class Submission(models.Model):
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
     PERMISSION_ADMIN = 'ADMIN'
+    PERMISSION_MODIFY = 'MODIFY'
+    PERMISSION_VIEW = 'VIEW'
     PAYMENT_DAFIS = 'DaFIS'
     PAYMENT_UC = 'UC Chart String'
     PAYMENT_CREDIT_CARD = 'Credit Card'
@@ -135,7 +186,7 @@ class Submission(models.Model):
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'UCD KFS Account'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
-    lab = models.ForeignKey(Lab, on_delete=models.PROTECT)
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submissions')
     internal_id = models.CharField(max_length=25, null=True)
     status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
@@ -160,10 +211,10 @@ class Submission(models.Model):
     sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
-    sra_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True)
+    participants = models.ManyToManyField(User,blank=True, related_name='+')
+    users = models.ManyToManyField(User,blank=True, related_name="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
     data = JSONField(default=dict)
@@ -174,15 +225,42 @@ class Submission(models.Model):
     import_data = JSONField(null=True, blank=True)
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     warnings = JSONField(null=True, blank=True)
+    def permissions(self, user):
+        if user.is_superuser or self.participants.filter(username=user.username).exists():
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+        elif self.lab.users.filter(username=user.username).exists():
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+        elif self.users.filter(username=user.username).exists():
+            return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+        else:
+            return []
+    @staticmethod
+    def get_queryset(institution=None, user=None):
+#         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
+        if not user:
+            return Submission.objects.none()
+        queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
+        if not user.is_superuser:
+            queryset = queryset.filter(Q(lab__users__username=user.username)|Q(users__username=user.username)|Q(participants__username=user.username))
+        return queryset.select_related('lab').distinct()
+#         if lab:
+#             queryset = queryset.filter(lab__lab_id=lab)
+#             if not user.is_superuser:
+#                 queryset = queryset.filter(lab__users__username=user.username)
+#         else:
+#             queryset = queryset.filter(users__username=user.username)
+#         return queryset.select_related('lab').distinct()
+#     @staticmethod
+#     def user_queryset(self, request=None):
+#         from dnaorder.utils import get_site_institution
+#         if not request.user:
+#             return Submission.objects.none()
+#         institution = get_site_institution(self.request)
+#         return queryset.filter(lab__institution=institution)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
-        if not self.cancelled and not self.internal_id:
-#             prefix, created = PrefixID.objects.get_or_create(prefix=self.type.prefix,lab=self.lab)
-            
-#             prefix.current_id += 1
-            self.internal_id = self.type.get_next_id() #"{0}{1}".format(self.type.prefix, str(self.type.next_id).zfill(4))
-            self.type.next_id += 1
-            self.type.save()
+        if not self.cancelled and not self.internal_id and self.type.default_id:
+            self.internal_id = self.type.default_id.generate_id(True, True)
         if not self.sample_schema:
             self.sample_schema = self.type.sample_schema
         if not self.submission_schema:
@@ -200,7 +278,7 @@ class Submission(models.Model):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
     def get_lab_from_email(self):
-        return "no-reply@{0}".format(self.lab.site.domain)
+        return self.lab.from_email()
     def get_participant_emails(self):
         emails = [p.email for p in self.participants.all() if p.email]
         if len(emails) == 0:
@@ -272,16 +350,16 @@ class Submission(models.Model):
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
-    def get_user_permissions(self, user):
-        permissions = []
-        if user:
-            if user.is_superuser or self.participants.filter(username=user.username).exists():
-                permissions.append(Submission.PERMISSION_ADMIN)
-        return permissions
+#     def get_user_permissions(self, user):
+#         permissions = []
+#         if user:
+#             if user.is_superuser or self.participants.filter(username=user.username).exists():
+#                 permissions.append(Submission.PERMISSION_ADMIN)
+#         return permissions
     def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
-        return '{}/submissions/{}'.format(settings.BASE_URI if full_url else '', self.id)
+        return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
 #     def set_status(self,status,commit=True):
 #         self.status = status
 #         if status.auto_lock:
@@ -295,7 +373,7 @@ class Submission(models.Model):
             if self.type.default_participants.count() > 0:
                 participants = [u.email for u in self.type.default_participants.all()]
             else:
-                participants = ['dnatech@ucdavis.edu']
+                participants = [settings.LAB_EMAIL]
         return participants
 
 @receiver(signals.post_save, sender=Submission)
@@ -416,6 +494,11 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     settings = JSONField(default=dict)
 
+class UserEmail(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='emails')
+    email = models.EmailField(unique=True) # must be validated before entry
+    validated = models.DateTimeField(null=True, auto_now_add=True)
+
 def user_string(self):
     if self.first_name or self.last_name:
         return "{first} {last}".format(first=self.first_name, last=self.last_name)
@@ -423,6 +506,12 @@ def user_string(self):
         return self.username
 User.__str__ = user_string
 User.__str__ = user_string
+
+@receiver(signals.post_save, sender=User)
+def user_created_assign_submissions(sender, instance, created, **kwargs):
+    from dnaorder.utils import assign_submissions
+    if instance.email: #May want to put this as a hook on a "validated email" model instead.
+        assign_submissions(instance)
 
 class Vocabulary(models.Model):
     id = models.CharField(max_length=30, primary_key=True)
@@ -435,3 +524,13 @@ class Term(models.Model):
     class Meta:
         ordering = ['vocabulary', 'value']
         unique_together = (('vocabulary','value'),)
+
+# consider this library as a different approach: https://github.com/coddingtonbear/django-mailbox
+# class Email(models.Model):
+#     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='lab_emails')
+#     submission = models.ForeignKey(Submission, null=True, on_delete=models.CASCADE, related_name='submission_emails')
+#     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='sent_emails')
+#     from_address = models.EmailField()
+#     to_addresses = ArrayField(models.EmailField())
+#     subject = models.CharField(max_length=250)
+#     body = models.TextField()

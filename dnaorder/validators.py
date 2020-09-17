@@ -1,6 +1,9 @@
 import re
 
-
+"""
+    ValidationException validates a single value
+"""
+from dnaorder.models import Term, Vocabulary
 class ValidationException(Exception):
     def __init__(self, variable, value, message, skip_other_exceptions=False):
         self.variable = variable
@@ -11,6 +14,12 @@ class ValidationException(Exception):
 class MultiValidationException(Exception):
     def __init__(self, exceptions, skip_other_exceptions=False):
         self.exceptions = exceptions
+        self.skip_other_exceptions = skip_other_exceptions
+
+class TableValidationException(Exception):
+    def __init__(self, errors, warnings, skip_other_exceptions=False):
+        self.errors = errors if len(errors) else None
+        self.warnings = warnings if len(warnings) else None
         self.skip_other_exceptions = skip_other_exceptions
 
 class ValidationError(ValidationException):
@@ -30,7 +39,8 @@ class BaseValidator(object):
     uses_options = True
     schema = None
     supported_types = ['string','number','boolean']
-    def __init__(self, options= {}):
+    def __init__(self, validator, options={}):
+        self.validator = validator
         self.options = options
         self.validation_class = ValidationWarning if self.options.get('warning') else ValidationError
         if not self.id:
@@ -52,8 +62,67 @@ class BaseValidator(object):
         if len(exceptions) > 0:
             raise MultiValidationException(exceptions)
         # @todo: return cleaned data
-    def serialize(self):
-        return {'id': self.id, 'name': self.name, 'description': self.description, 'uses_options': self.uses_options, 'schema': self.schema, 'supported_types': self.supported_types}
+    @classmethod
+    def serialize(cls):
+        return {'id': cls.id, 'name': cls.name, 'description': cls.description, 'uses_options': cls.uses_options, 'schema': cls.schema, 'supported_types': cls.supported_types}
+
+class TermValidator(BaseValidator):
+    id = 'term'
+    name = 'Vocabulary Term'
+    description = 'Validate agains a controlled vocabulary'
+    uses_options = True
+    schema = [{'variable': 'vocab', 'label': 'Vocabulary', 'type': 'text', 'enum': Vocabulary.objects.values_list('id', flat=True)},
+              ]
+    supported_types = ['string']
+    def __init__(self, validator, options={}):
+        self.validator = validator
+        super(TermValidator, self).__init__(validator, options)
+        self.vocab = self.options.get('vocab',None)
+    def validate(self, variable, value, schema={}, data=[], row=[]):
+        if not hasattr(self, 'vocab'):
+            return
+        if not Term.objects.filter(vocabulary=self.vocab, value=value).exists():
+            raise self.validation_class(variable, value, 'Value "{0}" does not match any terms in the vocabulary: {1}'.format(value, self.vocab))
+
+class VocabularyValidator(BaseValidator):
+    id = 'vocab'
+    name = 'Validate Vocabulary Database Selection'
+    description = 'Validate that the user chose a valid vocabulary database'
+    supported_types = ['string']
+    def __init__(self, validator, options={}):
+        self.validator = validator
+        super(VocabularyValidator, self).__init__(validator, options)
+        if not hasattr(VocabularyValidator,'vocabularies'):
+            VocabularyValidator.vocabularies = Vocabulary.objects.values_list('id', flat=True)
+    def validate(self, variable, value, schema={}, data=[], row=[]):
+        if value not in VocabularyValidator.vocabularies:
+            raise self.validation_class(variable, value, '"{0}" is not a valid selection'.format(value))
+
+
+
+class TableValidator(BaseValidator):
+    id = 'table'
+    name = 'Table'
+    description = 'Validate a table based on a schema.'
+    uses_options = False
+    supported_types = []
+    def validate_all(self, variable, schema={}, data=[]):
+#         print('TableValidator.validate')
+#         print('variable', variable)
+#         print('schema', schema)
+#         print('options', self.options)
+#         print('data', data)
+        for idx, d in enumerate(data):
+            table = d.get(variable, None)
+            if table:
+#                 print('table', table)
+                validator = SamplesheetValidator(self.options.get('schema'), table)
+                errors, warnings = validator.validate()
+#                 print('TableValidator.validate_all', errors, warnings)
+#         if len(errors) or len(warnings):
+#             raise TableValidationException(errors, warnings, True)
+#         if len(errors):
+#             raise self.validation_class(variable, data, )
 
 # Custom validators
 class UniqueValidator(BaseValidator):
@@ -85,8 +154,9 @@ class RegexValidator(BaseValidator):
     uses_options = True
     schema = [{'variable': 'regex', 'label': 'Regex', 'type': 'text'}]
     supported_types = ['string']
-    def __init__(self, options={}):
-        super(RegexValidator, self).__init__(options)
+    def __init__(self, validator, options={}):
+        self.validator = validator
+        super(RegexValidator, self).__init__(validator, options)
         self.regex = self.options.get('regex',None)
         if self.regex:
             self.pattern = re.compile(self.regex)
@@ -95,6 +165,28 @@ class RegexValidator(BaseValidator):
             return
         if not self.pattern.match(str(value)):
             raise self.validation_class(variable, value, 'Value "{0}" does not match the format: {1}'.format(value, self.regex))
+
+class FKValidator(BaseValidator):
+    id = 'fk'
+    name = 'Foreign Key Validator'
+    description = 'Foreign Key Validator'
+    uses_options = False
+    supported_types = []
+    def __init__(self, validator, options={}):
+        self.validator = validator
+        super(FKValidator, self).__init__(validator, options)
+        self.fk = self.options.get('fk', [])
+        if len(self.fk) == 2 and self.validator.root:
+            self.table, self.column = self.fk
+            self.ref_table = self.validator.root.data.get(self.table, [])
+            self.ref_column = [row.get(self.column, None) for row in self.ref_table]
+    def validate(self, variable, value, schema={}, data=[], row=[]):
+        if hasattr(self, 'ref_column') and value and value != '':
+            count = self.ref_column.count(value)
+            if count == 0:
+                raise self.validation_class(variable, value, 'Value "{0}" is not found in table: {1}, column: {2}'.format(value, self.table, self.column))
+            if count > 1:
+                raise self.validation_class(variable, value, 'Value "{0}" has multiple entries in referenced table: {1}, column: {2}'.format(value, self.table, self.column))
 
 class EnumValidator(BaseValidator):
     id = 'enum'
@@ -194,20 +286,27 @@ class FooValidator(BaseValidator):
 
 def get_validators():
     from genomics.validators import BarcodeValidator
-    return [UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, AdapterValidator, BarcodeValidator]
+    return [FKValidator, UniqueValidator, EnumValidator, NumberValidator, RegexValidator, RequiredValidator, TermValidator, VocabularyValidator, BarcodeValidator]
 
 VALIDATORS = get_validators()
 VALIDATORS_DICT = dict([(v.id, v) for v in VALIDATORS])
 
 
-class SamplesheetValidator:
-    def __init__(self, schema, data, clear_empty_rows=True):
+class SamplesheetValidator: #TableValidator (List of Objects)
+    def __init__(self, schema, data, clear_empty_rows=True, parent=None):
         self.errors = {}
         self.warnings = {}
         self.schema = schema
         self.data = data
+        self.parent = parent
         if clear_empty_rows:
             self.clear_empty_rows()
+    @property
+    def root(self):
+        root = self.parent
+        while root and getattr(root, 'parent', None):
+            root = root.parent
+        return root
     def clear_empty_rows(self):
         while True:
             if len(self.data) > 1 and self.row_is_empty(self.data[-1]):
@@ -221,19 +320,19 @@ class SamplesheetValidator:
         return True
     def get_validator(self, id, options={}):
         if id in VALIDATORS_DICT:
-            return VALIDATORS_DICT[id](options)
-    def set_error(self, index, variable, message):
+            return VALIDATORS_DICT[id](self, options)
+    def set_error(self, index, variable, error):
         if not index in self.errors:
             self.errors[index] = {}
         if not variable in self.errors[index]:
             self.errors[index][variable] = []
-        self.errors[index][variable].append(message)
-    def set_warning(self, index, variable, message):
+        self.errors[index][variable].append(error)
+    def set_warning(self, index, variable, warning):
         if not index in self.warnings:
             self.warnings[index] = {}
         if not variable in self.warnings[index]:
             self.warnings[index][variable] = []
-        self.warnings[index][variable].append(message)
+        self.warnings[index][variable].append(warning)
     def validate_values(self, variable, validators):
         for idx, row in enumerate(self.data):
             value = row.get(variable, None)
@@ -251,6 +350,19 @@ class SamplesheetValidator:
                             break
     def validate_all(self, variable, validators):
         data = self.data if isinstance(self.data, list) else [self.data]
+        if self.schema['properties'][variable].get('type', False) == 'table':
+            schema = self.schema['properties'][variable].get('schema')
+            for idx, d in enumerate(data):
+                table = d.get(variable, None)
+                if table:
+#                     print('table', table)
+                    validator = SamplesheetValidator(schema, table, parent=self)
+                    errors, warnings = validator.validate()
+#                     print('Validate All Table', errors, warnings)
+                    if len(errors):
+                        self.set_error(idx, variable, errors)
+                    if len(warnings):
+                        self.set_warning(idx, variable, warnings)
         for validator in validators:
             if validator:
                 try:
@@ -263,13 +375,23 @@ class SamplesheetValidator:
                                 self.set_error(idx, exception.variable, exception.message)
                             elif isinstance(exception, ValidationWarning):
                                 self.set_warning(idx, exception.variable, exception.message)
+#                 except TableValidationException as e:
+#                     if e.errors:
+#                         self.set_error(idx, variable, e.errors)
+#                     if e.warnings:
+#                         self.set_warning(idx, variable, e.warnings)
+#                     break #
 #                                 if e.skip_other_exceptions:
 #                                     break
     def get_validators(self, variable):
+        #If table, validate based on schema only
+#         if self.schema['properties'][variable].get('type', False) == 'table':
+#             return [self.get_validator(TableValidator.id, {'schema': self.schema['properties'][variable].get('schema')})]
         #Add validators configured by the user
-#         print [(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
+        if self.schema['properties'][variable].get('fk', False):
+            validators.append(self.get_validator(FKValidator.id, self.schema['properties'][variable]))
         if variable in self.schema.get('required', []):
             validators.append(self.get_validator(RequiredValidator.id, self.schema['properties'][variable]))
         if self.schema['properties'][variable].get('unique', False):
@@ -300,7 +422,7 @@ class SamplesheetValidator:
 #             self.validate_values(variable, validators)
 #         return dict([(,)  for variable in self.schema['properties'].keys()])
 
-class SubmissionValidator(SamplesheetValidator):
+class SubmissionValidator(SamplesheetValidator): #Object validator
     def __init__(self, schema, data):
         super(SubmissionValidator, self).__init__(schema, data, clear_empty_rows=False)
     def set_error(self, index, variable, message):
@@ -325,6 +447,11 @@ class SubmissionValidator(SamplesheetValidator):
                     self.set_error(e.variable, e.message)
                     if e.skip_other_exceptions:
                         break
+                except TableValidationException as e:
+                    if e.errors:
+                        self.set_error(variable, e.errors)
+                    if e.warnings:
+                        self.set_warning(variable, e.warnings)
     def cleaned(self):
         # Right now just filters out fields not in schema properties.  Should eventually add clean method to validator so validators can actually modify values.
         return dict([(variable,self.data.get(variable, None))  for variable in self.schema['properties'].keys()])
