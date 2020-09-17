@@ -374,7 +374,7 @@ class Submission(models.Model):
             if self.type.default_participants.count() > 0:
                 participants = [u.email for u in self.type.default_participants.all()]
             else:
-                participants = [self.lab.from_email()]
+                participants = [self.lab.email]
         return participants
 
 @receiver(signals.post_save, sender=Submission)
