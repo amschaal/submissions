@@ -229,7 +229,7 @@ class Submission(models.Model):
         if user.is_superuser or self.participants.filter(username=user.username).exists():
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         elif self.lab.users.filter(username=user.username).exists():
-            return [Submission.PERMISSION_VIEW]
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         elif self.users.filter(username=user.username).exists():
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:
