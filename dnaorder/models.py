@@ -46,10 +46,13 @@ class ProjectID(models.Model):
     def __str__(self):
         return self.generate_id()
 
+def logo_file_path(instance, filename):
+    return 'institutions/{}/logo/{filename}'.format(instance.id,filename=filename)
 class Institution(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
+    logo = models.FileField(null=True, upload_to=logo_file_path)
     def from_email(self, addr='no-reply'):
         return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
 
