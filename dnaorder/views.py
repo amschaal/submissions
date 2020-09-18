@@ -38,7 +38,7 @@ def login(request):
                 UserEmail.objects.create(user=user, email=user.email)
 #             if user is not None:
             auth_login(request, user)
-            return redirect('/submissions/')
+            return redirect('/')
         # Is this all wrong? I'm authenticating but the logic is in middleware...
 #         user = authenticate(request)
     return redirect('/')
