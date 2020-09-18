@@ -8,4 +8,4 @@ Please do not reply to this email.  If you would like to respond, please do so i
 
 Thank you,
 
-The DNA Technologies Core
+{{note.submission.lab.name}}
