@@ -88,6 +88,10 @@ class Lab(models.Model):
     def from_email(self):
         return '"{} No-Reply" <{}@{}>'.format(self.name, 'no-reply', self.institution.site.domain)
 #         return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
+    def is_lab_member(self, user, use_superuser=True):
+        if use_superuser and user.is_superuser:
+            return True
+        return self.users.filter(id=user.id).exists()
     class Meta:
         unique_together = (('institution', 'lab_id'))
 

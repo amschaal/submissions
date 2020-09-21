@@ -311,8 +311,15 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
-    submission_types = SubmissionTypeSerializer(many=True, read_only=True)
+    submission_types = serializers.SerializerMethodField(read_only=True)
     users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
+    def get_submission_types(self, obj):
+        # Only return inactive types for lab members
+        if obj.is_lab_member(self._context['request'].user):
+            types = obj.submission_types.all()
+        else:
+            types = obj.submission_types.filter(active=True)
+        return SubmissionTypeSerializer(types, many=True, read_only=True).data
     class Meta:
         model = Lab
         exclude = []
