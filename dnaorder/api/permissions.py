@@ -1,10 +1,5 @@
 from rest_framework import permissions
 
-def is_lab_member(lab, user, use_superuser=True):
-    if use_superuser and user.is_superuser:
-        return True
-    return lab.users.filter(id=user.id).exists()
-
 class SubmissionFilePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -24,14 +19,14 @@ class SubmissionTypePermissions(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
-        return is_lab_member(obj.lab, request.user)
+        return obj.lab.is_lab_member(request.user)
 
 class ProjectIDPermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
-        return is_lab_member(obj.lab, request.user)
+        return obj.lab.is_lab_member(request.user)
 
 
 class NotePermissions(permissions.BasePermission):
@@ -68,11 +63,11 @@ class IsLabMember(permissions.BasePermission):
         if request.user.is_superuser:
             return True
         if isinstance(obj, Lab):
-            return is_lab_member(obj, request.user)
+            return obj.is_lab_member(request.user)
         if hasattr(obj, 'submission') and hasattr(obj.submission, 'lab'):
-            return is_lab_member(obj.submission.lab, request.user)
+            return obj.submission.lab.is_lab_member(request.user)
         elif hasattr(obj, 'lab'):
-            return is_lab_member(obj.lab, request.user)
+            return obj.lab.is_lab_member(request.user)
         return False
             
 
