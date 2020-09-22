@@ -95,6 +95,17 @@ class Lab(models.Model):
     class Meta:
         unique_together = (('institution', 'lab_id'))
 
+@receiver(signals.m2m_changed, sender=Lab.users.through)
+def lab_members_changed(sender, action, pk_set, instance, **kwargs):
+    if action == 'post_remove':
+#         Remove all default participants for lab submission types
+#         print([(o.user, o.submissiontype) for o in SubmissionType.default_participants.through.objects.filter(user_id__in=pk_set, submissiontype__lab=instance)])
+        SubmissionType.default_participants.through.objects.filter(user_id__in=pk_set, submissiontype__lab=instance).delete()
+#         Remove all submission participants for lab submissions
+#         print(len([(o.user, o.submission) for o in Submission.participants.through.objects.filter(user_id__in=pk_set, submission__lab=instance)]))
+        Submission.participants.through.objects.filter(user_id__in=pk_set, submission__lab=instance).delete()
+#     print('lab_members_changed', action, pk_set, instance)
+
 class LabPermission(models.Model):
     PERMISSION_ADMIN = 'admin'
     PERMISSION_MANAGE_TYPES = 'manage_types'
@@ -123,7 +134,7 @@ class SubmissionType(models.Model):
     sample_schema = JSONField(null=True,default=default_schema)
     sample_help = models.TextField(null=True, blank=True)
     confirmation_text = models.TextField(null=True, blank=True)
-    default_participants = models.ManyToManyField(User, blank=True, related_name='+')
+    default_participants = models.ManyToManyField(User, blank=True, related_name='default_participant')
     class Meta:
         ordering = ['sort_order', 'name']
         unique_together = (('lab','prefix'),)
