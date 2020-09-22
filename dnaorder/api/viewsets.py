@@ -305,6 +305,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
+    filter_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
     search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
     def get_serializer_class(self):
         return UserSerializer if self.detail else UserListSerializer
