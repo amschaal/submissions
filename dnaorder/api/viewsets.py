@@ -133,7 +133,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def cancel(self, request, pk):
         submission = self.get_object()
-        if submission.locked and not request.user.is_staff:
+        if submission.locked and not submission.lab.is_lab_member(request.user):
             return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
         if not submission.cancelled:
             submission.cancel()
@@ -285,12 +285,14 @@ class NoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
-#         if self.request.user.is_authenticated:
-#             return queryset
-#         else:
+        if submission:
+            submission = Submission.objects.filter(id=submission).first()
         if not submission:
-            raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
-        return queryset.filter(submission=submission,public=True)
+            raise PermissionDenied('Must provide a submission id in the request.')
+        queryset = queryset.filter(submission=submission)
+        if not submission.lab.is_lab_member(self.request.user):
+            queryset = queryset.filter(public=True)
+        return queryset
 #     def create(self, request, *args, **kwargs):
 #         serializer = self.get_serializer(data=request.data)
 #         serializer.is_valid(raise_exception=True)
