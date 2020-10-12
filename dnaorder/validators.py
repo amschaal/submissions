@@ -89,6 +89,7 @@ class VocabularyValidator(BaseValidator):
     name = 'Validate Vocabulary Database Selection'
     description = 'Validate that the user chose a valid vocabulary database'
     supported_types = ['string']
+    uses_options = False
     def __init__(self, validator, options={}):
         self.validator = validator
         super(VocabularyValidator, self).__init__(validator, options)
@@ -191,9 +192,10 @@ class FKValidator(BaseValidator):
 class EnumValidator(BaseValidator):
     id = 'enum'
     name = 'Choices'
-    description = 'Constrain input to a list of choices.'
+    description = 'Do not use this validator for the time being.  Please enter choices under main validation menu.'
     uses_options = True
     supported_types = ['string']
+    schema = [{'variable': 'enum', 'label': 'Choices', 'type': 'text'}]
     def validate_all(self, variable, schema={}, data=[]):
         self.multiple = schema['properties'][variable].get('multiple', False)
         BaseValidator.validate_all(self, variable, schema=schema, data=data)

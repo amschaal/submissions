@@ -12,6 +12,7 @@ class BarcodeValidator(BaseValidator):
               {'variable': 'pool', 'label': '(Optional) Pool variable', 'type': 'text'},
               {'variable': 'distance', 'label': 'Hamming distance (default 1)', 'type': 'number'},
               ]
+    supported_types = ['string']
     def validate_all(self, variable, schema={}, data=[]):
         hamming_distance = int(self.options.get('distance', 1))
         pool = self.options.get('pool', None)
