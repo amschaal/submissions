@@ -35,6 +35,9 @@ import uuid
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from dnaorder.emails import claim_email
+from rest_framework.authentication import SessionAuthentication,\
+    TokenAuthentication
+from rest_framework.authtoken.models import Token
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -45,6 +48,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     lab_filter = 'lab__lab_id'
     ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
 #     permission_classes_by_action = {'cancel': [AllowAny]}
     def get_queryset(self):
         if self.detail:
@@ -78,7 +82,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 #         if submission.is_valid():
 #             pass # submission.save()
 #         return Response({'submission':data, 'errors': submission.errors})
-    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_participants(self,request, pk):
         submission = self.get_object()
         participants = [p if isinstance(p, int) else p['id'] for p in request.data.get('participants', [])]
@@ -104,7 +108,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
-    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_id(self, request, pk):
         submission = self.get_object()
         project_id = request.data.get('project_id', None)
@@ -118,19 +122,19 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         else:
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','internal_id':submission.internal_id,'message':'ID updated.'})
-    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def lock(self, request, pk):
         submission = self.get_object()
         submission.locked = True
         submission.save()
         return response.Response({'status':'success','locked':True,'message':'Submission locked.'})
-    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def unlock(self, request, pk):
         submission = self.get_object()
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny], authentication_classes=[SessionAuthentication])
     def cancel(self, request, pk):
         submission = self.get_object()
         if submission.locked and not submission.lab.is_lab_member(request.user):
@@ -138,7 +142,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if not submission.cancelled:
             submission.cancel()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
-    @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
+    @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def uncancel(self, request, pk):
         submission = self.get_object()
         if not request.user.is_staff:
@@ -256,6 +260,7 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     serializer_class = SubmissionFileSerializer
     filter_fields = {'submission':['exact']}
     permission_classes = [SubmissionFilePermissions]
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
@@ -282,6 +287,7 @@ class NoteViewSet(viewsets.ModelViewSet):
     serializer_class = NoteSerializer
     filter_fields = {'submission':['exact']}
     permission_classes = (NotePermissions,)
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
@@ -323,6 +329,26 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         profile.settings[key] = value
         profile.save()
         return response.Response({'status':'success', 'settings':profile.settings})
+    @action(detail=False, methods=['get'])
+    def get_token(self,request):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to get an API auth token.'}, status=403)
+        token = Token.objects.filter(user=request.user).first()
+        return response.Response({'status':'success', 'token':token.key if token else None})
+    @action(detail=False, methods=['post'])
+    def create_token(self,request):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to create an API auth token.'}, status=403)
+        Token.objects.filter(user=request.user).delete()
+        token = Token.objects.create(user=request.user)
+        return response.Response({'status':'success', 'token':token.key})
+    @action(detail=False, methods=['delete'])
+    def delete_token(self,request):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to delete an API auth token.'}, status=403)
+        Token.objects.filter(user=request.user).delete()
+        return response.Response({'status':'success', 'token':None})
+
 #     @action(detail=False, methods=['post'])
 #     def update_profile(self,request):
 #         if not request.user.is_authenticated:
