@@ -137,6 +137,13 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
         read_only_fields = ('updated',)
 
+class SimpleSubmissionTypeSerializer(SubmissionTypeSerializer):
+    pass
+    class Meta:
+        model = SubmissionType
+        fields = ['id', 'prefix', 'name', 'statuses']
+        read_only_fields = ('updated',)
+
 class ContactSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     class Meta:
@@ -335,7 +342,7 @@ class InstitutionSerializer(serializers.ModelSerializer):
 class SubmissionSerializer(WritableSubmissionSerializer):
 #     def __init__(self, *args, **kwargs):
 #         super(SubmissionSerializer, self).__init__(*args, **kwargs)
-    type = SubmissionTypeSerializer()
+    type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()
     lab = LabSerializer(read_only=True)
 #     status = SubmissionStatusSerializer()
     permissions = serializers.SerializerMethodField(read_only=True)
