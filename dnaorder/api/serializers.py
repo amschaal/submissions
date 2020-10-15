@@ -294,7 +294,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return valid
     class Meta:
         model = Submission
-        exclude = ['submitted','status','internal_id','users']
+        exclude = ['submitted','status','internal_id','users','sample_data', 'sample_schema']
         read_only_fields= ['lab','data', 'participants']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
@@ -362,7 +362,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
             return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
-        exclude = []
+        exclude = ['sample_data', 'sample_schema']
 
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
@@ -370,7 +370,7 @@ class ListSubmissionSerializer(SubmissionSerializer):
     lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'import_data']
         
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
