@@ -1,3 +1,6 @@
 [submodule "spa"]
 	path = spa
 	url = git@github.com:amschaal/submissions-spa-2.git
+[submodule "bioshare"]
+	path = bioshare
+	url = git@github.com:amschaal/bioshare_coreomics_plugin.git
