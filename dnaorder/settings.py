@@ -175,4 +175,6 @@ LAB_EMAIL = 'dnatech@ucdavis.edu'
 
 PAYMENT_TYPES = []
 
+PLUGINS = []
 from dnaorder.config import *
+INSTALLED_APPS += PLUGINS
