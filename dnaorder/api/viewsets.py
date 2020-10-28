@@ -423,7 +423,10 @@ class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListM
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         institution = get_site_institution(self.request)
-        return queryset.filter(institution=institution)
+        if self.request.user.is_staff:
+            return queryset.filter(institution=institution)
+        else:
+            return queryset.filter(institution=institution, disabled=False)
 #     @action(detail=False, methods=['get'])
 #     def default(self, request):
 #         lab = get_site_lab(request)

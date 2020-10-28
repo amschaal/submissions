@@ -79,6 +79,7 @@ class Lab(models.Model):
     submission_variables = JSONField(default=dict)
     table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
+    disabled = models.BooleanField(default=False)
 #     def user_permissions(self, user):
 #         permissions = []
 #         if self.users.filter(id=user.id).exists():
@@ -196,6 +197,7 @@ class Submission(models.Model):
 #         (STATUS_DATA_AVAILABLE,'Data available')
 #         )
     PERMISSION_ADMIN = 'ADMIN'
+    PERMISSION_STAFF = 'STAFF'
     PERMISSION_MODIFY = 'MODIFY'
     PERMISSION_VIEW = 'VIEW'
     PAYMENT_DAFIS = 'DaFIS'
@@ -247,9 +249,9 @@ class Submission(models.Model):
     warnings = JSONField(null=True, blank=True)
     def permissions(self, user):
         if user.is_superuser or self.participants.filter(username=user.username).exists():
-            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
         elif self.lab.users.filter(username=user.username).exists():
-            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
+            return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
         elif self.users.filter(username=user.username).exists():
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:

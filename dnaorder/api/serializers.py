@@ -330,7 +330,7 @@ class LabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
         exclude = []
-        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types')
+        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types', 'disabled')
 
         
 class InstitutionSerializer(serializers.ModelSerializer):
