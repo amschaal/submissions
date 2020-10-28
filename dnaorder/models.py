@@ -207,10 +207,11 @@ class Submission(models.Model):
     PAYMENT_CHECK = 'Check'
     PAYMENT_WIRE_TRANSFER = 'Wire Transfer'
     PAYMENT_CHOICES = ((PAYMENT_DAFIS,'UCD KFS Account'),(PAYMENT_UC,PAYMENT_UC),(PAYMENT_CREDIT_CARD,PAYMENT_CREDIT_CARD),(PAYMENT_PO,PAYMENT_PO),(PAYMENT_CHECK,PAYMENT_CHECK),(PAYMENT_WIRE_TRANSFER,PAYMENT_WIRE_TRANSFER))
+    STATUS_SUBMITTED = 'Submitted'
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
     lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submissions')
     internal_id = models.CharField(max_length=25, null=True)
-    status = models.CharField(max_length=50, null=True)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
+    status = models.CharField(max_length=50, default=STATUS_SUBMITTED)#models.ForeignKey(SubmissionStatus,null=True,on_delete=models.SET_NULL)
     locked = models.BooleanField(default=False)
     cancelled = models.DateTimeField(null=True, blank=True)
     completed = models.DateTimeField(null=True, blank=True)
