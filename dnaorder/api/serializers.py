@@ -320,6 +320,19 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
 class LabSerializer(serializers.ModelSerializer):
     submission_types = serializers.SerializerMethodField(read_only=True)
     users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
+    def __init__(self, *args, **kwargs):
+        super(LabSerializer, self).__init__(*args, **kwargs)
+        self.is_lab_member = False
+        if 'request' in self._context and hasattr(self, 'instance'):
+            self.is_lab_member = self.instance.is_lab_member(self._context['request'].user)
+    def get_fields(self):
+#         print('get fields: instance', self.instance)
+        fields = serializers.ModelSerializer.get_fields(self)
+        if not self.is_lab_member:
+            for k in ['payment_type_id', 'statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
+                if k in fields:
+                    del fields[k]
+        return fields
     def get_submission_types(self, obj):
         # Only return inactive types for lab members
         if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
@@ -329,7 +342,7 @@ class LabSerializer(serializers.ModelSerializer):
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
     class Meta:
         model = Lab
-        exclude = []
+        exclude = ['institution']
         read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types', 'disabled')
 
         
