@@ -62,7 +62,7 @@ class InstitutionPermission(models.Model):
     PERMISSION_MANAGE = 'manage'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission_object = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    permission_object = models.ForeignKey(Institution, on_delete=models.CASCADE, related_name='permissions')
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class Lab(models.Model):
@@ -113,7 +113,7 @@ class LabPermission(models.Model):
     PERMISSION_ASSOCIATE = 'associate'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Lab administrator'), (PERMISSION_MEMBER, 'Lab member'), (PERMISSION_ASSOCIATE, 'Lab associate'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE)
+    permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='permissions')
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class SubmissionType(models.Model):

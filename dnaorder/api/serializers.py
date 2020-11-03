@@ -99,7 +99,8 @@ class UserSerializer(serializers.ModelSerializer):
         return [e.email for e in instance.emails.all()]
     class Meta:
         model = User
-        exclude = ['password']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'emails', 'profile', 'labs', 'is_staff', 'is_superuser']
+#         exclude = ['password', 'is_staff', 'groups', 'is_superuser']
 
 class UserListSerializer(UserSerializer):
     class Meta:
