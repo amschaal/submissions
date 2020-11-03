@@ -62,7 +62,7 @@ class InstitutionPermission(models.Model):
     PERMISSION_MANAGE = 'manage'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    permission_object = models.ForeignKey(Institution, on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class Lab(models.Model):
@@ -109,11 +109,11 @@ def lab_members_changed(sender, action, pk_set, instance, **kwargs):
 
 class LabPermission(models.Model):
     PERMISSION_ADMIN = 'admin'
-    PERMISSION_MANAGE_TYPES = 'manage_types'
-    PERMISSION_MANAGE_SUBMISSIONS = 'manage_submissions'
-    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE_TYPES, 'Manage submission types'), (PERMISSION_MANAGE_SUBMISSIONS, 'Manage submissions'))
+    PERMISSION_MEMBER = 'member'
+    PERMISSION_ASSOCIATE = 'associate'
+    PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Lab administrator'), (PERMISSION_MEMBER, 'Lab member'), (PERMISSION_ASSOCIATE, 'Lab associate'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
 class SubmissionType(models.Model):

@@ -5,10 +5,11 @@ from dnaorder.api.serializers import SubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
     TermSerializer, ImportSubmissionSerializer, ImportSerializer,\
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
-    WritableUserSerializer, ProjectIDSerializer, UserListSerializer
+    WritableUserSerializer, ProjectIDSerializer, UserListSerializer,\
+    InstitutionPermissionSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
-    Institution, UserEmail, ProjectID
+    Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -38,6 +39,7 @@ from dnaorder.emails import claim_email
 from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
 from rest_framework.authtoken.models import Token
+from dnaorder.api.mixins import PermissionMixin
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -411,11 +413,12 @@ class DraftViewSet(viewsets.ModelViewSet):
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
 
-class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet):
+class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet, PermissionMixin):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
     permission_classes = (IsLabMember,)
     lookup_field = 'lab_id'
+    permission_model = LabPermission
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return LabSerializer
@@ -433,15 +436,17 @@ class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListM
 #         serializer = self.get_serializer(lab, many=False)
 #         return Response(serializer.data)
 
-class InstitutionViewSet(viewsets.ModelViewSet):
+class InstitutionViewSet(viewsets.ModelViewSet, PermissionMixin):
     queryset = Institution.objects.all()
     serializer_class = InstitutionSerializer
     permission_classes = (IsSuperuserPermission,)
+    permission_model = InstitutionPermission
     @action(detail=False, methods=['get'])
     def default(self, request):
         institution = get_site_institution(request)
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
+    
 
 class ProjectIDViewSet(viewsets.ModelViewSet):
     queryset = ProjectID.objects.all()
@@ -476,3 +481,4 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
         return viewsets.ReadOnlyModelViewSet.get_queryset(self).filter(vocabulary=self.kwargs.get('vocabulary'))
     def get_object(self):
         return viewsets.ReadOnlyModelViewSet.get_object(self)
+

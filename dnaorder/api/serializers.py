@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
     Note, Contact, Draft, Lab, Vocabulary, Term,\
-    Import, UserProfile, Sample, Institution, ProjectID
+    Import, UserProfile, Sample, Institution, ProjectID, LabPermission,\
+    InstitutionPermission
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -460,4 +461,14 @@ class VocabularySerializer(serializers.ModelSerializer):
 class TermSerializer(serializers.ModelSerializer):
     class Meta:
         model = Term
+        exclude = []
+
+class LabPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabPermission
+        exclude = []
+
+class InstitutionPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstitutionPermission
         exclude = []
