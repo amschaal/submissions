@@ -322,6 +322,7 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
 class LabSerializer(serializers.ModelSerializer):
     submission_types = serializers.SerializerMethodField(read_only=True)
     users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
+    user_permissions = serializers.SerializerMethodField(read_only=True)
     def __init__(self, *args, **kwargs):
         super(LabSerializer, self).__init__(*args, **kwargs)
         self.is_lab_member = False
@@ -335,6 +336,12 @@ class LabSerializer(serializers.ModelSerializer):
                 if k in fields:
                     del fields[k]
         return fields
+    def get_user_permissions(self, obj):
+#         if 'request' not in self._context or not obj:
+#             return None
+        if self._context['request'].user.is_superuser:
+            return [c[0] for c in LabPermission.PERMISSION_CHOICES]
+        return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
     def get_submission_types(self, obj):
         # Only return inactive types for lab members
         if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
@@ -358,7 +365,8 @@ class SubmissionSerializer(WritableSubmissionSerializer):
 #     def __init__(self, *args, **kwargs):
 #         super(SubmissionSerializer, self).__init__(*args, **kwargs)
     type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()
-    lab = LabSerializer(read_only=True)
+#     lab = LabSerializer(read_only=True)
+    lab = LabListSerializer(read_only=True)
 #     status = SubmissionStatusSerializer()
     permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
