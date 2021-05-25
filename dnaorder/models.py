@@ -249,11 +249,11 @@ class Submission(models.Model):
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     warnings = JSONField(null=True, blank=True)
     def permissions(self, user):
-        if user.is_superuser or self.participants.filter(username=user.username).exists():
+        if self.participants.filter(username=user.username).exists() or user.is_superuser: # or user.is_superuser
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
-        elif self.lab.users.filter(username=user.username).exists():
+        elif self.lab.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]).exists():
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
-        elif self.users.filter(username=user.username).exists():
+        elif self.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission=LabPermission.PERMISSION_ASSOCIATE).exists():
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:
             return []
@@ -548,6 +548,12 @@ class Term(models.Model):
         ordering = ['vocabulary', 'value']
         unique_together = (('vocabulary','value'),)
 
+# class Version(models.Model):
+#     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
+#     created = models.DateTimeField(auto_now=True)
+#     obj = GenericForeignKey
+#     name = models.CharField(max_length=100, null=True)
+#     serialized = JSONField()
 # consider this library as a different approach: https://github.com/coddingtonbear/django-mailbox
 # class Email(models.Model):
 #     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='lab_emails')

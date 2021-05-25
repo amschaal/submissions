@@ -93,10 +93,13 @@ class LabListSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
-    labs = LabListSerializer(read_only=True, many=True)
+    labs = serializers.SerializerMethodField() # LabListSerializer(read_only=True, many=True)
     emails = serializers.SerializerMethodField()
+#     emails = serializers.SerializerMethodField()
     def get_emails(self, instance):
         return [e.email for e in instance.emails.all()]
+    def get_labs(self, instance):
+        return LabListSerializer(Lab.objects.filter(permissions__user=instance).distinct(), many=True).data
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'emails', 'profile', 'labs', 'is_staff', 'is_superuser']
@@ -341,7 +344,10 @@ class LabSerializer(serializers.ModelSerializer):
 #             return None
         if self._context['request'].user.is_superuser:
             return [c[0] for c in LabPermission.PERMISSION_CHOICES]
-        return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
+        elif self._context['request'].user and not self._context['request'].user.is_authenticated:
+            return []
+        else:
+            return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
     def get_submission_types(self, obj):
         # Only return inactive types for lab members
         if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
