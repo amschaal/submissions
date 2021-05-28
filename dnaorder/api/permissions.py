@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from dnaorder.models import LabPermission
 
 
 class SubmissionFilePermissions(permissions.BasePermission):
@@ -17,17 +18,19 @@ class ReadOnlyPermissions(permissions.BasePermission):
 
 class SubmissionTypePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
+        if request.method in permissions.SAFE_METHODS or request.user and request.user.is_superuser:
             return True
         # May not modify file unless submission is "editable".
-        return obj.lab.is_lab_member(request.user)
+        return obj.lab.permissions.filter(permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER], user=request.user).exists()
+#         return obj.lab.is_lab_member(request.user)
 
 class ProjectIDPermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
+        if request.method in permissions.SAFE_METHODS or request.user and request.user.is_superuser:
             return True
         # May not modify file unless submission is "editable".
-        return obj.lab.is_lab_member(request.user)
+#         return obj.lab.is_lab_member(request.user)
+        return obj.lab.permissions.filter(permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER], user=request.user).exists()
 
 
 class NotePermissions(permissions.BasePermission):
@@ -128,14 +131,15 @@ class ObjectPermission(permissions.BasePermission):
     @classmethod
     def create(cls, permission, use_superuser=True):
 #         return cls.__new__(cls, permission, use_superuser)
-        return type('CustomObjectPermission', (cls,), {'permission': permission, 'use_superuser': use_superuser})
+        return type(cls.__name__, (cls,), {'permission': permission, 'use_superuser': use_superuser})
 #         class foo(cls):
 #             permission = permission
 #             use_superuser = use_superuser
 #         return foo
     def has_object_permission(self, request, view, obj):
-#         print('has_object_permission', self.__class__, view, obj, self.permission)
+        print('has_object_permission', self.__class__, view, obj, self.permission)
         obj = self.get_obj(obj)
+        print(obj.permissions.filter(user=request.user))
         if not obj:
             return False
         if not request.user.is_authenticated:
@@ -148,6 +152,7 @@ class ObjectPermission(permissions.BasePermission):
 
 class LabObjectPermission(ObjectPermission):
     def get_obj(self, obj):
+        print('LabObjectPermission.get_obj', obj)
         from dnaorder.models import Lab
         if isinstance(obj, Lab):
             return obj
@@ -170,4 +175,5 @@ class InstitutionObjectPermission(ObjectPermission):
 # bar = LabObjectPermission.create('bar')
 # print('foo', foo, foo.permission)
 # print('bar', bar, bar.permission)
+
 
