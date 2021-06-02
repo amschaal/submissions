@@ -58,8 +58,8 @@ class Institution(models.Model):
 
 
 class InstitutionPermission(models.Model):
-    PERMISSION_ADMIN = 'admin'
-    PERMISSION_MANAGE = 'manage'
+    PERMISSION_ADMIN = 'ADMIN'
+    PERMISSION_MANAGE = 'MANAGE'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Admin'), (PERMISSION_MANAGE, 'Manage'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     permission_object = models.ForeignKey(Institution, on_delete=models.CASCADE, related_name='permissions')
@@ -92,7 +92,7 @@ class Lab(models.Model):
     def is_lab_member(self, user, use_superuser=True):
         if use_superuser and user.is_superuser:
             return True
-        return self.users.filter(id=user.id).exists()
+        return self.users.filter(id=user.id).exists() or self.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN,LabPermission.PERMISSION_MEMBER]).exists()
     class Meta:
         unique_together = (('institution', 'lab_id'))
 
@@ -108,9 +108,9 @@ def lab_members_changed(sender, action, pk_set, instance, **kwargs):
 #     print('lab_members_changed', action, pk_set, instance)
 
 class LabPermission(models.Model):
-    PERMISSION_ADMIN = 'admin'
-    PERMISSION_MEMBER = 'member'
-    PERMISSION_ASSOCIATE = 'associate'
+    PERMISSION_ADMIN = 'ADMIN'
+    PERMISSION_MEMBER = 'MEMBER'
+    PERMISSION_ASSOCIATE = 'ASSOCIATE'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Lab administrator'), (PERMISSION_MEMBER, 'Lab member'), (PERMISSION_ASSOCIATE, 'Lab associate'))
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='permissions')
@@ -264,7 +264,8 @@ class Submission(models.Model):
             return Submission.objects.none()
         queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
         if not user.is_superuser:
-            queryset = queryset.filter(Q(lab__users__username=user.username)|Q(users__username=user.username)|Q(participants__username=user.username))
+#             queryset = queryset.filter(Q(lab__users__username=user.username)|Q(users__username=user.username)|Q(participants__username=user.username))
+            queryset = queryset.filter(Q(lab__permissions__user=user)|Q(users__username=user.username)|Q(participants__username=user.username))
         return queryset.select_related('lab').distinct()
 #         if lab:
 #             queryset = queryset.filter(lab__lab_id=lab)

@@ -414,7 +414,7 @@ class DraftViewSet(viewsets.ModelViewSet):
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
 
-class LabViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, PermissionMixin, viewsets.GenericViewSet):
+class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
     permission_classes = (IsLabMember,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
