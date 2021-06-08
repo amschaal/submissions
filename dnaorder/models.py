@@ -92,7 +92,9 @@ class Lab(models.Model):
     def is_lab_member(self, user, use_superuser=True):
         if use_superuser and user.is_superuser:
             return True
-        return self.users.filter(id=user.id).exists() or self.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN,LabPermission.PERMISSION_MEMBER]).exists()
+        if user and user.is_authenticated:
+            return self.users.filter(id=user.id).exists() or self.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN,LabPermission.PERMISSION_MEMBER]).exists()
+        return False
     class Meta:
         unique_together = (('institution', 'lab_id'))
 
@@ -249,6 +251,8 @@ class Submission(models.Model):
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
     warnings = JSONField(null=True, blank=True)
     def permissions(self, user):
+        if not user or not user.is_authenticated:
+            return []
         if self.participants.filter(username=user.username).exists() or user.is_superuser: # or user.is_superuser
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
         elif self.lab.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]).exists():

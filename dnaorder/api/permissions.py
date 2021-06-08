@@ -171,7 +171,8 @@ class InstitutionObjectPermission(ObjectPermission):
             return obj.institution
         return None
 
-# foo = LabObjectPermission.create('foo')
+LabAdmin = LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)
+LabMember = LabObjectPermission.create(LabPermission.PERMISSION_MEMBER)
 # bar = LabObjectPermission.create('bar')
 # print('foo', foo, foo.permission)
 # print('bar', bar, bar.permission)

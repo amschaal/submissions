@@ -329,7 +329,7 @@ class LabSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(LabSerializer, self).__init__(*args, **kwargs)
         self.is_lab_member = False
-        if 'request' in self._context and hasattr(self, 'instance'):
+        if 'request' in self._context and hasattr(self, 'instance') and self.instance:
             self.is_lab_member = self.instance.is_lab_member(self._context['request'].user)
     def get_fields(self):
 #         print('get fields: instance', self.instance)

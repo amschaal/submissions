@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework.decorators import action
 from dnaorder.api.permissions import IsSuperuserPermission
 
-class PermissionMixin(object):
+class PermissionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
     permission_model = None # Must override this
     manage_permissions_classes = [IsSuperuserPermission]
     def serialize_permissions(self, obj):
