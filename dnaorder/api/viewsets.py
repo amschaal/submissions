@@ -29,7 +29,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from dnaorder.utils import get_site_institution
 from dnaorder.api.filters import ParticipatingFilter, ExcludeStatusFilter,\
-    LabFilter, MySubmissionsFilter
+    LabFilter, MySubmissionsFilter, UserFilter
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
@@ -316,6 +316,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsAuthenticated,)
+    filter_backends = viewsets.ModelViewSet.filter_backends + [UserFilter]
     filter_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
     search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
     def get_serializer_class(self):

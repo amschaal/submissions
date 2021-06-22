@@ -1,4 +1,5 @@
 from rest_framework import filters
+from django.contrib.auth.models import User
 class ParticipatingFilter(filters.BaseFilterBackend):
     """
     Only show submissions in which the user is a participant
@@ -53,3 +54,12 @@ class LabFilter(filters.BaseFilterBackend):
             return queryset.filter(**{lab_filter: lab})
         else:
             return queryset
+        
+class UserFilter(filters.BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        lab = view.request.query_params.get('lab', None)
+        if not lab:
+            return queryset
+        users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
+        return (queryset & users).distinct()
+        

@@ -114,7 +114,7 @@ class LabPermission(models.Model):
     PERMISSION_MEMBER = 'MEMBER'
     PERMISSION_ASSOCIATE = 'ASSOCIATE'
     PERMISSION_CHOICES = ((PERMISSION_ADMIN, 'Lab administrator'), (PERMISSION_MEMBER, 'Lab member'), (PERMISSION_ASSOCIATE, 'Lab associate'))
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lab_permissions')
     permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='permissions')
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
 
