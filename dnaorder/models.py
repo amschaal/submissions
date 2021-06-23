@@ -253,9 +253,9 @@ class Submission(models.Model):
     def permissions(self, user):
         if not user or not user.is_authenticated:
             return []
-        if self.participants.filter(username=user.username).exists() or user.is_superuser: # or user.is_superuser
+        if (self.participants.filter(username=user.username).exists() and self.lab.permissions.filter(user=user).exists()) or user.is_superuser: # or user.is_superuser
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
-        elif self.lab.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]).exists():
+        if self.lab.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]).exists():
             return [Submission.PERMISSION_ADMIN, Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW, Submission.PERMISSION_STAFF]
         elif self.users.filter(username=user.username).exists() or self.lab.permissions.filter(user=user, permission=LabPermission.PERMISSION_ASSOCIATE).exists():
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
