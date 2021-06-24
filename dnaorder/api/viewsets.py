@@ -315,7 +315,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all().order_by('last_name', 'first_name')
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsStaffPermission,) #Maybe staff only?
     filter_backends = viewsets.ModelViewSet.filter_backends + [UserFilter]
     filter_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
     search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
@@ -414,11 +414,12 @@ class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
+    # @todo: should probably limit queryset to drafts for lab, or by user
 
 class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
-    permission_classes = (IsLabMember,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
+    permission_classes = (IsLabMember,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
     lookup_field = 'lab_id'
     permission_model = LabPermission
     manage_permissions_classes = [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
