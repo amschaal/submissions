@@ -39,12 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
 #     'rest_framework_filters',
     'django_filters',
 #     'material',
     'dnaorder',
     'billing',
     'corsheaders',
+#     'django_mailbox'
 ]
 
 MIDDLEWARE = [
@@ -159,7 +161,10 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
     'PAGINATE_BY_PARAM': 'page_size',  # Allow client to override, using `?page_size=xxx`.
     'MAX_PAGINATE_BY': 1000,
-    'EXCEPTION_HANDLER': 'dnaorder.api.exceptions.custom_exception_handler'
+    'EXCEPTION_HANDLER': 'dnaorder.api.exceptions.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication'
+    ]
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -170,4 +175,6 @@ LAB_EMAIL = 'dnatech@ucdavis.edu'
 
 PAYMENT_TYPES = []
 
+PLUGINS = []
 from dnaorder.config import *
+INSTALLED_APPS += PLUGINS

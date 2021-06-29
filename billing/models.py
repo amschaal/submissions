@@ -22,5 +22,8 @@ class LineItem(models.Model):
     quantity = models.FloatField(validators=[MinValueValidator(0)])
     notes = models.TextField(null=True, blank=True)
     updated = models.DateTimeField(auto_now=True)
+    def editable(self, user):
+        perms = self.submission.permissions(user)
+        return Submission.PERMISSION_ADMIN in perms or Submission.PERMISSION_STAFF in perms
     class Meta:
         unique_together = (('submission','service'),)

@@ -22,6 +22,7 @@ from billing.api.urls import urlpatterns as billing_urlpatterns
 from django.contrib.auth import views as auth_views
 
 from dnaorder import views
+from django.utils.module_loading import import_string
 
 urlpatterns = [
     url(r'^server/admin/', admin.site.urls),
@@ -51,3 +52,10 @@ urlpatterns = [
 #     url(r'^accounts/login/$', auth_views.login, name="login",kwargs={'redirect_authenticated_user': True}),
 #     url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+plugin_urls = []
+for plugin in settings.PLUGINS:
+    plugin_patterns = import_string(plugin+'.urls.urlpatterns')
+    plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
+        
+urlpatterns += plugin_urls

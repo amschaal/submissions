@@ -1,6 +1,7 @@
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.conf import settings
+# from django.conf import settings
+from dnaorder.utils import get_lab_uri, get_site_institution
 
 def status_update(submission,request,emails=None):
     body = render_to_string('emails/status_update.txt',{'submission':submission},request=request)
@@ -31,11 +32,23 @@ def order_confirmed(submission,request,emails=None):
     )
 
 def note_email(note):
-    body = render_to_string('emails/note.txt',{'note':note,'BASE_URI':settings.BASE_URI})
+    body = render_to_string('emails/note.txt',{'note':note,'BASE_URI':get_lab_uri(note.submission.lab)})
     send_mail(
-        'A note has been added to submission {id}'.format(id=note.submission.internal_id),
+        'A note has been added to submission {internal_id} #{id}-{note_id}'.format(internal_id=note.submission.internal_id, id=note.submission.id, note_id=note.id),
         body,
         note.submission.get_lab_from_email(),
         note.emails,
         fail_silently=False,
     )
+
+def claim_email(request, email, token):
+    print(email, token)
+    institution = get_site_institution(request)
+    body = render_to_string('emails/claim_email.txt',{'email': email, 'token': token})
+    send_mail(
+        'Confirm request to add email to your account',
+        body,
+        institution.from_email(),
+        [email],
+        fail_silently=False,
+    )    

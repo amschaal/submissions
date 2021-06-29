@@ -5,4 +5,4 @@ The status for your submission placed on {{submission.submitted|date}} has been 
 
 Thank you,
 
-The DNA Technologies Core
+{{submission.lab.name}}

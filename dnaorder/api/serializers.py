@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
-    Note, Contact, Draft, Lab, PrefixID, Vocabulary, Term,\
-    Import, UserProfile, Sample
+    Note, Contact, Draft, Lab, Vocabulary, Term,\
+    Import, UserProfile, Sample, Institution, ProjectID, LabPermission,\
+    InstitutionPermission
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -16,6 +17,7 @@ from random import sample
 from django.db import transaction
 from schema.utils import Schema
 from _collections import OrderedDict
+from dnaorder.utils import assign_submission
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -84,11 +86,34 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         exclude = ['user']
 
+class LabListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        fields = ['name', 'id', 'lab_id']
+
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    labs = serializers.SerializerMethodField() # LabListSerializer(read_only=True, many=True)
+    emails = serializers.SerializerMethodField()
+#     emails = serializers.SerializerMethodField()
+    def get_emails(self, instance):
+        return [e.email for e in instance.emails.all()]
+    def get_labs(self, instance):
+        return LabListSerializer(Lab.objects.filter(permissions__user=instance).distinct(), many=True).data
     class Meta:
         model = User
-        exclude = ['password']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'emails', 'profile', 'labs', 'is_staff', 'is_superuser']
+#         exclude = ['password', 'is_staff', 'groups', 'is_superuser']
+
+class UserListSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+
+class WritableUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
@@ -114,8 +139,15 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
         # Apply custom validation either here, or in the view.
     class Meta:
         model = SubmissionType
-        fields = ['id','lab','active','prefix','next_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
-        read_only_fields = ('updated','lab')
+        fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
+        read_only_fields = ('updated',)
+
+class SimpleSubmissionTypeSerializer(SubmissionTypeSerializer):
+    pass
+    class Meta:
+        model = SubmissionType
+        fields = ['id', 'prefix', 'name', 'statuses']
+        read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
@@ -141,6 +173,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    participants = UserListSerializer(many=True, read_only=True)
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
@@ -174,8 +207,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if self.instance:
             schema = self.instance.submission_schema
         elif type:
-            type = SubmissionType.objects.get(id=type)
-            schema = type.submission_schema
+            self._type = SubmissionType.objects.get(id=type)
+            schema = self._type.submission_schema
         if schema:
             validator = SubmissionValidator(schema,data)
             self._submission_errors, self._submission_warnings = validator.validate()
@@ -210,11 +243,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if validated_data.get('import_data', None):
                 import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
                 validated_data['import_request'] = import_request
+#             if hasattr(self, '_type'):
+            validated_data['lab'] = self._type.lab
             submission = Submission.objects.create(**validated_data)
 #             submission.update_samples(validated_data.pop('sample_data'))
     #         self.update_errors_and_warnings(submission)
             for contact in contacts:
                 Contact.objects.create(submission=submission, **contact)
+            assign_submission(submission)
             return submission
     def update(self, instance, validated_data):
         with transaction.atomic():
@@ -242,6 +278,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
                 else:
                     Contact.objects.create(submission=instance, **c)
+            assign_submission(instance)
             return instance
     def get_editable(self,instance):
         request = self._context.get('request')
@@ -262,8 +299,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return valid
     class Meta:
         model = Submission
-        exclude = ['submitted','status','internal_id']
-        read_only_fields= ['lab','data']
+        exclude = ['submitted','status','internal_id','users','sample_data', 'sample_schema']
+        read_only_fields= ['lab','data', 'participants']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
@@ -286,21 +323,62 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
         read_only_fields= ['lab','data']
 
 class LabSerializer(serializers.ModelSerializer):
+    submission_types = serializers.SerializerMethodField(read_only=True)
+    users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
+    user_permissions = serializers.SerializerMethodField(read_only=True)
+    def __init__(self, *args, **kwargs):
+        super(LabSerializer, self).__init__(*args, **kwargs)
+        self.is_lab_member = False
+        if 'request' in self._context and hasattr(self, 'instance') and self.instance:
+            self.is_lab_member = self.instance.is_lab_member(self._context['request'].user)
+    def get_fields(self):
+#         print('get fields: instance', self.instance)
+        fields = serializers.ModelSerializer.get_fields(self)
+        if not self.is_lab_member:
+            for k in ['payment_type_id', 'statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
+                if k in fields:
+                    del fields[k]
+        return fields
+    def get_user_permissions(self, obj):
+#         if 'request' not in self._context or not obj:
+#             return None
+        if self._context['request'].user.is_superuser:
+            return [c[0] for c in LabPermission.PERMISSION_CHOICES]
+        elif self._context['request'].user and not self._context['request'].user.is_authenticated:
+            return []
+        else:
+            return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
+    def get_submission_types(self, obj):
+        # Only return inactive types for lab members
+        if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
+            types = obj.submission_types.all()
+        else:
+            types = obj.submission_types.filter(active=True)
+        return SubmissionTypeSerializer(types, many=True, read_only=True).data
     class Meta:
         model = Lab
+        exclude = ['institution']
+        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types', 'disabled')
+
+        
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institution
         exclude = []
-        read_only_fields = ('name', 'site', 'payment_type_id')
+        read_only_fields = ('name', 'site')
 
 class SubmissionSerializer(WritableSubmissionSerializer):
 #     def __init__(self, *args, **kwargs):
 #         super(SubmissionSerializer, self).__init__(*args, **kwargs)
-    type = SubmissionTypeSerializer()
-    lab = LabSerializer(read_only=True)
+    type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()
+#     lab = LabSerializer(read_only=True)
+    lab = LabListSerializer(read_only=True)
 #     status = SubmissionStatusSerializer()
     permissions = serializers.SerializerMethodField(read_only=True)
     participant_names = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
+    users = UserSerializer(many=True, read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
@@ -310,18 +388,18 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     def get_permissions(self,instance):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
-            return instance.get_user_permissions(self.context['request'].user)
+            return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
-        exclude = []
+        exclude = ['sample_data', 'sample_schema']
 
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
     sample_data = None
-    lab = None
+    lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'lab', 'submission_schema', 'sample_schema', 'submission_data', 'import_data']
+        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'import_data']
         
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
@@ -353,11 +431,12 @@ class DraftSerializer(serializers.ModelSerializer):
         exclude = []
         read_only_fields = ('id','created','updated')
         
-class PrefixSerializer(serializers.ModelSerializer):
+class ProjectIDSerializer(serializers.ModelSerializer):
+    generate_id = serializers.CharField(read_only=True)
     class Meta:
-        model = PrefixID
+        model = ProjectID
         exclude = []
-        read_only_fields = ('lab',)
+#         read_only_fields = ('lab',)
         
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
@@ -397,4 +476,14 @@ class VocabularySerializer(serializers.ModelSerializer):
 class TermSerializer(serializers.ModelSerializer):
     class Meta:
         model = Term
+        exclude = []
+
+class LabPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabPermission
+        exclude = []
+
+class InstitutionPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstitutionPermission
         exclude = []
