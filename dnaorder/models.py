@@ -80,7 +80,7 @@ class Lab(models.Model):
     table_variables = JSONField(default=dict)
     users = models.ManyToManyField(User, related_name='labs')
     disabled = models.BooleanField(default=False)
-    plugins = ArrayField(models.CharField(max_length=50, choices=[(plugin, plugin) for plugin in settings.PLUGINS]),blank=True,null=True)
+    plugins = JSONField(default=dict)
 #     def user_permissions(self, user):
 #         permissions = []
 #         if self.users.filter(id=user.id).exists():

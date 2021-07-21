@@ -87,6 +87,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         exclude = ['user']
 
 class LabListSerializer(serializers.ModelSerializer):
+    plugins = serializers.SerializerMethodField()
+    def get_plugins(self, instance):
+        #return public configuration for enabled plugins
+        plugins = {}
+        for p, config in instance.plugins.items():
+            if config.get('enabled', False):
+                plugins[p] = config.get('public', {})
+        return plugins
     class Meta:
         model = Lab
         fields = ['name', 'id', 'lab_id', 'plugins']
