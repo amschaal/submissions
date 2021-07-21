@@ -89,7 +89,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class LabListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
-        fields = ['name', 'id', 'lab_id']
+        fields = ['name', 'id', 'lab_id', 'plugins']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
@@ -379,6 +379,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     users = UserSerializer(many=True, read_only=True)
+    plugins = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
@@ -389,6 +390,8 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
             return instance.permissions(self.context['request'].user)
+    def get_plugins(self, instance):
+        return instance.lab.plugins #this may eventually require some filtering if it becomes a dict containing settings
     class Meta:
         model = Submission
         exclude = ['sample_data', 'sample_schema']

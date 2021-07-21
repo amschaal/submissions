@@ -55,7 +55,10 @@ urlpatterns = [
 
 plugin_urls = []
 for plugin in settings.PLUGINS:
-    plugin_patterns = import_string(plugin+'.urls.urlpatterns')
-    plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
+    try:
+        plugin_patterns = import_string(plugin+'.urls.urlpatterns')
+        plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
+    except: #ModuleNotFoundError
+        pass #Should we do something?
         
 urlpatterns += plugin_urls
