@@ -17,7 +17,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -434,6 +434,14 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
+    @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
+    def update_plugin(self, request, lab_id):
+        plugin = request.data.get('plugin')
+        config = request.data.get('config')
+        lab = self.get_object()
+        lab.plugins[plugin]['enabled'] = config.get('enabled', False)
+        lab.save()
+        return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
 #     @action(detail=False, methods=['get'])
 #     def default(self, request):
 #         lab = get_site_lab(request)

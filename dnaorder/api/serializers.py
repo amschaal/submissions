@@ -92,8 +92,11 @@ class LabListSerializer(serializers.ModelSerializer):
         #return public configuration for enabled plugins
         plugins = {}
         for p, config in instance.plugins.items():
-            if config.get('enabled', False):
-                plugins[p] = config.get('public', {})
+            try:
+                if config.get('enabled', False):
+                    plugins[p] = config.get('public', {})
+            except:
+                pass # Don't want any issues with plugin data structure to totally mess up lab API
         return plugins
     class Meta:
         model = Lab
@@ -399,7 +402,6 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     users = UserSerializer(many=True, read_only=True)
-    plugins = serializers.SerializerMethodField(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
@@ -410,8 +412,6 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         #Only return permissions for detailed view, otherwise too expensive
         if  'view' in self._context  and self._context['view'].detail and  'request' in self._context :
             return instance.permissions(self.context['request'].user)
-    def get_plugins(self, instance):
-        return instance.lab.plugins #this may eventually require some filtering if it becomes a dict containing settings
     class Meta:
         model = Submission
         exclude = ['sample_data', 'sample_schema']
