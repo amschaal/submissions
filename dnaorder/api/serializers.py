@@ -334,6 +334,7 @@ class LabSerializer(serializers.ModelSerializer):
     submission_types = serializers.SerializerMethodField(read_only=True)
     users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
     user_permissions = serializers.SerializerMethodField(read_only=True)
+    plugins = serializers.SerializerMethodField(read_only=True)
     def __init__(self, *args, **kwargs):
         super(LabSerializer, self).__init__(*args, **kwargs)
         self.is_lab_member = False
@@ -363,6 +364,17 @@ class LabSerializer(serializers.ModelSerializer):
         else:
             types = obj.submission_types.filter(active=True)
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
+    def get_plugins(self, instance):
+        admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, LabPermission.PERMISSION_ADMIN)
+        if admin: #don't filter for admins
+            return instance.plugins 
+        else: #filter out private config
+            plugins = {}
+            for p, config in instance.plugins.items():
+                plugins[p] = {}
+                plugins[p]['public'] = config.get('public', {})
+                plugins[p]['enabled'] = config.get('enabled', False)
+            return plugins
     class Meta:
         model = Lab
         exclude = ['institution']
