@@ -41,6 +41,7 @@ from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
 from rest_framework.authtoken.models import Token
 from dnaorder.api.mixins import PermissionMixin
+from plugins import PluginManager
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -499,4 +500,5 @@ class PluginViewSet(viewsets.ViewSet):
     def list(self, request):
         return Response(settings.PLUGINS)
     def retrieve(self, request, pk=None):
-        return Response(pk)
+        plugin = PluginManager().get_plugin(pk)
+        return Response({'id': pk, 'form': plugin.form})
