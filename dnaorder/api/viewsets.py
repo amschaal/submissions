@@ -17,12 +17,12 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
-from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
-    VALIDATORS
+from dnaorder.validators import VALIDATORS_DICT,\
+    VALIDATORS, SubmissionValidator
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
@@ -41,6 +41,7 @@ from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
 from rest_framework.authtoken.models import Token
 from dnaorder.api.mixins import PermissionMixin
+from plugins import PluginManager
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -434,6 +435,32 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
+    @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
+    def update_plugin(self, request, lab_id):
+        plugin_id = request.data.get('plugin')
+        config = request.data.get('config')
+        lab = self.get_object()
+        plugin = PluginManager().get_plugin(plugin_id)
+        public_errors = public_warnings = private_errors = private_warnings = {}
+        if plugin.form and plugin.form:
+            public = plugin.form.get('public')
+            private = plugin.form.get('private')
+            if public:
+                validator = SubmissionValidator(public, [config.get('public')])
+                public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+            if private:
+                validator = SubmissionValidator(private, [config.get('private')])
+                private_errors, private_warnings = validator.validate()    
+        if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
+            lab.plugins[plugin_id]['enabled'] = config.get('enabled', False)
+            lab.plugins[plugin_id]['private'] = config.get('private', {})
+            lab.plugins[plugin_id]['public'] = config.get('public', {})
+            lab.save()
+            return Response({'status':'success','message':'The plugin configuration was updated.'})
+        else:
+            return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
+        
+#         return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
 #     @action(detail=False, methods=['get'])
 #     def default(self, request):
 #         lab = get_site_lab(request)
@@ -487,3 +514,9 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
     def get_object(self):
         return viewsets.ReadOnlyModelViewSet.get_object(self)
 
+class PluginViewSet(viewsets.ViewSet):
+    def list(self, request):
+        return Response(settings.PLUGINS)
+    def retrieve(self, request, pk=None):
+        plugin = PluginManager().get_plugin(pk)
+        return Response({'id': pk, 'form': plugin.form})

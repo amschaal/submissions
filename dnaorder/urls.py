@@ -23,6 +23,7 @@ from django.contrib.auth import views as auth_views
 
 from dnaorder import views
 from django.utils.module_loading import import_string
+from plugins import PluginManager
 
 urlpatterns = [
     url(r'^server/admin/', admin.site.urls),
@@ -53,9 +54,14 @@ urlpatterns = [
 #     url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-plugin_urls = []
-for plugin in settings.PLUGINS:
-    plugin_patterns = import_string(plugin+'.urls.urlpatterns')
-    plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
+# plugin_urls = []
+# for plugin in settings.PLUGINS:
+#     try:
+#         plugin_patterns = import_string(plugin+'.urls.urlpatterns')
+#         plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
+#     except: #ModuleNotFoundError
+#         pass #Should we do something?
         
-urlpatterns += plugin_urls
+# urlpatterns += plugin_urls
+
+urlpatterns += PluginManager().urls
