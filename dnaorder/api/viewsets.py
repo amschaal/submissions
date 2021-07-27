@@ -21,8 +21,8 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
-from dnaorder.validators import SamplesheetValidator, VALIDATORS_DICT,\
-    VALIDATORS
+from dnaorder.validators import VALIDATORS_DICT,\
+    VALIDATORS, SubmissionValidator
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
@@ -437,12 +437,30 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution, disabled=False)
     @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
-        plugin = request.data.get('plugin')
+        plugin_id = request.data.get('plugin')
         config = request.data.get('config')
         lab = self.get_object()
-        lab.plugins[plugin]['enabled'] = config.get('enabled', False)
-        lab.save()
-        return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
+        plugin = PluginManager().get_plugin(plugin_id)
+        public_errors = public_warnings = private_errors = private_warnings = {}
+        if plugin.form and plugin.form:
+            public = plugin.form.get('public')
+            private = plugin.form.get('private')
+            if public:
+                validator = SubmissionValidator(public, [config.get('public')])
+                public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+            if private:
+                validator = SubmissionValidator(private, [config.get('private')])
+                private_errors, private_warnings = validator.validate()    
+        if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
+            lab.plugins[plugin_id]['enabled'] = config.get('enabled', False)
+            lab.plugins[plugin_id]['private'] = config.get('private', {})
+            lab.plugins[plugin_id]['public'] = config.get('public', {})
+            lab.save()
+            return Response({'status':'success','message':'The plugin configuration was updated.'})
+        else:
+            return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
+        
+#         return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
 #     @action(detail=False, methods=['get'])
 #     def default(self, request):
 #         lab = get_site_lab(request)
