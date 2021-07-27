@@ -137,6 +137,7 @@ class ObjectPermission(permissions.BasePermission):
 #             use_superuser = use_superuser
 #         return foo
     def has_object_permission(self, request, view, obj):
+#         import pdb; pdb.set_trace()
         print('has_object_permission', self.__class__, view, obj, self.permission)
         obj = self.get_obj(obj)
         print(obj.permissions.filter(user=request.user))

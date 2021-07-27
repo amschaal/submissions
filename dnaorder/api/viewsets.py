@@ -495,3 +495,8 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
     def get_object(self):
         return viewsets.ReadOnlyModelViewSet.get_object(self)
 
+class PluginViewSet(viewsets.ViewSet):
+    def list(self, request):
+        return Response(settings.PLUGINS)
+    def retrieve(self, request, pk=None):
+        return Response(pk)
