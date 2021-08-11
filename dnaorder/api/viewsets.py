@@ -58,7 +58,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if self.detail:
             return Submission.objects.all().select_related('lab')
         institution = get_site_institution(self.request)
-        return Submission.get_queryset(institution=institution, user=self.request.user)
+        lab_id = self.request.query_params.get('lab', None)
+        return Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
@@ -437,6 +438,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution, disabled=False)
     @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
+        # Consider moving this under plugin viewset, or perhaps moving logic into serializer
         plugin_id = request.data.get('plugin')
         config = request.data.get('config')
         lab = self.get_object()
