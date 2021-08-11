@@ -98,6 +98,8 @@ class Lab(models.Model):
             return self.permissions.filter(user=user, permission__in=[LabPermission.PERMISSION_ADMIN,LabPermission.PERMISSION_MEMBER]).exists()
         return False
     def has_permission(self, user, permission, use_superuser=True):
+        if not user.is_authenticated:
+            return False
         return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
     class Meta:
         unique_together = (('institution', 'lab_id'))
