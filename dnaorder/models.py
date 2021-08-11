@@ -15,6 +15,7 @@ from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
+# from django.db.models.expressions import OuterRef, Exists
 
 def default_schema():
     return {'properties': {}, 'order': [], 'required': [], 'layout': {}}
@@ -241,7 +242,7 @@ class Submission(models.Model):
     sample_data = JSONField(null=True,blank=True)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True, related_name='+')
+    participants = models.ManyToManyField(User,blank=True, related_name='participating')
     users = models.ManyToManyField(User,blank=True, related_name="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
@@ -265,15 +266,28 @@ class Submission(models.Model):
         else:
             return []
     @staticmethod
-    def get_queryset(institution=None, user=None):
+    def get_queryset(institution=None, user=None, lab_id=None):
+        lab = Lab.objects.get(lab_id=lab_id) if lab_id else None
 #         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
         if not user:
             return Submission.objects.none()
         queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
-        if not user.is_superuser:
-#             queryset = queryset.filter(Q(lab__users__username=user.username)|Q(users__username=user.username)|Q(participants__username=user.username))
-            queryset = queryset.filter(Q(lab__permissions__user=user)|Q(users__username=user.username)|Q(participants__username=user.username))
-        return queryset.select_related('lab').distinct()
+        if lab:
+            queryset = queryset.filter(lab=lab)
+        if not user.is_superuser: #@todo: fix efficiency related to count()!!
+            if not lab or not LabPermission.objects.filter(user=user, permission_object=lab):
+                queryset = queryset.filter(Q(users__username=user.username)|Q(participants__username=user.username))
+                
+
+#             Was using, but was too slow with distinct()
+#             queryset = queryset.filter(Q(lab__permissions__user=user)|Q(users__username=user.username)|Q(participants__username=user.username))
+
+#             Considered using this hoping to remove distinct(), but couldn't get Exist to work correctly
+#             participating = Exists(User.objects.filter(participating__pk=OuterRef('pk')))
+#             submissions = Exists(User.objects.filter(submissions__pk=OuterRef('pk')))
+#             queryset = queryset.filter(Q(lab__in=list(labs))|Q(participating)|Q(submissions))
+
+        return queryset.select_related('lab').distinct() #distinct makes some queries SUPER SLOW!!
 #         if lab:
 #             queryset = queryset.filter(lab__lab_id=lab)
 #             if not user.is_superuser:
