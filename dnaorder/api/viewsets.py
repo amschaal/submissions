@@ -42,6 +42,7 @@ from rest_framework.authentication import SessionAuthentication,\
 from rest_framework.authtoken.models import Token
 from dnaorder.api.mixins import PermissionMixin
 from plugins import PluginManager
+import datetime
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -102,7 +103,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         status = request.data.get('status', None)
         submission.status = status
         if status.strip().lower() == 'samples received' and not submission.samples_received:
-            submission.samples_received = str(timezone.now())[:10]
+            submission.samples_received = datetime.datetime.today().date() #str(timezone.now())[:10]
             submission.received_by = request.user
         submission.save()
         text = 'Submission status updated to "{status}".'.format(status=status)
@@ -171,8 +172,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         received = request.data.get('received')
         if not received:
-            received = timezone.now()
-        submission.samples_received = str(received)[:10]
+            received = datetime.datetime.today().date()
+        submission.samples_received = received
         submission.received_by = User.objects.get(id=request.data.get('received_by', request.user.id))
         submission.save()
         serializer = SubmissionSerializer(submission, context=self.get_serializer_context())
