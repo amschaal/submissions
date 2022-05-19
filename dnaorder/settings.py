@@ -20,12 +20,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '@3db94vb9sysp58q4y&63pa6bq7)ay4*ho4-m@fg@rvg8)s0d&'
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = int(os.environ.get("DEBUG", default=0))
 
-ALLOWED_HOSTS = ['fatboy.genomecenter.ucdavis.edu','dnatechorders.com','127.0.0.1']
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default='127.0.0.1').split(" ")
 
 
 # Application definition
@@ -96,9 +96,13 @@ WSGI_APPLICATION = 'dnaorder.wsgi.application'
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    "default": {
+        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.environ.get("SQL_DATABASE", "postgres"),
+        "USER": os.environ.get("SQL_USER", "user"),
+        "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
+        "HOST": os.environ.get("SQL_HOST", "localhost"),
+        "PORT": os.environ.get("SQL_PORT", "5432"),
     }
 }
 
@@ -167,14 +171,23 @@ REST_FRAMEWORK = {
     ]
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.console.EmailBackend')
 
-BASE_URI = 'https://orders.dnatech.ucdavis.edu'
+BASE_URI = os.environ.get("BASE_URI", default='http://127.0.0.1')
 
-LAB_EMAIL = 'dnatech@ucdavis.edu'
+LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 
 PAYMENT_TYPES = []
 
 PLUGINS = []
+
+
+from corsheaders.defaults import default_headers
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = default_headers + tuple(os.environ.get("CORS_ALLOW_HEADERS", default='X-XSRF-TOKEN').split(" "))
+CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="127.0.0.1").split(" ")
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1").split(" ")
+
+
 from dnaorder.config import *
 INSTALLED_APPS += PLUGINS

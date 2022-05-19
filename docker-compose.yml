@@ -4,11 +4,13 @@ services:
     build: .
     ports:
       - "8010:8000"
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000 #python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/usr/src/app 
     environment:
       - VERSION=DOCKER
+    env_file:
+      - ./.env.dev
   db:
     image: postgres:13
     volumes:
