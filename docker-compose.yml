@@ -18,7 +18,10 @@ services:
     environment:
       - "POSTGRES_HOST_AUTH_METHOD=trust"
   frontend:
-    build: /home/adam/atom/submissions
+#    build: ./spa
+    build:
+        context: .
+        dockerfile: spa.Dockerfile
     ports:
       - "8080:80"
     command: nginx -g daemon off;
