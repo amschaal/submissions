@@ -17,15 +17,19 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     environment:
       - "POSTGRES_HOST_AUTH_METHOD=trust"
-  frontend:
+  spa:
 #    build: ./spa
     build:
         context: .
         dockerfile: spa.Dockerfile
     ports:
       - "8080:80"
-    command: nginx -g daemon off;
+#    command: nginx -g daemon off;
     volumes:
       - /app
+#      - static_volume:/home/app/web/staticfiles
+#      - media_volume:/home/app/web/mediafiles
+    depends_on:
+      - web
 volumes:
   postgres_data:
