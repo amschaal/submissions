@@ -5,6 +5,6 @@ django-cors-headers
 django-filter
 django-sendfile==0.3.11
 djangorestframework
-psycopg2
+psycopg2==2.8.6
 tablib
 openpyxl
