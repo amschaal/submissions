@@ -7,6 +7,7 @@ services:
     command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000 #python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/usr/src/app 
+      - data_volume:/data
     environment:
       - VERSION=DOCKER
     env_file:
@@ -27,9 +28,10 @@ services:
 #    command: nginx -g daemon off;
     volumes:
       - /app
-#      - static_volume:/home/app/web/staticfiles
+      - data_volume:/data
 #      - media_volume:/home/app/web/mediafiles
     depends_on:
       - web
 volumes:
   postgres_data:
+  data_volume:
