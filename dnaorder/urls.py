@@ -26,7 +26,7 @@ from django.utils.module_loading import import_string
 from plugins import PluginManager
 
 urlpatterns = [
-    url(r'^server/admin/', admin.site.urls),
+    url(r'^admin/', admin.site.urls),
 #     url(r'^api/submit/$', views.submit, name='submit'),
 #     url(r'^submissions/$', views.submissions, name='submissions'),
 #     url(r'^submission_types/$', views.submission_types, name='submission_types'),

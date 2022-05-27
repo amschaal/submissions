@@ -188,6 +188,14 @@ CORS_ALLOW_HEADERS = default_headers + tuple(os.environ.get("CORS_ALLOW_HEADERS"
 CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="127.0.0.1").split(" ")
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1").split(" ")
 
+# USE_X_FORWARDED_HOST = True
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# SECURE_SSL_REDIRECT = True
 
-from dnaorder.config import *
+FORCE_SCRIPT_NAME = '/server' # prepend to base urls
+
+if not os.environ.get("SECRET_KEY"):
+    from dnaorder.local_config import *
+else:
+    from dnaorder.config import *
 INSTALLED_APPS += PLUGINS
