@@ -1,0 +1,34 @@
+version: "3.9"
+services:
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/usr/src/app 
+      - data_volume:/data
+    environment:
+      - VERSION=DOCKER
+    env_file:
+      - ./.env.dev
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+  spa:
+#    build: ./spa
+    build:
+        context: .
+        dockerfile: spa.Dockerfile
+    ports:
+      - "8080:80"
+#    command: nginx -g daemon off;
+    volumes:
+      - /app
+      - data_volume:/data
+#      - media_volume:/home/app/web/mediafiles
+    depends_on:
+      - web
+volumes:
+  postgres_data:
+  data_volume:
