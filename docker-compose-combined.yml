@@ -3,7 +3,8 @@ services:
   demo:
     ports:
       - "9000:80"
-    command: ['nginx', '-g', 'daemon off;']
+    command: /tmp/startup.sh
+    # command: ['nginx', '-g', 'daemon off;']
     # command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000 #python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/usr/src/app 
