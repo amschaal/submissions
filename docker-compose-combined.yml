@@ -12,8 +12,9 @@ services:
     environment:
       - VERSION=DOCKER
     env_file:
-      - ./.env.dev
+      - deployment/demo/.env.dev
     build:
       dockerfile: Dockerfile.combined
+    tty: true
 volumes:
   data_volume:
