@@ -16,5 +16,12 @@ services:
     build:
       dockerfile: Dockerfile.combined
     tty: true
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
 volumes:
+  postgres_data:
   data_volume:
