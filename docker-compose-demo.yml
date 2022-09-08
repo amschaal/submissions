@@ -1,0 +1,27 @@
+version: "1.1"
+services:
+  demo:
+    ports:
+      - "9000:80"
+    command: /tmp/startup.sh
+    # command: ['nginx', '-g', 'daemon off;']
+    # command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000 #python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/usr/src/app 
+      - data_volume:/data
+    environment:
+      - VERSION=DOCKER
+    env_file:
+      - deployment/demo/.env.dev
+    build:
+      dockerfile: demo.Dockerfile
+    tty: true
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+volumes:
+  postgres_data:
+  data_volume:
