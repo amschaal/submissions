@@ -12,7 +12,7 @@ services:
     environment:
       - VERSION=DOCKER
     env_file:
-      - deployment/demo/.env.dev
+      - deployment/demo/.env.demo
     build:
       dockerfile: demo.Dockerfile
     tty: true

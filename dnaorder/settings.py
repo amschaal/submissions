@@ -27,6 +27,7 @@ DEBUG = int(os.environ.get("DEBUG", default=0))
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default='127.0.0.1').split(" ")
 
+SITE_ID = int(os.environ.get("SITE_ID", default=1))
 
 # Application definition
 
