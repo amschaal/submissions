@@ -35,5 +35,6 @@ RUN mkdir -p /data/media /data/static
 #RUN ln -s /data/static
 COPY . .
 
-#EXPOSE 8000
-#CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+EXPOSE 80
+ENTRYPOINT [ "/tmp/startup.sh" ] 
+# CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
