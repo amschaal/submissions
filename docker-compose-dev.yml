@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  proxy:
+    build:
+        context: ./deployment/dev
+        dockerfile: proxy.Dockerfile
+    ports:
+      - "1000:8080"
+    networks:
+      - internal-network
+  api:
+    build: .
+    hostname: api
+    command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/usr/src/app 
+      - data_volume:/data
+    environment:
+      - VERSION=DOCKER
+    env_file:
+      - ./.env.dev
+    networks:
+      - internal-network
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+    networks:
+      - internal-network
+  spa:
+    build:
+        context: .
+        dockerfile: spa.Dockerfile
+    hostname: spa
+    networks:
+      - internal-network
+    volumes:
+      - /app
+      - data_volume:/data
+#      - media_volume:/home/app/web/mediafiles
+    depends_on:
+      - web
+volumes:
+  postgres_data:
+  data_volume:
+networks:
+  internal-network:
