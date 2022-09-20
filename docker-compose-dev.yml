@@ -6,9 +6,12 @@ services:
         context: ./deployment/dev
         dockerfile: proxy.Dockerfile
     ports:
-      - "1000:8080"
+      - "8080:80"
     networks:
       - internal-network
+    depends_on:
+      - spa
+      - web
   api:
     build: .
     hostname: api
@@ -22,6 +25,8 @@ services:
       - ./.env.dev
     networks:
       - internal-network
+    depends_on:
+      - db
   db:
     image: postgres:13
     volumes:
