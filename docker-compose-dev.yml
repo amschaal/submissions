@@ -37,8 +37,8 @@ services:
       - internal-network
   spa:
     build:
-        context: .
-        dockerfile: spa.Dockerfile
+        context: ./spa
+        dockerfile: Dockerfile
     hostname: spa
     networks:
       - internal-network
