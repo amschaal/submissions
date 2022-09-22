@@ -8,14 +8,13 @@ def get_site_institution(request):
 
 def assign_submissions(user):
     from dnaorder.models import Submission
-    for submission in Submission.objects.filter(Q(pi_email__iexact=user.email)|Q(email__iexact=user.email)).distinct():
+    for submission in Submission.objects.filter(Q(pi_email__iexact=user.email)|Q(email__iexact=user.email)|Q(contacts__email__iexact=user.email)).distinct():
         submission.users.add(user)
         submission.save()
 
 def assign_submission(submission):
-    for user in User.objects.filter(email__in=[submission.email, submission.pi_email]):
-        submission.users.add(user)
-        submission.save()
+    emails = [c.email for c in submission.contacts.all()] + [submission.email, submission.pi_email]
+    submission.users.set(User.objects.filter(email__in=emails))
 
 def get_lab_uri(lab):
     return 'https://{}'.format(lab.institution.site.domain)

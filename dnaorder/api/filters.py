@@ -61,5 +61,5 @@ class UserFilter(filters.BaseFilterBackend):
         if not lab:
             return queryset
         users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
-        return (queryset & users).distinct()
+        return queryset.distinct() & users.distinct()
         

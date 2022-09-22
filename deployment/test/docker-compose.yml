@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    ports: 
+      - "8000"
+    volumes:
+      - .:/usr/src/app 
+      - data_volume:/data
+    environment:
+      - VERSION=DOCKER
+    env_file:
+      - ./.env.dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+  spas:
+#    build: ./spa
+    build:
+        context: /Users/adam/projects/coreomics/include/coreomics/
+        dockerfile: ./spa.Dockerfile
+    ports:
+      - "8080:80"
+    command: [nginx-debug, '-g', 'daemon off;']
+    # command: quasar dev
+    volumes:
+      - /app
+      - data_volume:/data
+#      - media_volume:/home/app/web/mediafiles
+    depends_on:
+      - web
+volumes:
+  postgres_data:
+  data_volume:

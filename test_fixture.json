@@ -1,0 +1,79 @@
+[
+{
+    "model": "sites.site",
+    "pk": 1,
+    "fields": {
+        "domain": "localhost",
+        "name": "localhost"
+    }
+},
+{
+    "model": "dnaorder.institution",
+    "pk": "test",
+    "fields": {
+        "name": "Test",
+        "site": 1 
+    }
+},
+{
+    "model": "dnaorder.lab",
+    "pk": 1,
+    "fields": {
+        "institution": "test",
+        "lab_id": "test",
+        "name": "Test",
+        "email": "test@test.com",
+        "payment_type_id": "UCDPaymentType",
+        "home_page": "<h1>Welcome to the test site!</h1>",
+        "submission_page": "<h2>Something customized here...</h2>"
+    }
+},
+{
+    "model": "dnaorder.submissiontype",
+    "pk": 1,
+    "fields": {
+        "lab": 1,
+        "updated": "2022-05-23T21:36:58.603Z",
+        "updated_by": null,
+        "active": true,
+        "name": "Test",
+        "description": null,
+        "sort_order": 1,
+        "prefix": "TEST",
+        "next_id": 1,
+        "default_id": null,
+        "sample_identifier": "sample_name",
+        "exclude_fields": "",
+        "submission_help": "Customizable help info",
+        "statuses": [],
+        "submission_schema": {
+            "order": [
+                "comments"
+            ],
+            "layout": {},
+            "printing": {},
+            "required": [
+                "works",
+                "comments"
+            ],
+            "properties": {
+                "comments": {
+                    "type": "string",
+                    "title": "Comments?",
+                    "unique": false,
+                    "internal": false
+                }
+            }
+        },
+        "sample_schema": {
+            "order": [],
+            "layout": {},
+            "required": [],
+            "properties": {}
+        },
+        "sample_help": null,
+        "confirmation_text": null,
+        "default_participants": []
+    }
+}
+]
