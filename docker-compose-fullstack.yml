@@ -12,7 +12,7 @@ services:
       - ./.env.dev
     build:
       context: .
-      dockerfile: ./deployment/combined/Dockerfile
+      dockerfile: fullstack.Dockerfile
     tty: true
   db:
     image: postgres:13

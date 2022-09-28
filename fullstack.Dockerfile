@@ -25,8 +25,8 @@ RUN pip install -r requirements.txt
 COPY --from=build-stage /app/dist/spa /var/www/html/
 
 RUN rm /etc/nginx/sites-enabled/default
-COPY ./deployment/combined/nginx.conf /etc/nginx/sites-enabled/
-COPY ./deployment/demo/startup.sh /tmp
+COPY ./deployment/fullstack/nginx.conf /etc/nginx/sites-enabled/
+COPY ./deployment/fullstack/startup.sh /tmp
 RUN chmod 555 /tmp/startup.sh
 
 # RUN mkdir -p /data/media /data/static
