@@ -18,6 +18,10 @@ RUN apt-get update \
 		nginx \
 	&& rm -rf /var/lib/apt/lists/*
 
+WORKDIR /usr/src/app
+COPY ./requirements.txt ./
+RUN pip install -r requirements.txt
+
 COPY --from=build-stage /app/dist/spa /var/www/html/
 
 RUN rm /etc/nginx/sites-enabled/default
@@ -25,15 +29,14 @@ COPY ./deployment/combined/nginx.conf /etc/nginx/sites-enabled/
 COPY ./deployment/demo/startup.sh /tmp
 RUN chmod 555 /tmp/startup.sh
 
+# RUN mkdir -p /data/media /data/static
+
 # RUN service nginx restart
 
-WORKDIR /usr/src/app
+
 COPY . .
-# COPY ./requirements.txt ./
-RUN pip install -r requirements.txt
-RUN mkdir -p /data/media /data/static
-RUN ln -s /data/media
-RUN ln -s /data/static
+# RUN ln -s /data/media media
+# RUN ln -s /data/static static
 
 
 EXPOSE 80
