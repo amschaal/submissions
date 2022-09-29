@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  api:
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+  spa:
+    build:
+        context: ./spa
+        dockerfile: dev.Dockerfile
