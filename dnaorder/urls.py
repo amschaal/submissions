@@ -43,6 +43,7 @@ urlpatterns = [
 #     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
+    url(r'^api2/', include(api_urlpatterns)), #delete this, just testing CI/CD
     url(r'^api/billing/', include(billing_urlpatterns)),
     url(r'^api/validate/$', views.validate_data, name='validate'),
     url(r'^api/login/$', views.login_view, name='api_login'),
