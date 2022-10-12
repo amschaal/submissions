@@ -1,12 +1,15 @@
 # https://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html
 # https://docs.aws.amazon.com/codebuild/latest/userguide/sample-ecr.html
 version: 0.2
+env:
+  git-credential-helper: yes
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       # - docker login -u AWS -p $(aws ecr get-login-password --region $AWS_DEFAULT_REGION $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com)
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - git submodule update init --recursive
   build:
     commands:
       - echo Build started on `date`
