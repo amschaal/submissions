@@ -131,3 +131,9 @@ def download(request, id):
     return response
     # generate the file
 #     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
+
+@api_view(['GET'])
+@csrf_exempt
+@permission_classes((AllowAny,))
+def test(request):
+    return Response({'message':'Test message'})

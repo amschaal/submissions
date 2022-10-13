@@ -51,8 +51,7 @@ urlpatterns = [
     url(r'^api/get_user/$', views.get_user, name='get_user'),
     url(r'^accounts/login/$', views.login, name='login'),
     url(r'^accounts/logout/$', views.logout, name='logout'),
-#     url(r'^accounts/login/$', auth_views.login, name="login",kwargs={'redirect_authenticated_user': True}),
-#     url(r'^accounts/logout/$', auth_views.logout, name="logout",kwargs={'next_page':'index'}),
+    url(r'^test/$', views.test)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # plugin_urls = []
