@@ -173,7 +173,11 @@ REST_FRAMEWORK = {
     ]
 }
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.smtp.EmailBackend')#'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get("EMAIL_HOST", default='')
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+
 
 BASE_URI = os.environ.get("BASE_URI", default='http://127.0.0.1')
 
