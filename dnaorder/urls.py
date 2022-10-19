@@ -27,20 +27,6 @@ from plugins import PluginManager
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-#     url(r'^api/submit/$', views.submit, name='submit'),
-#     url(r'^submissions/$', views.submissions, name='submissions'),
-#     url(r'^submission_types/$', views.submission_types, name='submission_types'),
-#     url(r'^submission_types/create/$', views.create_update_submission_type, name='create_submission_type'),
-#     url(r'^submission_types/(?P<id>\d+)/update/$', views.create_update_submission_type, name='update_submission_type'),
-#     url(r'^submission_types/(?P<id>\d+)/versions/$', views.submission_type_versions, name='submission_type_versions'),
-#     url(r'^validators/$', views.validators, name='validators'),
-#     url(r'^validators/create/$', views.create_update_validator, name='create_validator'),
-#     url(r'^validators/(?P<id>\d+)/update/$', views.create_update_validator, name='update_validator'),
-#     url(r'^submissions/(?P<id>[0-9a-f-]+)/$', views.submission, name='submission'),
-#     url(r'^submissions/(?P<id>[0-9a-f-]+)/print/$', views.print_submission, name='print_submission'),
-#     url(r'^submissions/(?P<id>[0-9a-f-]+)/print/custom/$', views.customize_print, name='customize_print'),
-#     url(r'^submissions/(?P<id>[0-9a-f-]+)/confirm/$', views.confirm_submission, name='confirm_submission'),
-#     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/update/$', views.update_submission, name='update_submission'),
     url(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     url(r'^api/', include(api_urlpatterns)),
     url(r'^api2/', include(api_urlpatterns)), #delete this, just testing CI/CD
@@ -54,14 +40,5 @@ urlpatterns = [
     url(r'^test/$', views.test)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# plugin_urls = []
-# for plugin in settings.PLUGINS:
-#     try:
-#         plugin_patterns = import_string(plugin+'.urls.urlpatterns')
-#         plugin_urls.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
-#     except: #ModuleNotFoundError
-#         pass #Should we do something?
-        
-# urlpatterns += plugin_urls
 
 urlpatterns += PluginManager().urls

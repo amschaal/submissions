@@ -55,7 +55,6 @@ def get_submission_schema(url): #takes either submission or submission type URL
         url = get_submission_api_url(url)
     elif '/submission_type/' in url:
         url = re.sub(r'(.+)\/[^\/]+\/submission_type\/(.+)', r'\1/server/api/submission_types/\2', url) # should be :domain/:lab_id/submission_type/:id
-#             url = url.replace('/submission_type/','/server/api/submission_types/')
     data = get_data(url)
     return data.get('submission_schema')
 
