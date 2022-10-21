@@ -35,7 +35,7 @@ RUN chmod 555 /tmp/startup.sh
 
 
 COPY . .
-# RUN ln -s /data/media media
+RUN ln -s /data/media media
 # RUN ln -s /data/static static
 
 
