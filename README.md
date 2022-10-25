@@ -11,6 +11,7 @@ Here is a list of some of the many features available:
 - Clients have access to a simple web form, which is completely customizable, and can include typical form elements like inputs, radios, selects, etc, or more complex UI elements like tables for inputting samplesheets.
 
     ![Submission creation](docs/create_submission.png)
+    ![Submission creation - samplesheet](docs/samplesheet.png)
 
 - Each submission has all of the information the lab needs in one place, such as contacts, submission details, charges, notes/messaging, etc.
 
