@@ -146,8 +146,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
-STATIC_ROOT = os.path.join(BASE_DIR,'static')
-MEDIA_ROOT = os.path.join(BASE_DIR,'media')
+FILES_ROOT = os.environ.get("FILES_ROOT", default=BASE_DIR) #let another path outside app folder be used, such as "/data" so you can mount a network filesystem
+STATIC_ROOT = os.path.join(FILES_ROOT,'static')
+MEDIA_ROOT = os.path.join(FILES_ROOT,'media')
 
 SENDFILE_BACKEND = 'sendfile.backends.simple'
 
@@ -172,7 +173,11 @@ REST_FRAMEWORK = {
     ]
 }
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.smtp.EmailBackend')#'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get("EMAIL_HOST", default='')
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+
 
 BASE_URI = os.environ.get("BASE_URI", default='http://127.0.0.1')
 
@@ -195,8 +200,13 @@ CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1
 
 FORCE_SCRIPT_NAME = '/server' # prepend to base urls
 
-if not os.environ.get("SECRET_KEY"):
-    from dnaorder.local_config import *
-else:
-    from dnaorder.config import *
+# if not os.environ.get("SECRET_KEY"):
+#     from dnaorder.local_config import *
+# else:
+#     from dnaorder.config import *
+
+#shouldn't need this in default settings
+PPMS_URL = 'https://ppms.us/ucdavis-test/pumapi/'
+PPMS_AUTH_TOKEN = 'token'
+
 INSTALLED_APPS += PLUGINS
