@@ -225,6 +225,14 @@ INSTALLED_APPS += PLUGINS
 
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 
+LOGIN_REDIRECT_URL = '/'
+
+SOCIAL_AUTH_KEYCLOAK_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_KEY", default='client_id')
+SOCIAL_AUTH_KEYCLOAK_SECRET = os.environ.get("SOCIAL_AUTH_KEYCLOAK_SECRET", default='')
+SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY", default='')
+SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL = os.environ.get("SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL", default='') # 'https://foo.com/auth/realms/submissions/protocol/openid-connect/auth'
+SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL = os.environ.get("SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL", default='') # 'https://foo.com/auth/realms/submissions/protocol/openid-connect/token'
+
 try:
     from dnaorder.config import *
 except:
