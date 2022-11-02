@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'dnaorder',
     'billing',
     'corsheaders',
+    'social_django'
 #     'django_mailbox'
 ]
 
@@ -65,10 +66,21 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AUTHENTICATION_BACKENDS = [
-#     'django.contrib.auth.backends.RemoteUserBackend',
-    'django.contrib.auth.backends.ModelBackend'
-]
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.open_id.OpenIdAuth',
+    'social_core.backends.keycloak.KeycloakOAuth2',
+    # 'social_core.backends.google.GoogleOpenId',
+    # 'social_core.backends.google.GoogleOAuth2',
+    # 'social_core.backends.google.GoogleOAuth',
+    # 'social_core.backends.twitter.TwitterOAuth',
+    # 'social_core.backends.yahoo.YahooOpenId',
+    'django.contrib.auth.backends.ModelBackend',
+)
+# AUTHENTICATION_BACKENDS = [
+# #     'django.contrib.auth.backends.RemoteUserBackend',
+#     'django.contrib.auth.backends.ModelBackend'
+# ]
 
 ROOT_URLCONF = 'dnaorder.urls'
 
@@ -173,7 +185,7 @@ REST_FRAMEWORK = {
     ]
 }
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.smtp.EmailBackend')#'django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.console.EmailBackend')#'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get("EMAIL_HOST", default='')
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
@@ -210,3 +222,19 @@ PPMS_URL = 'https://ppms.us/ucdavis-test/pumapi/'
 PPMS_AUTH_TOKEN = 'token'
 
 INSTALLED_APPS += PLUGINS
+
+SOCIAL_AUTH_JSONFIELD_ENABLED = True
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+SOCIAL_AUTH_KEYCLOAK_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_KEY", default='client_id')
+SOCIAL_AUTH_KEYCLOAK_SECRET = os.environ.get("SOCIAL_AUTH_KEYCLOAK_SECRET", default='')
+SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY", default='')
+SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL = os.environ.get("SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL", default='') # 'https://foo.com/auth/realms/submissions/protocol/openid-connect/auth'
+SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL = os.environ.get("SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL", default='') # 'https://foo.com/auth/realms/submissions/protocol/openid-connect/token'
+
+try:
+    from dnaorder.config import *
+except:
+    print('no config file')
