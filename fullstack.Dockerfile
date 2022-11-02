@@ -1,4 +1,5 @@
-FROM node:lts-alpine3.15 as develop-stage
+# FROM node:lts-alpine3.15 as develop-stage
+FROM node:16-alpine as develop-stage
 WORKDIR /app
 COPY ./spa/package*.json ./
 RUN yarn global add @quasar/cli
