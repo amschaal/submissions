@@ -15,6 +15,8 @@ from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 
 def login(request):
+    if hasattr(settings, 'SOCIAL_LOGIN_URL'):
+        return redirect(settings.SOCIAL_LOGIN_URL)
     print('process request', request.META)
     print('login', request.user)
     if request.user.is_authenticated:
