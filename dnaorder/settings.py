@@ -29,6 +29,9 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default='127.0.0.1').spli
 
 SITE_ID = int(os.environ.get("SITE_ID", default=1))
 
+MULTI_SITE = int(os.environ.get("MULTI_SITE", default=0))
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -223,8 +226,6 @@ FORCE_SCRIPT_NAME = '/server' # prepend to base urls
 PPMS_URL = 'https://ppms.us/ucdavis-test/pumapi/'
 PPMS_AUTH_TOKEN = 'token'
 
-INSTALLED_APPS += PLUGINS
-
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 
 LOGIN_REDIRECT_URL = '/'
@@ -290,3 +291,5 @@ try:
     from dnaorder.config import *
 except:
     print('no config file')
+
+INSTALLED_APPS += PLUGINS
