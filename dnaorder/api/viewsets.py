@@ -188,6 +188,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                 export_submission(instance, settings.BIOCORE_IMPORT_URL)
             except Exception as e:
                 pass
+    @action(detail=True, methods=['get'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication], url_path='plugins/(?P<plugin_id>[^/.]+)')
+    def plugin_data(self, request, pk, plugin_id):
+        submission = self.get_object()
+        return response.Response({'submission': submission.id, 'plugin_id':plugin_id,'data':submission.plugin_data.get(plugin_id,{})})
 #         emails.confirm_order(instance, self.request)
 #     def create(self, request, *args, **kwargs):
 #         serializer = self.get_serializer(data=request.data)

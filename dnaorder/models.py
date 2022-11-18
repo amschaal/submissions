@@ -242,6 +242,7 @@ class Submission(models.Model):
     sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
+    plugin_data = JSONField(default=dict)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True, related_name='participating')

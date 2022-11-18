@@ -414,7 +414,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
             return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'sample_schema']
+        exclude = ['sample_data', 'sample_schema','plugin_data']
 
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
