@@ -8,11 +8,11 @@ class Plugin(object):
     def __init__(self, plugin_id):
         self.plugin_id = plugin_id
         try:
-            self.url_patterns = import_string(self.plugin_id+'.urls.urlpatterns')
+            self.url_patterns = import_string('plugins.{}.urls.urlpatterns'.format(self.plugin_id))
         except: #ModuleNotFoundError
             self.url_patterns = [] #Should we do something?
         try:
-            self.form = import_string(self.plugin_id+'.forms.form')
+            self.form = import_string('plugins.{}.forms.form'.format(self.plugin_id))
         except: #ModuleNotFoundError
             self.form = None
         

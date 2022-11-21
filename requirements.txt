@@ -8,3 +8,4 @@ djangorestframework
 psycopg2==2.8.6
 tablib
 openpyxl
+social-auth-app-django
