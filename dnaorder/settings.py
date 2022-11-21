@@ -291,5 +291,5 @@ try:
     from dnaorder.config import *
 except:
     print('no config file')
-
-INSTALLED_APPS += PLUGINS
+for PLUGIN in PLUGINS:
+    INSTALLED_APPS.append('plugins.{}'.format(PLUGIN))
