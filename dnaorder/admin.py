@@ -10,7 +10,6 @@ from dnaorder.models import SubmissionType, Submission, ProjectID,\
 admin.site.register(Lab)
 admin.site.register(SubmissionType)
 admin.site.register(Submission)
-# admin.site.register(SubmissionStatus)
 admin.site.register(ProjectID)
 admin.site.register(Vocabulary)
 admin.site.register(Term)

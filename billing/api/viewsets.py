@@ -18,6 +18,3 @@ class LineItemViewSet(viewsets.ModelViewSet):
     serializer_class = LineItemSerializer
     ordering_fields = ['service__name','service__code']
     permission_classes = (LineItemPermissions,)
-#     def get_serializer(self, instance=None, data=None, many=False, partial=False):
-#         return viewsets.ModelViewSet.get_serializer(self, *args, **kwargs)
-#     permission_classes = (AdminPermission,)
