@@ -11,7 +11,7 @@ from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission
 from rest_framework.decorators import permission_classes, action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
@@ -35,7 +35,7 @@ from dnaorder.import_utils import import_submission_url, export_submission,\
 from django.conf import settings
 import uuid
 from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
+# from django.core.exceptions import ValidationError
 from dnaorder.emails import claim_email
 from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
@@ -441,7 +441,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
-    @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
+    @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
         plugin_id = request.data.get('plugin')
@@ -466,7 +466,20 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return Response({'status':'success','message':'The plugin configuration was updated.'})
         else:
             return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
-        
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission], url_path='manage_plugins/(?P<action>(add|remove))')
+    def manage_plugins(self, request, lab_id, action):
+        lab = self.get_object()
+        plugins = request.data.get('plugins',[])
+        if plugins:
+            for plugin_id in plugins:
+                if plugin_id not in settings.PLUGINS:
+                    raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
+                elif plugin_id not in lab.plugins and action == 'add':
+                    lab.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
+                elif plugin_id not in lab.plugins and action == 'remove':
+                    del lab.plugins[plugin_id]
+            lab.save()
+        return response.Response({'lab':lab_id, 'plugins': lab.plugins.keys(), 'action': action})
 #         return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
 #     @action(detail=False, methods=['get'])
 #     def default(self, request):
