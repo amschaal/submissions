@@ -14,3 +14,16 @@ def group_exists(unitlogin):
     if len(data.split('\n')) > 1:
         return True
     return False
+
+
+
+# #Python 3 POST
+# from urllib import request, parse
+
+# def test(params):
+#     params['apikey'] = PPMS_AUTH_TOKEN
+#     data = parse.urlencode(params).encode()
+#     req =  request.Request(PPMS_URL, data=data) # this will make the method "POST"
+#     resp = request.urlopen(req)
+#     return resp
+# # test({"action":"getservices"})
