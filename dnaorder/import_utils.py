@@ -61,7 +61,21 @@ def get_submission_api_url(url, request=None):
     else:
         return url.replace('/submissions/','/server/api/submissions/') 
 
+# Only dealing with locally hosted submission types and submissions for now for simplicity
 def get_submission_schema(url): #takes either submission or submission type URL
+    if url[:-1] != '/':
+        url += '/'
+    if '/submissions/' in url:
+        return import_submission_url(url).get('submission_schema')
+    type_id = re.findall(r'.*\/submission_types?\/([0-9]+)\/?',url)[0]
+    from dnaorder.api.serializers import SubmissionTypeSerializer
+    from dnaorder.models import SubmissionType
+    submission_type = SubmissionType.objects.get(id=type_id)
+    data = SubmissionTypeSerializer(submission_type).data
+    return data.get('submission_schema')
+
+# When we want to support importing from other submission systems, this will be necessary
+def get_submission_schema_remote(url): #takes either submission or submission type URL
     if url[:-1] != '/':
         url += '/'
     if '/api/submission_types' in url:
