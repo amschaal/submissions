@@ -401,7 +401,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                 elif plugin_id not in lab.plugins and action == 'remove':
                     del lab.plugins[plugin_id]
             lab.save()
-        return response.Response({'lab':lab_id, 'plugins': lab.plugins.keys(), 'action': action})
+        return response.Response({'lab':lab_id, 'plugins': lab.plugins, 'action': action})
 
 class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     queryset = Institution.objects.all()
