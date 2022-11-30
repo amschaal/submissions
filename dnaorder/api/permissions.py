@@ -44,12 +44,6 @@ class SubmissionPermissions(permissions.BasePermission):
     def has_permission(self, request, view):
         if view.action == 'list' and not request.user.is_authenticated:
             return False
-#         if request.user.is_authenticated:
-#             return True
-#         if request.method in permissions.SAFE_METHODS and view.action != 'list': 
-#             return True
-#         if view.action == 'create': #right now we let people anonymously submit
-#             return True
         return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -82,14 +76,6 @@ class DraftPermissions(SubmissionPermissions):
         if request.user.is_staff or request.user.is_superuser:
             return True
         return False
-#     def has_object_permission(self, request, view, obj):
-#         # Read permissions are allowed to any request,
-#         # so we'll always allow GET, HEAD or OPTIONS requests.
-#         if request.method in permissions.SAFE_METHODS:
-#             return True
-# 
-#         # Instance must have an attribute named `owner`.
-#         return obj.owner == request.user
 
 class IsStaffPermission(permissions.BasePermission):
     """
@@ -116,29 +102,10 @@ class IsSuperuserPermission(permissions.BasePermission):
         )
 
 class ObjectPermission(permissions.BasePermission):
-#     permission = None
-#     use_superuser = True
-#     def __new__(cls, permission, use_superuser=True):
-#         print('__new__:', cls, permission, use_superuser)
-#         instance = super(ObjectPermission, cls).__new__(cls)
-#         print('instance', instance)
-#         instance.permission = permission
-#         instance.use_superuser = use_superuser
-#         return instance
-#         cls.permission = permission
-#         cls.use_superuser = use_superuser
-#         return cls
     @classmethod
     def create(cls, permission, use_superuser=True):
-#         return cls.__new__(cls, permission, use_superuser)
         return type(cls.__name__, (cls,), {'permission': permission, 'use_superuser': use_superuser})
-#         class foo(cls):
-#             permission = permission
-#             use_superuser = use_superuser
-#         return foo
     def has_object_permission(self, request, view, obj):
-#         import pdb; pdb.set_trace()
-        print('has_object_permission', self.__class__, view, obj, self.permission)
         obj = self.get_obj(obj)
         print(obj.permissions.filter(user=request.user))
         if not obj:
@@ -174,8 +141,5 @@ class InstitutionObjectPermission(ObjectPermission):
 
 LabAdmin = LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)
 LabMember = LabObjectPermission.create(LabPermission.PERMISSION_MEMBER)
-# bar = LabObjectPermission.create('bar')
-# print('foo', foo, foo.permission)
-# print('bar', bar, bar.permission)
 
 

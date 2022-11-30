@@ -1,6 +1,4 @@
 def hamming_distance(s1, s2):
-#     chars = len(s2) if len(s1) > len(s2) else len(s1)
-#     return sum(c1 != c2 for c1, c2 in zip(s1[:chars], s2[:chars]))
     assert len(s1) == len(s2)
     return sum(c1.lower() != c2.lower() for c1, c2 in zip(s1, s2))
 
@@ -8,7 +6,6 @@ def hamming_distance(s1, s2):
 l1, l2: {'id':'id1', 'barcodes': {'P5':[...]}} 
 """
 def get_conflicts(l1, l2, min_distance=2):
-#     print('test distance {} + {}'.format(l1,l2))
     conflicts = {}
     for k in l1['barcodes'].keys():
         conflicts[k] = []
@@ -24,12 +21,7 @@ def get_conflicts(l1, l2, min_distance=2):
                         conflicts[k].append({l1['id']: b1, l2['id']: b2, 'distance': 0, 'message': 'Barcodes are differing lengths'})
         if len(conflicts[k]) == 0: # For dual barcodes, only one end needs to be conflict free
             return []
-#     flat_list = [item for sublist in l for item in sublist]
     return [c for barcode in conflicts.values() for c in barcode]
-#     if len(conflicts) > 0:
-#         errors = {l1['id']: {l2['id']:[]}, l2['id']: {l1['id']:[]}}
-#         for c in conflicts:
-#             errors[l1['id']][l2['id']].append({'barcode1'})
 
 """
 libraries: [{'id':'id1', 'pool':'poolA', 'barcodes': {'P5':[...]}}, ...] 

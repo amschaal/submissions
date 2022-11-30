@@ -90,7 +90,6 @@ class Lab(models.Model):
         return self.name
     def from_email(self):
         return '"{} No-Reply" <{}@{}>'.format(self.name, 'no-reply', self.institution.site.domain)
-#         return '"{}" <{}@{}>'.format(self.name, self.lab_id, self.institution.site.domain)
     def is_lab_member(self, user, use_superuser=True):
         if use_superuser and user.is_superuser:
             return True
@@ -108,12 +107,9 @@ class Lab(models.Model):
 def lab_members_changed(sender, action, pk_set, instance, **kwargs):
     if action == 'post_remove':
 #         Remove all default participants for lab submission types
-#         print([(o.user, o.submissiontype) for o in SubmissionType.default_participants.through.objects.filter(user_id__in=pk_set, submissiontype__lab=instance)])
         SubmissionType.default_participants.through.objects.filter(user_id__in=pk_set, submissiontype__lab=instance).delete()
 #         Remove all submission participants for lab submissions
-#         print(len([(o.user, o.submission) for o in Submission.participants.through.objects.filter(user_id__in=pk_set, submission__lab=instance)]))
         Submission.participants.through.objects.filter(user_id__in=pk_set, submission__lab=instance).delete()
-#     print('lab_members_changed', action, pk_set, instance)
 
 class LabPermission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
@@ -153,12 +149,6 @@ class SubmissionType(models.Model):
         return "{0}{1}".format(self.prefix, str(self.next_id-1).zfill(4))
     def __str__(self):
         return "{name}".format(name=self.name)
-#     @property
-#     def samplesheet(self):
-#         if not self.form or not self.id:
-#             return None
-#         from dnaorder.spreadsheets import CoreSampleSheet
-#         return CoreSampleSheet(self.form.file,self)
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
@@ -178,32 +168,8 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
-# #Deprected/Obsolete: remove
-# class SubmissionStatus(models.Model):
-#     order = models.PositiveSmallIntegerField()
-#     name = models.CharField(max_length=40)
-#     auto_lock = models.BooleanField(default=False)
-#     def __str__(self):
-#         return self.name
-#     class Meta:
-#         verbose_name_plural = "Submission Statuses"
-#         ordering = ['order']
 
 class Submission(models.Model):
-#     STATUS_SUBMITTED = 'submitted'
-#     STATUS_ACCEPTED = 'accepted'
-#     STATUS_RECEIVED = 'received'
-#     STATUS_PASSED_QC = 'passed_qc'
-#     STATUS_LIBRARIES_PREPPED = 'libraries_prepped'
-#     STATUS_DATA_AVAILABLE = 'data_available'
-#     STATUS_CHOICES = (
-#         (STATUS_SUBMITTED,'Submitted for review'),
-#         (STATUS_ACCEPTED,'Submission accepted'),
-#         (STATUS_RECEIVED,'Samples received'),
-#         (STATUS_PASSED_QC,'Samples passed QC'),
-#         (STATUS_LIBRARIES_PREPPED,'Libraries prepped'),
-#         (STATUS_DATA_AVAILABLE,'Data available')
-#         )
     PERMISSION_ADMIN = 'ADMIN'
     PERMISSION_STAFF = 'STAFF'
     PERMISSION_MODIFY = 'MODIFY'
@@ -242,6 +208,7 @@ class Submission(models.Model):
     sample_schema = JSONField(null=True,blank=True)
     submission_data = JSONField(default=dict)
     sample_data = JSONField(null=True,blank=True)
+    plugin_data = JSONField(default=dict)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
     participants = models.ManyToManyField(User,blank=True, related_name='participating')
@@ -251,7 +218,6 @@ class Submission(models.Model):
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
     comments = models.TextField(null=True, blank=True)
-#     import_url = models.URLField(null=True, blank=True)
     import_internal_id = models.CharField(max_length=25, null=True)
     import_data = JSONField(null=True, blank=True)
     import_request = models.ForeignKey('Import', null=True, blank=True, on_delete=models.SET_NULL, related_name='submissions')
@@ -270,7 +236,6 @@ class Submission(models.Model):
     @staticmethod
     def get_queryset(institution=None, user=None, lab_id=None):
         lab = Lab.objects.get(lab_id=lab_id) if lab_id else None
-#         return viewsets.ModelViewSet.get_queryset(self).select_related('lab')
         if not user:
             return Submission.objects.none()
         queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
@@ -290,20 +255,6 @@ class Submission(models.Model):
 #             queryset = queryset.filter(Q(lab__in=list(labs))|Q(participating)|Q(submissions))
 
         return queryset.select_related('lab').distinct() #distinct makes some queries SUPER SLOW!!
-#         if lab:
-#             queryset = queryset.filter(lab__lab_id=lab)
-#             if not user.is_superuser:
-#                 queryset = queryset.filter(lab__users__username=user.username)
-#         else:
-#             queryset = queryset.filter(users__username=user.username)
-#         return queryset.select_related('lab').distinct()
-#     @staticmethod
-#     def user_queryset(self, request=None):
-#         from dnaorder.utils import get_site_institution
-#         if not request.user:
-#             return Submission.objects.none()
-#         institution = get_site_institution(self.request)
-#         return queryset.filter(lab__institution=institution)
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
         if not self.cancelled and not self.internal_id and self.type.default_id:
@@ -313,14 +264,6 @@ class Submission(models.Model):
         if not self.submission_schema:
             self.submission_schema = self.type.submission_schema
         super(Submission, self).save(*args, **kwargs)
-#     def generate_internal_id(self):
-#         prefix, created = Prefix.object.get_or_create(prefix=self.type.prefix) 
-#         base_id = "{prefix}{date:%y}{date:%m}{date:%d}".format(prefix=prefix,date=self.submitted or timezone.now())
-#         for i in range(1,100):#that's a lot of submissions per day!
-#             id = '{base_id}_{i}'.format(base_id=base_id,i=i)
-#             if not Submission.objects.filter(internal_id=id).exists():
-#                 return id
-# #         Submission.objects.filter(internal_id__starts_with=base_id).order_by('-internal_id')
     def get_files(self):
         from dnaorder.api.serializers import SubmissionFileSerializer
         return SubmissionFileSerializer(self.files.all(),many=True).data
@@ -376,20 +319,6 @@ class Submission(models.Model):
     class Meta:
         ordering = ['submitted']
         unique_together = (('internal_id','lab'))
-#     @property
-#     def samplesheet(self):
-#         from dnaorder.spreadsheets import CoreSampleSheet
-#         return CoreSampleSheet(self.sample_form.file,self.type)
-#     @property
-#     def submission_samplesheet(self):
-#         if not self.type.has_submission_fields:
-#             return None
-#         from dnaorder.spreadsheets import SubmissionData
-#         return SubmissionData(self.sample_form.file,self.type)
-#     @property
-#     def sra_samplesheet(self):
-#         from dnaorder.spreadsheets import SRASampleSheet
-#         return SRASampleSheet(self.sra_form.file) if self.sra_form else None
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
@@ -397,22 +326,10 @@ class Submission(models.Model):
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
-#     def get_user_permissions(self, user):
-#         permissions = []
-#         if user:
-#             if user.is_superuser or self.participants.filter(username=user.username).exists():
-#                 permissions.append(Submission.PERMISSION_ADMIN)
-#         return permissions
     def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
         return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
-#     def set_status(self,status,commit=True):
-#         self.status = status
-#         if status.auto_lock:
-#             self.locked = True
-#         if commit:
-#             self.save()
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
@@ -447,7 +364,6 @@ class Sample(models.Model):
 #         return call_directory_function('get_sample_directory',self,full=full)
     class Meta:
         unique_together = (('name', 'submission'),('id_suffix','submission'))
-
 
 class Draft(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
