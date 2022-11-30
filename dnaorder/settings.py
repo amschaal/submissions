@@ -25,7 +25,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = int(os.environ.get("DEBUG", default=0))
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default='127.0.0.1').split(" ")
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default='127.0.0.1').split()
 
 SITE_ID = int(os.environ.get("SITE_ID", default=1))
 
@@ -202,14 +202,14 @@ LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 
 PAYMENT_TYPES = []
 
-PLUGINS = []
+PLUGINS = os.environ.get("PLUGINS", default="").split()
 
 
 from corsheaders.defaults import default_headers
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = default_headers + tuple(os.environ.get("CORS_ALLOW_HEADERS", default='X-XSRF-TOKEN').split(" "))
-CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="127.0.0.1").split(" ")
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1").split(" ")
+CORS_ALLOW_HEADERS = default_headers + tuple(os.environ.get("CORS_ALLOW_HEADERS", default='X-XSRF-TOKEN').split())
+CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="127.0.0.1").split()
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1").split()
 
 # USE_X_FORWARDED_HOST = True
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
