@@ -1,21 +1,11 @@
 version: '3.9'
 
 services:
-  proxy:
-    build:
-        context: ./deployment/dev
-        dockerfile: proxy.Dockerfile
-    ports:
-      - "8080:80"
-    networks:
-      - internal-network
-    depends_on:
-      - spa
-      - web
   api:
     build: .
     hostname: api
-    command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000
+    # command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     volumes:
       - .:/usr/src/app 
       - data_volume:/data
@@ -38,16 +28,18 @@ services:
   spa:
     build:
         context: ./spa
-        dockerfile: Dockerfile
+        dockerfile: dev.Dockerfile
     hostname: spa
+    ports:
+      - "8080:8080"
     networks:
       - internal-network
     volumes:
-      - /app
-      - data_volume:/data
+      - ./spa:/app
+      # - /app
 #      - media_volume:/home/app/web/mediafiles
     depends_on:
-      - web
+      - api
 volumes:
   postgres_data:
   data_volume:

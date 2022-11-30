@@ -29,22 +29,37 @@ def get_data(URL):
 def get_submission(URL):
     return get_data(URL)
 
-def import_submission_url(url):
+def parse_submission_id(URL):
+    return re.findall(r'.*\/submissions\/([a-zA-Z0-9]+)\/?',URL)[0] #being lazy, just going to let error propagate.
+
+# Only dealing with locally hosted submissions for now for simplicity
+def import_submission_url(url, request=None):
+    submission_id = parse_submission_id(url)
+    from dnaorder.api.serializers import SubmissionSerializer
+    from dnaorder.models import Submission
+    submission = Submission.objects.get(id=submission_id)
+    data = SubmissionSerializer(submission).data
+    data.pop('lab', None)
+    data.pop('participants', None)
+    data.pop('received_by', None)
+    return data
+
+# When we want to support importing from other submission systems, this will be necessary
+def import_submission_url_remote(url, request=None):
     url = get_submission_api_url(url)
     submission = get_submission(url)
     submission.pop('lab', None)
     submission.pop('participants', None)
     submission.pop('received_by', None)
-    print(submission)
     return submission
 
-def get_submission_api_url(url):
+def get_submission_api_url(url, request=None):
     if url[:-1] != '/':
         url += '/'
     if '/api/submissions/' in url:
         return url
     else:
-        return url.replace('/submissions/','/server/api/submissions/')
+        return url.replace('/submissions/','/server/api/submissions/') 
 
 def get_submission_schema(url): #takes either submission or submission type URL
     if url[:-1] != '/':
@@ -55,7 +70,6 @@ def get_submission_schema(url): #takes either submission or submission type URL
         url = get_submission_api_url(url)
     elif '/submission_type/' in url:
         url = re.sub(r'(.+)\/[^\/]+\/submission_type\/(.+)', r'\1/server/api/submission_types/\2', url) # should be :domain/:lab_id/submission_type/:id
-#             url = url.replace('/submission_type/','/server/api/submission_types/')
     data = get_data(url)
     return data.get('submission_schema')
 
