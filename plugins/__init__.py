@@ -10,7 +10,9 @@ class Plugin(object):
         self.plugin_id = plugin_id
         try:
             self.url_patterns = import_string('plugins.{}.urls.urlpatterns'.format(self.plugin_id))
-        except: #ModuleNotFoundError
+        except Exception as e: #ModuleNotFoundError
+            if plugin_id == 'ppms':
+                raise e
             self.url_patterns = [] #Should we do something?
         try:
             self.form = import_string('plugins.{}.forms.form'.format(self.plugin_id))
@@ -51,11 +53,17 @@ class PluginManager():
         return self.__instance.plugins.get(plugin_id)
 
 
-# This decorator will take the submission_id from the url, get the submission, and pass it into the original view
-def plugin_submission_decorator(view_func, foo='bar'):
+# This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.
+def plugin_submission_decorator(permissions=[], all=True):
     from dnaorder.models import Submission
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        kwargs['submission']  = Submission.objects.get(id=kwargs.pop('submission_id'))
-        return view_func(request, *args, **kwargs)
+    from rest_framework.exceptions import PermissionDenied
+    def wrapper(view_func):
+        @wraps(view_func)
+        def wrapped(request, *args, **kwargs):
+            submission = Submission.objects.get(id=kwargs.pop('submission_id'))
+            if not submission.has_permission(request.user, permissions, all):
+                raise PermissionDenied('The current user does not have permission to perform this action.')
+            kwargs['submission']  = submission
+            return view_func(request, *args, **kwargs)
+        return wrapped
     return wrapper

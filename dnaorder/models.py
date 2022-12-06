@@ -233,6 +233,15 @@ class Submission(models.Model):
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:
             return []
+    def has_permission(self, user, permissions=[], all=True):
+        if not permissions:
+            return True
+        perms = self.permissions(user)
+        overlapping = set(permissions) & set(perms)
+        if all:
+            return len(permissions) == len(overlapping)
+        else:
+            return len(overlapping) > 0
     @staticmethod
     def get_queryset(institution=None, user=None, lab_id=None):
         lab = Lab.objects.get(lab_id=lab_id) if lab_id else None
