@@ -108,7 +108,7 @@ class Migration(migrations.Migration):
                 ('message', models.CharField(blank=True, max_length=250, null=True)),
                 ('regex', models.CharField(blank=True, max_length=250, null=True)),
                 ('choices', models.TextField(blank=True, null=True)),
-                ('range', django.contrib.postgres.fields.ranges.FloatRangeField(blank=True, null=True)),
+                ('range', django.contrib.postgres.fields.ranges.DecimalRangeField(blank=True, null=True)),
             ],
         ),
         migrations.AddField(
