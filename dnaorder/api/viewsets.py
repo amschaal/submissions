@@ -394,7 +394,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
         plugins = request.data.get('plugins',[])
         if plugins:
             for plugin_id in plugins:
-                if plugin_id not in settings.PLUGINS:
+                if plugin_id not in PluginManager().plugins:
                     raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
                 elif plugin_id not in lab.plugins and action == 'add':
                     lab.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
@@ -447,7 +447,7 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PluginViewSet(viewsets.ViewSet):
     def list(self, request):
-        return Response(settings.PLUGINS)
+        return Response(PluginManager().plugins_ids)
     def retrieve(self, request, pk=None):
         plugin = PluginManager().get_plugin(pk)
         return Response({'id': pk, 'form': plugin.form})

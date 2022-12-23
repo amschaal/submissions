@@ -19,6 +19,7 @@ from schema.utils import Schema
 from _collections import OrderedDict
 from dnaorder.utils import assign_submission
 from django.conf import settings
+from plugins import PluginManager
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -86,7 +87,7 @@ class LabListSerializer(serializers.ModelSerializer):
         plugins = {}
         for p, config in instance.plugins.items():
             try:
-                if config.get('enabled', False) and p in settings.PLUGINS:
+                if config.get('enabled', False) and p in PluginManager().plugins:
                     plugins[p] = config.get('public', {})
             except:
                 pass # Don't want any issues with plugin data structure to totally mess up lab API

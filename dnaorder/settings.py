@@ -115,7 +115,7 @@ WSGI_APPLICATION = 'dnaorder.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3"),
+        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.postgresql"),
         "NAME": os.environ.get("SQL_DATABASE", "postgres"),
         "USER": os.environ.get("SQL_USER", "user"),
         "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
@@ -203,13 +203,14 @@ LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 PAYMENT_TYPES = []
 
 PLUGINS = os.environ.get("PLUGINS", default="").split()
+PLUGIN_APPS = os.environ.get("PLUGIN_APPS", default="").split()
 
 
 from corsheaders.defaults import default_headers
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = default_headers + tuple(os.environ.get("CORS_ALLOW_HEADERS", default='X-XSRF-TOKEN').split())
-CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="127.0.0.1").split()
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="127.0.0.1").split()
+CORS_ORIGIN_WHITELIST = os.environ.get("CORS_ORIGIN_WHITELIST", default="http://127.0.0.1").split()
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="http://127.0.0.1").split()
 
 # USE_X_FORWARDED_HOST = True
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -291,5 +292,14 @@ try:
     from dnaorder.config import *
 except:
     print('no config file')
-for PLUGIN in PLUGINS:
-    INSTALLED_APPS.append('plugins.{}'.format(PLUGIN))
+
+# raise Exception(PLUGIN_APPS)
+INSTALLED_APPS += PLUGIN_APPS
+# for PLUGIN in PLUGINS:
+#     INSTALLED_APPS.append(PLUGIN)
+
+# from plugins import PluginManager
+
+# PLUGIN_MANAGER = PluginManager(PLUGINS=PLUGINS)
+# for app in PLUGIN_MANAGER.apps:
+#     INSTALLED_APPS.append(app)
