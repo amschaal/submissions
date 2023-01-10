@@ -11,7 +11,7 @@ from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.sites.models import Site
-from dnaorder.payment import PaymentTypeManager
+# from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
@@ -72,7 +72,7 @@ class Lab(models.Model):
     name = models.CharField(max_length=50)
     email = models.EmailField()
 #     site = models.OneToOneField(Site, on_delete=models.PROTECT)
-    payment_type_id = models.CharField(max_length=30, choices=PaymentTypeManager().get_choices()) # validate against list of configured payment types
+    payment_type_id = models.CharField(max_length=30) # validate against list of configured payment types # , choices=PaymentTypeManager().get_choices()
     home_page = models.TextField(default='')
     submission_page = models.TextField(default='', blank=True)
     submission_email_text = models.TextField(default='', blank=True)
