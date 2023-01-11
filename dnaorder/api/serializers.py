@@ -144,7 +144,7 @@ class ContactSerializer(serializers.ModelSerializer):
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
-    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# PPMSPaymentSerializer()
+    payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
     participants = UserListSerializer(many=True, read_only=True)
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
@@ -267,7 +267,7 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
 
 class LabSerializer(serializers.ModelSerializer):
     submission_types = serializers.SerializerMethodField(read_only=True)
-    users = ModelRelatedField(model=User,serializer=UserListSerializer,many=True,required=False,allow_null=True)
+    users = serializers.SerializerMethodField(read_only=True)
     user_permissions = serializers.SerializerMethodField(read_only=True)
     plugins = serializers.SerializerMethodField(read_only=True)
     def __init__(self, *args, **kwargs):
@@ -282,6 +282,9 @@ class LabSerializer(serializers.ModelSerializer):
                 if k in fields:
                     del fields[k]
         return fields
+    def get_users(self, obj):
+        users = User.objects.filter(lab_permissions__permission_object=obj).distinct() #LabPermission.objects.filter()
+        return UserListSerializer(users, many=True).data
     def get_user_permissions(self, obj):
         if self._context['request'].user.is_superuser:
             return [c[0] for c in LabPermission.PERMISSION_CHOICES]
