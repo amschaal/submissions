@@ -142,6 +142,16 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
+    def __init__(self,*args,**kwargs):
+        data = kwargs.get('data')
+        if data:
+            if data.get('type'):
+                self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
+                self._lab = self._type.lab
+                payment_type_plugin = PluginManager().get_payment_type(self._lab.payment_type_id)
+                if payment_type_plugin and payment_type_plugin.serializer:
+                    self.fields['payment'] = payment_type_plugin.serializer()
+        return super(WritableSubmissionSerializer, self).__init__(*args,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
