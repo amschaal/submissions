@@ -68,7 +68,8 @@ class PluginManager():
                 if _plugin.SUBMISSION_URLS:
                     PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                 if _plugin.PAYMENT:
-                   PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
+                #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
+                   PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
                 # try:
                 #     PluginManager.__instance.url_patterns.append(url(r'^plugins/{}/'.format(plugin), include('plugins.{}.urls'.format(plugin))))
                 # except:
