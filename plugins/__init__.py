@@ -3,6 +3,7 @@ from django.utils.module_loading import import_string
 from django.conf.urls import url
 from django.urls.conf import include
 from functools import wraps
+import sys
 plugin_urls = []
 
 class Plugin(object):
@@ -11,18 +12,7 @@ class Plugin(object):
     FORM = None
     PAYMENT = None
     def __init__(self):
-        # self.plugin_id = self.ID
-        # if self.SUBMISSION_URLS:
-        #     self.url_patterns = import_string('plugins.{}.urls.urlpatterns'.format(self.plugin_id))
-        # except Exception as e: #ModuleNotFoundError
-        #     if plugin_id == 'ppms':
-        #         raise e
-        #     self.url_patterns = [] #Should we do something?
         self.form = self.FORM
-        # try:
-        #     self.form = import_string('plugins.{}.forms.form'.format(self.ID))
-        # except: #ModuleNotFoundError
-        #     self.form = None
 
 class PaymentType(object):
     id = 'PAYMENT_TYPE_ID' # must override this in subclass
@@ -31,30 +21,14 @@ class PaymentType(object):
     def __unicode__(self):
         return self.name
 
-# class PaymentTypeManager:
-#     def __init__(self, payment_types=None):
-#         if not payment_types:
-#             payment_types = getattr(settings,'PAYMENT_TYPES')
-#         self.payment_types = {}    
-#         for p in payment_types:
-#             p = import_string(p)
-#             self.payment_types[p.id]=p
-#     def get_payment_type(self,id):
-#         if  id in self.payment_types:
-#             return self.payment_types[id]
-#         return None
-#     def get_choices(self):
-#         choices = ()
-#         for id, payment_type in self.payment_types.items():
-#             choices += ((id,payment_type.name),)
-#         return choices
-
 class PluginManager():
     __instance = None
     def __new__(cls, PLUGINS=None, val=None):
-        if not PLUGINS:
-            PLUGINS = settings.PLUGINS
-        if PluginManager.__instance is None or True:
+        # sys.stderr.write('Calling PluginManager.__new__\n')
+        if PluginManager.__instance is None:
+            # sys.stderr.write('Instantiating.__instance!!!!\n')
+            if not PLUGINS:
+                PLUGINS = settings.PLUGINS
             PluginManager.__instance = object.__new__(cls)
             PluginManager.__instance.url_patterns = []#[url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format('ppms'), include('plugins.{}.urls'.format('ppms')))]
             PluginManager.__instance.plugins = {}
@@ -63,27 +37,15 @@ class PluginManager():
     #         PluginManager.__instance.configure_urls()
             for plugin in PLUGINS:
                 _plugin = import_string(plugin)()
-                # _plugin = Plugin(plugin)
                 PluginManager.__instance.plugins[_plugin.ID] = _plugin
                 if _plugin.SUBMISSION_URLS:
                     PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                 if _plugin.PAYMENT:
                 #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                    PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
-                # try:
-                #     PluginManager.__instance.url_patterns.append(url(r'^plugins/{}/'.format(plugin), include('plugins.{}.urls'.format(plugin))))
-                # except:
-                #     pass
+        # else:
+        #     sys.stderr.write('***CACHED PluginManager.__intance***\n')
         return PluginManager.__instance
-#     def configure_urls(self):
-#         self.__instance.url_patterns = []
-#         for plugin in settings.PLUGINS:
-#             try:
-#                 print(plugin, plugin+'.urls.urlpatterns')
-#                 plugin_patterns = import_string(plugin+'.urls.urlpatterns')
-#                 self.__instance.url_patterns.append(url(r'^api/{}/'.format(plugin), include(plugin_patterns)))
-#             except: #ModuleNotFoundError
-#                 pass #Should we do something?
     @property
     def urls(self):
         return self.__instance.url_patterns
