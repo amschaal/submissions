@@ -65,6 +65,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
         return SubmissionSerializer if self.detail else ListSubmissionSerializer
+    # def get_serializer_context(self):
+    #     """
+    #     Extra context provided to the serializer class.
+    #     """
+    #     return {
+    #         'request': self.request,
+    #         'format': self.format_kwarg,
+    #         'view': self,
+    #     }
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_participants(self,request, pk):
         submission = self.get_object()
@@ -394,7 +403,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
         plugins = request.data.get('plugins',[])
         if plugins:
             for plugin_id in plugins:
-                if plugin_id not in settings.PLUGINS:
+                if plugin_id not in PluginManager().plugins:
                     raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
                 elif plugin_id not in lab.plugins and action == 'add':
                     lab.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
@@ -447,7 +456,10 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PluginViewSet(viewsets.ViewSet):
     def list(self, request):
-        return Response(settings.PLUGINS)
+        return Response(PluginManager().plugins_ids)
     def retrieve(self, request, pk=None):
         plugin = PluginManager().get_plugin(pk)
         return Response({'id': pk, 'form': plugin.form})
+    @action(detail=False, methods=['get'])
+    def payment_types(self, request):
+        return Response(PluginManager().payment_type_choices())
