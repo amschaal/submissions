@@ -2,6 +2,9 @@
 	path = spa
 	url = https://github.com/amschaal/submissions-spa-2
 #	url = git@github.com:amschaal/submissions-spa-2.git
-#[submodule "bioshare"]
-#	path = bioshare
-#	url = git@github.com:amschaal/bioshare_coreomics_plugin.git
+[submodule "bioshare"]
+	path = plugins/bioshare
+	url = https://github.com/amschaal/bioshare_coreomics_plugin
+[submodule "ppms"]
+	path = plugins/ppms
+	url = https://github.com/amschaal/coreomics-plugin-ppms-api.git
