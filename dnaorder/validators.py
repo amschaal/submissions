@@ -108,22 +108,11 @@ class TableValidator(BaseValidator):
     uses_options = False
     supported_types = []
     def validate_all(self, variable, schema={}, data=[]):
-#         print('TableValidator.validate')
-#         print('variable', variable)
-#         print('schema', schema)
-#         print('options', self.options)
-#         print('data', data)
         for idx, d in enumerate(data):
             table = d.get(variable, None)
             if table:
-#                 print('table', table)
                 validator = SamplesheetValidator(self.options.get('schema'), table)
                 errors, warnings = validator.validate()
-#                 print('TableValidator.validate_all', errors, warnings)
-#         if len(errors) or len(warnings):
-#             raise TableValidationException(errors, warnings, True)
-#         if len(errors):
-#             raise self.validation_class(variable, data, )
 
 # Custom validators
 class UniqueValidator(BaseValidator):
@@ -276,8 +265,6 @@ class AdapterValidator(BaseValidator):
             self.errors = json.loads(response.read()).get('conflicts',{})
         except Exception as e:
             self.errors = {}
-#             print(e.read().decode())
-#         self.errors = {}
 
 class FooValidator(BaseValidator):
     id = 'foo'
@@ -357,10 +344,8 @@ class SamplesheetValidator: #TableValidator (List of Objects)
             for idx, d in enumerate(data):
                 table = d.get(variable, None)
                 if table:
-#                     print('table', table)
                     validator = SamplesheetValidator(schema, table, parent=self)
                     errors, warnings = validator.validate()
-#                     print('Validate All Table', errors, warnings)
                     if len(errors):
                         self.set_error(idx, variable, errors)
                     if len(warnings):
@@ -370,25 +355,13 @@ class SamplesheetValidator: #TableValidator (List of Objects)
                 try:
                     validator.validate_all(variable, self.schema, data)
                 except MultiValidationException as e:
-#                     print(e.exceptions)
                     for idx, exceptions in e.exceptions.items():
                         for exception in exceptions:
                             if isinstance(exception, ValidationError):
                                 self.set_error(idx, exception.variable, exception.message)
                             elif isinstance(exception, ValidationWarning):
                                 self.set_warning(idx, exception.variable, exception.message)
-#                 except TableValidationException as e:
-#                     if e.errors:
-#                         self.set_error(idx, variable, e.errors)
-#                     if e.warnings:
-#                         self.set_warning(idx, variable, e.warnings)
-#                     break #
-#                                 if e.skip_other_exceptions:
-#                                     break
     def get_validators(self, variable):
-        #If table, validate based on schema only
-#         if self.schema['properties'][variable].get('type', False) == 'table':
-#             return [self.get_validator(TableValidator.id, {'schema': self.schema['properties'][variable].get('schema')})]
         #Add validators configured by the user
         validators = [self.get_validator(v.get('id'),v.get('options',{})) for v in self.schema['properties'][variable].get('validators', [])]
         #Add validators based on the JSON schema
@@ -406,10 +379,8 @@ class SamplesheetValidator: #TableValidator (List of Objects)
             validators.append(self.get_validator(NumberValidator.id, self.schema['properties'][variable]))
         return validators
     def validate(self):
-#         self.errors = self.validate_jsonschema()
         for variable in self.schema['properties'].keys():
             validators = self.get_validators(variable)
-#             self.validate_values(variable, validators)
             self.validate_all(variable, validators)
         return (self.errors, self.warnings)
     def cleaned(self):
@@ -417,12 +388,7 @@ class SamplesheetValidator: #TableValidator (List of Objects)
         cleaned = []
         for idx, row in enumerate(self.data):
             cleaned.append(dict([(variable,row.get(variable, None))  for variable in (list(self.schema['properties'].keys())+['id'])]))
-#             value = row.get(variable, None)
         return cleaned
-#         for variable in self.schema['properties'].keys():
-#             validators = self.get_validators(variable)
-#             self.validate_values(variable, validators)
-#         return dict([(,)  for variable in self.schema['properties'].keys()])
 
 class SubmissionValidator(SamplesheetValidator): #Object validator
     def __init__(self, schema, data):
