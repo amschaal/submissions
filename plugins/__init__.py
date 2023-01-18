@@ -36,13 +36,16 @@ class PluginManager():
             PluginManager.__instance.val = val
     #         PluginManager.__instance.configure_urls()
             for plugin in PLUGINS:
-                _plugin = import_string(plugin)()
-                PluginManager.__instance.plugins[_plugin.ID] = _plugin
-                if _plugin.SUBMISSION_URLS:
-                    PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
-                if _plugin.PAYMENT:
-                #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
-                   PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
+                try:
+                    _plugin = import_string(plugin)()
+                    PluginManager.__instance.plugins[_plugin.ID] = _plugin
+                    if _plugin.SUBMISSION_URLS:
+                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
+                    if _plugin.PAYMENT:
+                    #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
+                        PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
+                except:
+                    sys.stderr.write('Unable to initialize plugin {}!\n'.format(plugin))
         # else:
         #     sys.stderr.write('***CACHED PluginManager.__intance***\n')
         return PluginManager.__instance

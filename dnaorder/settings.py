@@ -200,7 +200,7 @@ BASE_URI = os.environ.get("BASE_URI", default='http://127.0.0.1')
 
 LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 
-PAYMENT_TYPES = []
+PAYMENT_TYPES = [] # ['dnaorder.payment.ppms.serializers.PPMSPaymentType']
 
 PLUGINS = os.environ.get("PLUGINS", default="").split()
 PLUGIN_APPS = os.environ.get("PLUGIN_APPS", default="").split()
