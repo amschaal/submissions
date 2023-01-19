@@ -149,6 +149,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
                 payment_type_plugin = PluginManager().get_payment_type(self._lab.payment_type_id)
+
                 if payment_type_plugin and payment_type_plugin.serializer:
                     self.fields['payment'] = payment_type_plugin.serializer()
         return super(WritableSubmissionSerializer, self).__init__(*args,**kwargs)
@@ -293,8 +294,8 @@ class LabSerializer(serializers.ModelSerializer):
                     del fields[k]
         return fields
     def get_users(self, obj):
-        users = User.objects.filter(lab_permissions__permission_object=obj).distinct() #LabPermission.objects.filter()
-        return UserListSerializer(users, many=True).data
+        # users = User.objects.filter(lab_permissions__permission_object=obj).distinct() #LabPermission.objects.filter()
+        return UserListSerializer(obj.members, many=True).data
     def get_user_permissions(self, obj):
         if self._context['request'].user.is_superuser:
             return [c[0] for c in LabPermission.PERMISSION_CHOICES]

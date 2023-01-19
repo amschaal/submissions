@@ -372,6 +372,26 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
+    @action(detail=True, methods=['post'])
+    def set_permissions(self, request, **kwargs):
+        import sys
+        sys.stderr.write('set_permissions!!!!')
+        obj = self.get_object()
+        removed = []
+        for username, data in request.data.get('user_permissions').items():
+            user = User.objects.get(username=username)
+            self.permission_model.objects.filter(permission_object=obj, user=user).delete()
+            permissions = data.get('permissions', [])
+            if not permissions:
+                removed.append(data)
+                # Remove default participation for submission types when removing all lab permissions
+                SubmissionType.default_participants.through.objects.filter(user__username=username, submissiontype__lab=obj).delete()
+                # Submission.participants.through.objects.filter(user__username=username, submission__lab=obj).delete() # Should we do this... is it too dangerous?
+            for p in permissions:
+                if p in [choice[0] for choice in self.permission_model.PERMISSION_CHOICES]:
+                    self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
+        user_perms = self.serialize_permissions(obj)
+        return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
     @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
