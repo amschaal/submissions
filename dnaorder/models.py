@@ -90,6 +90,9 @@ class Lab(models.Model):
         return self.name
     def from_email(self):
         return '"{} No-Reply" <{}@{}>'.format(self.name, 'no-reply', self.institution.site.domain)
+    @property
+    def members(self):
+        return User.objects.filter(lab_permissions__permission_object=self).distinct()
     def is_lab_member(self, user, use_superuser=True):
         if use_superuser and user.is_superuser:
             return True
@@ -119,6 +122,14 @@ class LabPermission(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lab_permissions')
     permission_object = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='permissions')
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES)
+
+@receiver(signals.m2m_changed, sender=Lab.users.through)
+def lab_members_changed(sender, action, pk_set, instance, **kwargs):
+    if action == 'post_remove':
+#         Remove all default participants for lab submission types
+        SubmissionType.default_participants.through.objects.filter(user_id__in=pk_set, submissiontype__lab=instance).delete()
+#         Remove all submission participants for lab submissions
+        Submission.participants.through.objects.filter(user_id__in=pk_set, submission__lab=instance).delete()
 
 class SubmissionType(models.Model):
     lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name='submission_types')
