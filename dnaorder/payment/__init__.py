@@ -9,8 +9,9 @@ class PaymentType(object):
         return self.name
 
 class PaymentTypeManager:
-    def __init__(self):
-        payment_types = getattr(settings,'PAYMENT_TYPES')
+    def __init__(self, payment_types=None):
+        if not payment_types:
+            payment_types = getattr(settings,'PAYMENT_TYPES')
         self.payment_types = {}    
         for p in payment_types:
             p = import_string(p)

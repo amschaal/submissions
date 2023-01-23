@@ -11,7 +11,7 @@ from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission
 from rest_framework.decorators import permission_classes, action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
@@ -35,7 +35,7 @@ from dnaorder.import_utils import import_submission_url, export_submission,\
 from django.conf import settings
 import uuid
 from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
+# from django.core.exceptions import ValidationError
 from dnaorder.emails import claim_email
 from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
@@ -65,29 +65,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
         return SubmissionSerializer if self.detail else ListSubmissionSerializer
-#         return viewsets.ModelViewSet.get_serializer_class(self)
-#     def get_permissions(self):
-#         try:
-#             return [permission() for permission in self.permission_classes_by_action[self.action]]
-#         except KeyError:
-#             return [permission() for permission in self.permission_classes]
-#     def list(self, request, *args, **kwargs):
-#         queryset = self.filter_queryset(self.get_queryset())
-#         page = self.paginate_queryset(queryset)
-#         if page is not None:
-#             return self.get_paginated_response([self.get_serializer(s).data for s in page])
-#         return Response([self.get_serializer(s).data for s in queryset])
-#     @action(detail=False, methods=['post','get'])
-#     def import_submission(self, request):
-#         url = request.query_params.get('url')
-#         type = int(request.query_params.get('type'))
-#         data = import_submission_url(url)
-# #         data['type'] =  data['type']['id']
-# #         del data['id']
-#         submission = ImportSubmissionSerializer(data=data, type=type)
-#         if submission.is_valid():
-#             pass # submission.save()
-#         return Response({'submission':data, 'errors': submission.errors})
+    # def get_serializer_context(self):
+    #     """
+    #     Extra context provided to the serializer class.
+    #     """
+    #     return {
+    #         'request': self.request,
+    #         'format': self.format_kwarg,
+    #         'view': self,
+    #     }
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_participants(self,request, pk):
         submission = self.get_object()
@@ -98,8 +84,6 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def update_status(self,request,pk):
         submission = self.get_object()
-#         status = SubmissionStatus.objects.get(id=request.data.get('status'))
-#         submission.set_status(status,commit=True)
         status = request.data.get('status', None)
         submission.status = status
         if status.strip().lower() == 'samples received' and not submission.samples_received:
@@ -108,7 +92,6 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.save()
         text = 'Submission status updated to "{status}".'.format(status=status)
         if request.data.get('email',False):
-#             emails.status_update(submission,request=request)
             Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
             return response.Response({'status':'success','locked':submission.locked,'message':'Status updated. Email sent to "{0}".'.format(submission.email)})
         else:
@@ -167,8 +150,6 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember])
     def samples_received(self, request, pk):
-#         if not request.user.is_staff:
-#             return response.Response({'status':'error', 'message': 'Only staff may set samples as received.'},status=403)
         submission = self.get_object()
         received = request.data.get('received')
         if not received:
@@ -177,10 +158,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission.received_by = User.objects.get(id=request.data.get('received_by', request.user.id))
         submission.save()
         serializer = SubmissionSerializer(submission, context=self.get_serializer_context())
-#         serializer = self.get_serializer(submission)
         return Response({'submission':serializer.data})
     def perform_create(self, serializer):
-#         instance = serializer.save(lab=get_site_lab(self.request))
         instance = serializer.save()
         emails.order_confirmed(instance, self.request)
         if hasattr(settings, 'BIOCORE_IMPORT_URL') and instance.biocore:
@@ -188,15 +167,11 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                 export_submission(instance, settings.BIOCORE_IMPORT_URL)
             except Exception as e:
                 pass
-#         emails.confirm_order(instance, self.request)
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-#         headers = self.get_success_headers(serializer.data)
-#         data = serializer.data
-#         del data['id'] #Hide this so that they have to check their email to confirm
-#         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+    @action(detail=True, methods=['get'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication], url_path='plugins/(?P<plugin_id>[^/.]+)')
+    def plugin_data(self, request, pk, plugin_id):
+        submission = self.get_object()
+        return response.Response({'submission': submission.id, 'plugin_id':plugin_id,'data':submission.plugin_data.get(plugin_id,{})})
+
 
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
@@ -205,7 +180,6 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
     permission_classes = (AllowAny,)
-#     permission_classes = [SubmissionPermissions]
     @action(detail=False, methods=['post'])
     def import_submission(self, request):
         url = request.data.get('url')
@@ -231,11 +205,6 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     search_fields = ('name', 'description')
     filter_fields = {'active':['exact']}
     lab_filter = 'lab__lab_id'
-#     def get_queryset(self):
-#         return viewsets.ModelViewSet.get_queryset(self)
-#         queryset = viewsets.ModelViewSet.get_queryset(self)
-#         lab = get_site_lab(self.request)
-#         return queryset.filter(lab=lab)
     def get_permissions(self):
         try:
             # return permission_classes depending on `action` 
@@ -243,8 +212,6 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
         except KeyError: 
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
-#     def perform_create(self, serializer):
-#         return serializer.save(lab=get_site_lab(self.request))
     @action(detail=False, methods=['get'])
     def get_submission_schema(self, request):
         url = request.query_params.get('url')
@@ -270,18 +237,9 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
-#         if self.request.user.is_authenticated:
-#             return queryset
-#         else:
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
         return queryset.filter(submission=submission)
-#     def get_permissions(self):
-#         if self.action == 'list':
-#             permission_classes = [IsAuthenticated]
-#         else:
-#             permission_classes = [SubmissionFilePermissions]
-#         return [permission() for permission in permission_classes]
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if not instance.submission.editable(request.user):
@@ -305,15 +263,6 @@ class NoteViewSet(viewsets.ModelViewSet):
         if not submission.lab.is_lab_member(self.request.user):
             queryset = queryset.filter(public=True)
         return queryset
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-#         headers = self.get_success_headers(serializer.data)
-#         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-# 
-#     def perform_create(self, serializer):
-#         serializer.save()
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all().order_by('last_name', 'first_name')
     serializer_class = UserSerializer
@@ -355,20 +304,6 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return response.Response({'status':'error', 'message': 'You must log in to delete an API auth token.'}, status=403)
         Token.objects.filter(user=request.user).delete()
         return response.Response({'status':'success', 'token':None})
-
-#     @action(detail=False, methods=['post'])
-#     def update_profile(self,request):
-#         if not request.user.is_authenticated:
-#             return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
-#         serializer = WritableUserSerializer(request.user, data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data)
-# class StatusViewSet(viewsets.ReadOnlyModelViewSet):
-#     queryset = SubmissionStatus.objects.all().order_by('order')
-#     serializer_class = StatusSerializer
-#     ordering_fields = ['order']
-#     permission_classes = (AllowAny,)
 
 class UserEmailViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
@@ -437,7 +372,27 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
-    @action(detail=True, methods=['post', 'get'], permission_classes=[LabAdmin])
+    @action(detail=True, methods=['post'])
+    def set_permissions(self, request, **kwargs):
+        import sys
+        sys.stderr.write('set_permissions!!!!')
+        obj = self.get_object()
+        removed = []
+        for username, data in request.data.get('user_permissions').items():
+            user = User.objects.get(username=username)
+            self.permission_model.objects.filter(permission_object=obj, user=user).delete()
+            permissions = data.get('permissions', [])
+            if not permissions:
+                removed.append(data)
+                # Remove default participation for submission types when removing all lab permissions
+                SubmissionType.default_participants.through.objects.filter(user__username=username, submissiontype__lab=obj).delete()
+                # Submission.participants.through.objects.filter(user__username=username, submission__lab=obj).delete() # Should we do this... is it too dangerous?
+            for p in permissions:
+                if p in [choice[0] for choice in self.permission_model.PERMISSION_CHOICES]:
+                    self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
+        user_perms = self.serialize_permissions(obj)
+        return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
+    @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
         plugin_id = request.data.get('plugin')
@@ -462,13 +417,20 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return Response({'status':'success','message':'The plugin configuration was updated.'})
         else:
             return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
-        
-#         return response.Response({'lab_id': lab_id, 'plugin': plugin, 'config': config})
-#     @action(detail=False, methods=['get'])
-#     def default(self, request):
-#         lab = get_site_lab(request)
-#         serializer = self.get_serializer(lab, many=False)
-#         return Response(serializer.data)
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission], url_path='manage_plugins/(?P<action>(add|remove))')
+    def manage_plugins(self, request, lab_id, action):
+        lab = self.get_object()
+        plugins = request.data.get('plugins',[])
+        if plugins:
+            for plugin_id in plugins:
+                if plugin_id not in PluginManager().plugins:
+                    raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
+                elif plugin_id not in lab.plugins and action == 'add':
+                    lab.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
+                elif plugin_id not in lab.plugins and action == 'remove':
+                    del lab.plugins[plugin_id]
+            lab.save()
+        return response.Response({'lab':lab_id, 'plugins': lab.plugins, 'action': action})
 
 class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     queryset = Institution.objects.all()
@@ -489,11 +451,6 @@ class ProjectIDViewSet(viewsets.ModelViewSet):
     permission_classes = (ProjectIDPermissions,)
     filter_fields = {'lab_id':['exact']}
     
-#     def get_queryset(self):
-#         queryset = viewsets.ModelViewSet.get_queryset(self)
-#         lab = get_site_lab(self.request)
-#         return queryset.filter(lab=lab)   
-
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
     serializer_class = VocabularySerializer
@@ -519,7 +476,10 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PluginViewSet(viewsets.ViewSet):
     def list(self, request):
-        return Response(settings.PLUGINS)
+        return Response(PluginManager().plugins_ids)
     def retrieve(self, request, pk=None):
         plugin = PluginManager().get_plugin(pk)
         return Response({'id': pk, 'form': plugin.form})
+    @action(detail=False, methods=['get'])
+    def payment_types(self, request):
+        return Response(PluginManager().payment_type_choices())

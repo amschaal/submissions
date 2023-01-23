@@ -17,10 +17,8 @@ class PermissionMixin(object): # Must include this mixin before DRF viewset clas
         return user_perms
     @action(detail=True, methods=['get'])
     def permissions(self, request, **kwargs):
-#         institution = get_site_institution(request)
         obj = self.get_object()
         user_perms = self.serialize_permissions(obj)
-#         serializer = self.permission_modelSerializer(qs, many=True)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms})
     @action(detail=True, methods=['post'])
     def set_permissions(self, request, **kwargs):
@@ -31,15 +29,8 @@ class PermissionMixin(object): # Must include this mixin before DRF viewset clas
             for p in data.get('permissions', []):
                 if p in [choice[0] for choice in self.permission_model.PERMISSION_CHOICES]:
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
-#         self.permission_model.objects.filter(institution=obj).delete()
         user_perms = self.serialize_permissions(obj)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms})
     def get_permissions(self):
         permission_classes = self.manage_permissions_classes if self.action in ['permissions', 'set_permissions'] else self.permission_classes
         return [permission() for permission in permission_classes]
-#         return [permission() if callable(permission) else permission for permission in permission_classes]
-#         if self.action in ['permissions', 'set_permissions']:
-#             print(self.action, self.manage_permissions_classes)
-#             return [permission() if callable(permission) else permission for permission in self.manage_permissions_classes]
-#         else:
-#             return [permission() for permission in self.permission_classes]

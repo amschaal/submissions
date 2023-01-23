@@ -11,6 +11,7 @@ services:
       - data_volume:/data
     environment:
       - VERSION=DOCKER
+      - DEBUG=1
     env_file:
       - ./.env.dev
     networks:

@@ -29,7 +29,6 @@ def login(request):
         remote_user = request.META.get('OIDC_CLAIM_preferred_username', request.META.get('OIDC_CLAIM_email'))
         print('remote_user', remote_user)
         if remote_user:
-#             user = User.objects.filter(username=remote_user).first()
             user, created = User.objects.get_or_create(username=remote_user)
             if created:
                 print('user created')
@@ -38,11 +37,8 @@ def login(request):
                 user.first_name = request.META.get('OIDC_CLAIM_given_name')
                 user.save()
                 UserEmail.objects.create(user=user, email=user.email)
-#             if user is not None:
             auth_login(request, user)
             return redirect('/')
-        # Is this all wrong? I'm authenticating but the logic is in middleware...
-#         user = authenticate(request)
     return redirect('/')
 
 def logout(request):
