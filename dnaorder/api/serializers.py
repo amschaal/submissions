@@ -142,17 +142,24 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
-    def __init__(self,*args,**kwargs):
+    def __init__(self,instance=None,**kwargs):
+        # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
         data = kwargs.get('data')
-        if data:
+        payment_type_id = None
+        if instance and hasattr(instance, 'type'):
+            self._type = instance.type
+            self._lab = instance.lab
+            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
+        elif data:
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-                payment_type_plugin = PluginManager().get_payment_type(self._lab.payment_type_id)
-
-                if payment_type_plugin and payment_type_plugin.serializer:
-                    self.fields['payment'] = payment_type_plugin.serializer()
-        return super(WritableSubmissionSerializer, self).__init__(*args,**kwargs)
+                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
+        if hasattr(self, '_lab'):
+            payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
+            if payment_type_plugin and payment_type_plugin.serializer:
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id)
+        return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()

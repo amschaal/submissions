@@ -3,6 +3,7 @@ from django.utils.module_loading import import_string
 from django.conf.urls import url
 from django.urls.conf import include
 from functools import wraps
+from rest_framework import serializers
 import sys
 plugin_urls = []
 
@@ -20,6 +21,13 @@ class PaymentType(object):
     serializer_class = None # Must override this in subclass.  Should reference Django Rest Framework serializer.
     def __unicode__(self):
         return self.name
+
+class BasePaymentSerializer(serializers.Serializer):
+    def __init__(self, instance=None, data=..., **kwargs):
+        self._plugin_id = kwargs.pop('plugin_id')
+        self.fields['plugin_id'] = serializers.CharField(default=self._plugin_id)
+        sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
+        super().__init__(instance, data, **kwargs)
 
 class PluginManager():
     __instance = None
