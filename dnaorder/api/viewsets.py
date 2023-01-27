@@ -372,7 +372,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def set_permissions(self, request, **kwargs):
         import sys
         sys.stderr.write('set_permissions!!!!')
@@ -392,6 +392,9 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
         user_perms = self.serialize_permissions(obj)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
+    @action(detail=True, methods=['get'], permission_classes=[LabAdmin])
+    def plugin_settings(self, request, **kwargs):
+        return Response(self.get_object().plugins) 
     @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
@@ -443,6 +446,9 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
         institution = get_site_institution(request)
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
+    @action(detail=True, methods=['get'], permission_classes=[IsSuperuserPermission])
+    def plugin_settings(self, request, **kwargs):
+        return Response(self.get_object().plugins) 
     @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission])
     def update_plugin(self, request, **kwargs):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer

@@ -81,17 +81,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         exclude = ['user']
 
 class LabListSerializer(serializers.ModelSerializer):
-    plugins = serializers.SerializerMethodField()
+    # Need to only have plugins in detailed lab serializer for efficiency.  Frontend is currently getting it from the list of labs though. 
+    plugins = serializers.SerializerMethodField(read_only=True)
     def get_plugins(self, instance):
-        #return public configuration for enabled plugins
-        plugins = {}
-        for p, config in instance.plugins.items():
-            try:
-                if config.get('enabled', False) and p in PluginManager().plugins:
-                    plugins[p] = config.get('public', {})
-            except:
-                pass # Don't want any issues with plugin data structure to totally mess up lab API
-        return plugins
+        return instance.get_plugin_settings(private=False)
     class Meta:
         model = Lab
         fields = ['name', 'id', 'lab_id', 'plugins']
@@ -318,16 +311,17 @@ class LabSerializer(serializers.ModelSerializer):
             types = obj.submission_types.filter(active=True)
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
     def get_plugins(self, instance):
-        admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, LabPermission.PERMISSION_ADMIN)
-        if admin: #don't filter for admins
-            return instance.plugins 
-        else: #filter out private config
-            plugins = {}
-            for p, config in instance.plugins.items():
-                plugins[p] = {}
-                plugins[p]['public'] = config.get('public', {})
-                plugins[p]['enabled'] = config.get('enabled', False)
-            return plugins
+        return instance.get_plugin_settings(private=False)
+        # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, LabPermission.PERMISSION_ADMIN)
+        # if admin: #don't filter for admins
+        #     return instance.plugins 
+        # else: #filter out private config
+        #     plugins = {}
+        #     for p, config in instance.plugins.items():
+        #         plugins[p] = {}
+        #         plugins[p]['public'] = config.get('public', {})
+        #         plugins[p]['enabled'] = config.get('enabled', False)
+        #     return plugins
     class Meta:
         model = Lab
         exclude = ['institution']
@@ -335,22 +329,22 @@ class LabSerializer(serializers.ModelSerializer):
 
         
 class InstitutionSerializer(serializers.ModelSerializer):
-    plugins = serializers.SerializerMethodField(read_only=True)
+    # plugins = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Institution
-        exclude = []
+        exclude = ['plugins']
         read_only_fields = ('name', 'site')
-    def get_plugins(self, instance):
-        # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
-        admin = 'request' in self._context and self._context['request'].user.is_superuser
-        if admin: #don't filter for admins
-            return instance.plugins 
-        else: #filter out private config
-            plugins = {}
-            for p, config in instance.plugins.items():
-                plugins[p] = {}
-                plugins[p]['public'] = config.get('public', {})
-                plugins[p]['enabled'] = config.get('enabled', False)
+    # def get_plugins(self, instance):
+    #     # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
+    #     admin = 'request' in self._context and self._context['request'].user.is_superuser
+    #     if admin: #don't filter for admins
+    #         return instance.plugins 
+    #     else: #filter out private config
+    #         plugins = {}
+    #         for p, config in instance.plugins.items():
+    #             plugins[p] = {}
+    #             plugins[p]['public'] = config.get('public', {})
+    #             plugins[p]['enabled'] = config.get('enabled', False)
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()
