@@ -335,10 +335,22 @@ class LabSerializer(serializers.ModelSerializer):
 
         
 class InstitutionSerializer(serializers.ModelSerializer):
+    plugins = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Institution
         exclude = []
         read_only_fields = ('name', 'site')
+    def get_plugins(self, instance):
+        # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
+        admin = 'request' in self._context and self._context['request'].user.is_superuser
+        if admin: #don't filter for admins
+            return instance.plugins 
+        else: #filter out private config
+            plugins = {}
+            for p, config in instance.plugins.items():
+                plugins[p] = {}
+                plugins[p]['public'] = config.get('public', {})
+                plugins[p]['enabled'] = config.get('enabled', False)
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()
