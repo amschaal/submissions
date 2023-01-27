@@ -443,6 +443,45 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
         institution = get_site_institution(request)
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission])
+    def update_plugin(self, request, **kwargs):
+        # Consider moving this under plugin viewset, or perhaps moving logic into serializer
+        plugin_id = request.data.get('plugin')
+        config = request.data.get('config')
+        instance = self.get_object()
+        plugin = PluginManager().get_plugin(plugin_id)
+        public_errors = public_warnings = private_errors = private_warnings = {}
+        if plugin.form and plugin.form:
+            public = plugin.form.get('public')
+            private = plugin.form.get('private')
+            if public:
+                validator = SubmissionValidator(public, [config.get('public')])
+                public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+            if private:
+                validator = SubmissionValidator(private, [config.get('private')])
+                private_errors, private_warnings = validator.validate()    
+        if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
+            instance.plugins[plugin_id]['enabled'] = config.get('enabled', False)
+            instance.plugins[plugin_id]['private'] = config.get('private', {})
+            instance.plugins[plugin_id]['public'] = config.get('public', {})
+            instance.save()
+            return Response({'status':'success','message':'The plugin configuration was updated.'})
+        else:
+            return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission], url_path='manage_plugins/(?P<action>(add|remove))')
+    def manage_plugins(self, request, action, **kwargs):
+        instance = self.get_object()
+        plugins = request.data.get('plugins',[])
+        if plugins:
+            for plugin_id in plugins:
+                if plugin_id not in PluginManager().plugins:
+                    raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
+                elif plugin_id not in instance.plugins and action == 'add':
+                    instance.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
+                elif plugin_id not in instance.plugins and action == 'remove':
+                    del instance.plugins[plugin_id]
+            instance.save()
+        return response.Response({'plugins': instance.plugins, 'action': action})
     
 
 class ProjectIDViewSet(viewsets.ModelViewSet):

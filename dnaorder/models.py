@@ -54,6 +54,7 @@ class Institution(models.Model):
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     logo = models.FileField(null=True, upload_to=logo_file_path)
+    plugins = JSONField(default=dict)
     def from_email(self, addr='no-reply'):
         return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
 
