@@ -15,6 +15,17 @@ class Plugin(object):
     def __init__(self):
         self.form = self.FORM
 
+class SubmissionPlugin:
+    def __init__(self, plugin_id, submission):
+        self.plugin_id = plugin_id
+        self.submission = submission
+        self.data = self.submission.plugin_data.get(self.plugin_id,{})
+    def save(self):
+        self.submission.save() 
+    @property
+    def settings(self):
+        return self.submission.lab.get_plugin_settings(private=True).get(self.plugin_id, {})
+
 class PaymentType(object):
     id = 'PAYMENT_TYPE_ID' # must override this in subclass
     name = 'Payment Type Name' # must override this in subclass
@@ -48,7 +59,7 @@ class PluginManager():
                     _plugin = import_string(plugin)()
                     PluginManager.__instance.plugins[_plugin.ID] = _plugin
                     if _plugin.SUBMISSION_URLS:
-                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
+                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/(?P<plugin_id>{})/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                     if _plugin.PAYMENT:
                     #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                         PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
@@ -86,7 +97,9 @@ def plugin_submission_decorator(permissions=[], all=True):
             submission = Submission.objects.get(id=kwargs.pop('submission_id'))
             if not submission.has_permission(request.user, permissions, all):
                 raise PermissionDenied('The current user does not have permission to perform this action.')
+            plugin = SubmissionPlugin(kwargs.pop('plugin_id'), submission)
             kwargs['submission']  = submission
+            kwargs['plugin'] = plugin
             return view_func(request, *args, **kwargs)
         return wrapped
     return wrapper
