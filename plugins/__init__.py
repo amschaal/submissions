@@ -4,8 +4,12 @@ from django.conf.urls import url
 from django.urls.conf import include
 from functools import wraps
 from rest_framework import serializers
-import sys
+import sys, copy
 plugin_urls = []
+
+FORM_ACCESS_INSTITUTION = 'INSTITUTION_FORM'
+FORM_ACCESS_LAB = 'INSTITUTION_FORM'
+# FORM_TYPE_ANY = 'ANY'
 
 class Plugin(object):
     ID = None
@@ -14,6 +18,18 @@ class Plugin(object):
     PAYMENT = None
     def __init__(self):
         self.form = self.FORM
+    @property
+    def institution_form(self):
+        form = copy.deepcopy(self.form)
+        for namespace in ['public', 'private']: 
+            for field, definition in self.form[namespace]['properties'].items():
+                if 'restrict_to' in definition and FORM_ACCESS_INSTITUTION not in definition['restrict_to']:
+                    del form[namespace]['properties'][field]
+                    if field in form[namespace]['order']:
+                        form[namespace]['order'].remove(field)
+                    if field in form[namespace]['required']:
+                        form[namespace]['required'].remove(field)
+        return form
 
 class SubmissionPlugin:
     def __init__(self, plugin_id, submission):
