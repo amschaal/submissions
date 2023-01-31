@@ -343,6 +343,7 @@ class UserEmailViewSet(viewsets.ViewSet):
         user_email.user.save()
         return response.Response({'status':'success', 'message': 'Email "{}" has been set as your primary email.'.format(email)})
 class ValidatorViewSet(viewsets.ViewSet):
+    permission_classes = (ReadOnlyPermissions,)
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
@@ -357,7 +358,7 @@ class DraftViewSet(viewsets.ModelViewSet):
 class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
-    permission_classes = (IsLabMember,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
+    permission_classes = (IsLabMember|ReadOnlyPermissions,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
     lookup_field = 'lab_id'
     permission_model = LabPermission
     manage_permissions_classes = [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
@@ -392,6 +393,10 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
         user_perms = self.serialize_permissions(obj)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
+    @action(detail=True, methods=['get'], permission_classes=[LabAdmin], url_path='plugin_form/(?P<plugin_id>(.+))')
+    def plugin_form(self, request, plugin_id, **kwargs):
+        plugin = PluginManager().get_plugin(plugin_id)
+        return Response({'id': plugin_id, 'form': plugin.lab_form})
     @action(detail=True, methods=['get'], permission_classes=[LabAdmin])
     def plugin_settings(self, request, **kwargs):
         return Response(self.get_object().plugins) 
@@ -441,14 +446,18 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     permission_classes = (IsSuperuserPermission,)
     permission_model = InstitutionPermission
     manage_permissions_classes = [InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)]
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def default(self, request):
         institution = get_site_institution(request)
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
+    @action(detail=True, methods=['get'], permission_classes=[IsSuperuserPermission], url_path='plugin_form/(?P<plugin_id>(.+))')
+    def plugin_form(self, request, plugin_id, **kwargs):
+        plugin = PluginManager().get_plugin(plugin_id)
+        return Response({'id': plugin_id, 'form': plugin.institution_form})
     @action(detail=True, methods=['get'], permission_classes=[IsSuperuserPermission])
     def plugin_settings(self, request, **kwargs):
-        return Response(self.get_object().plugins) 
+        return Response(self.get_object().plugins)
     @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission])
     def update_plugin(self, request, **kwargs):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
@@ -499,6 +508,7 @@ class ProjectIDViewSet(viewsets.ModelViewSet):
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
     serializer_class = VocabularySerializer
+    permission_classes = (ReadOnlyPermissions,)
     search_fields = ['id', 'name']
     filter_fields = {
         'name':['icontains','exact'],
@@ -520,11 +530,9 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
         return viewsets.ReadOnlyModelViewSet.get_object(self)
 
 class PluginViewSet(viewsets.ViewSet):
+    permission_classes = (ReadOnlyPermissions,)
     def list(self, request):
         return Response(PluginManager().plugins_ids)
-    def retrieve(self, request, pk=None):
-        plugin = PluginManager().get_plugin(pk)
-        return Response({'id': pk, 'form': plugin.form})
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())

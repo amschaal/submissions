@@ -7,8 +7,8 @@ from rest_framework import serializers
 import sys, copy
 plugin_urls = []
 
-FORM_ACCESS_INSTITUTION = 'INSTITUTION_FORM'
-FORM_ACCESS_LAB = 'INSTITUTION_FORM'
+RESTRICT_TO_INSTITUTION = 'RESTRICT_TO_INSTITUTION'
+RESTRICT_TO_LAB = 'RESTRICT_TO_LAB'
 # FORM_TYPE_ANY = 'ANY'
 
 class Plugin(object):
@@ -18,18 +18,23 @@ class Plugin(object):
     PAYMENT = None
     def __init__(self):
         self.form = self.FORM
-    @property
-    def institution_form(self):
+    def restricted_form(self, RESTRICT_TO):
         form = copy.deepcopy(self.form)
         for namespace in ['public', 'private']: 
             for field, definition in self.form[namespace]['properties'].items():
-                if 'restrict_to' in definition and FORM_ACCESS_INSTITUTION not in definition['restrict_to']:
+                if 'restrict_to' in definition and RESTRICT_TO not in definition['restrict_to']:
                     del form[namespace]['properties'][field]
                     if field in form[namespace]['order']:
                         form[namespace]['order'].remove(field)
                     if field in form[namespace]['required']:
                         form[namespace]['required'].remove(field)
         return form
+    @property
+    def institution_form(self):
+        return self.restricted_form(RESTRICT_TO_INSTITUTION)
+    @property
+    def lab_form(self):
+        return self.restricted_form(RESTRICT_TO_LAB)
 
 class SubmissionPlugin:
     def __init__(self, plugin_id, submission):
