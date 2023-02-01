@@ -17,7 +17,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission, LabAdmin
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -361,7 +361,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
     permission_classes = (IsLabMember|ReadOnlyPermissions,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
     lookup_field = 'lab_id'
     permission_model = LabPermission
-    manage_permissions_classes = [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
+    manage_permissions_classes = [LabAdmin]#[LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return LabSerializer
@@ -395,6 +395,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
     @action(detail=True, methods=['get'], permission_classes=[LabAdmin], url_path='plugin_form/(?P<plugin_id>(.+))')
     def plugin_form(self, request, plugin_id, **kwargs):
+        obj = self.get_object()
         plugin = PluginManager().get_plugin(plugin_id)
         return Response({'id': plugin_id, 'form': plugin.lab_form})
     @action(detail=True, methods=['get'], permission_classes=[LabAdmin])
@@ -445,7 +446,7 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     serializer_class = InstitutionSerializer
     permission_classes = (IsSuperuserPermission,)
     permission_model = InstitutionPermission
-    manage_permissions_classes = [InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)]
+    manage_permissions_classes = [InstitutionAdmin]#[InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)]
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def default(self, request):
         institution = get_site_institution(request)
