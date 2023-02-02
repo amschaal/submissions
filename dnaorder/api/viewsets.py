@@ -369,7 +369,8 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         institution = get_site_institution(self.request)
-        if self.request.user.is_staff:
+        include_disabled = self.request.query_params.get('include_disabled', 'false')
+        if self.request.user.is_staff and (include_disabled == 'true' or self.detail == True):
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
