@@ -1,5 +1,5 @@
 from rest_framework import viewsets, response, status, mixins
-from dnaorder.api.serializers import SubmissionSerializer,\
+from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
@@ -43,6 +43,7 @@ from rest_framework.authtoken.models import Token
 from dnaorder.api.mixins import PermissionMixin
 from plugins import PluginManager
 import datetime
+import sys
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -355,17 +356,28 @@ class DraftViewSet(viewsets.ModelViewSet):
     permission_classes = (DraftPermissions,)
     # @todo: should probably limit queryset to drafts for lab, or by user
 
-class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, viewsets.GenericViewSet):
+class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
-    permission_classes = (IsLabMember|ReadOnlyPermissions,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
+    permission_classes = (InstitutionAdmin|LabAdmin|ReadOnlyPermissions,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
     lookup_field = 'lab_id'
     permission_model = LabPermission
     manage_permissions_classes = [LabAdmin]#[LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
+    def get_permissions(self):
+        action = self.action
+        sys.stderr.write(action+'!!!\n')
+    #     if self.action in ['update', 'patch']:
+    #         return [IsSuperuserPermission()]
+        return super().get_permissions()
     def get_serializer_class(self):
-        if self.request.method in ['PATCH', 'POST', 'PUT']:
+        # if self.detail and 'institution' in self.request.query_params:
+        #     lab = self.get_object()
+        #     if not lab.institution.has_permission()
+            # return InstitutionLabSerializer
+        if self.request.method in ['PATCH', 'POST', 'PUT'] or self.detail:
             return LabSerializer
-        return LabSerializer if self.detail else LabListSerializer
+        else:
+            return LabListSerializer
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         institution = get_site_institution(self.request)
@@ -394,6 +406,13 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
         user_perms = self.serialize_permissions(obj)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
+    @action(detail=True, methods=['post'], permission_classes=[InstitutionAdmin])
+    def toggle_disabled(self, request, **kwargs):
+        lab = self.get_object()
+        lab.disabled = not lab.disabled
+        lab.save()
+        serializer = self.get_serializer(lab)
+        return Response(serializer.data)
     @action(detail=True, methods=['get'], permission_classes=[LabAdmin], url_path='plugin_form/(?P<plugin_id>(.+))')
     def plugin_form(self, request, plugin_id, **kwargs):
         obj = self.get_object()

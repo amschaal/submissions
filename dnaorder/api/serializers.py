@@ -87,7 +87,14 @@ class LabListSerializer(serializers.ModelSerializer):
         return instance.get_plugin_settings(private=False)
     class Meta:
         model = Lab
-        fields = ['name', 'id', 'lab_id', 'plugins']
+        fields = ['name', 'id', 'lab_id', 'plugins', 'disabled']
+        read_only_fields = ['name', 'id', 'lab_id', 'plugins', 'disabled']
+
+class InstitutionLabSerializer(LabListSerializer):
+    class Meta:
+        model = Lab
+        fields = ['name', 'id', 'lab_id', 'disabled', 'plugins']
+        read_only_fields = ['plugins']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
