@@ -161,12 +161,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
-STATIC_URL = '/static/'
-MEDIA_URL = '/media/'
-FILES_ROOT = os.environ.get("FILES_ROOT", default=BASE_DIR) #let another path outside app folder be used, such as "/data" so you can mount a network filesystem
-STATIC_ROOT = os.path.join(FILES_ROOT,'static')
-MEDIA_ROOT = os.path.join(FILES_ROOT,'media')
-
 SENDFILE_BACKEND = 'sendfile.backends.simple'
 
 REST_FRAMEWORK = {
@@ -197,6 +191,11 @@ EMAIL_PORT = 587
 
 
 BASE_URI = os.environ.get("BASE_URI", default='http://127.0.0.1')
+STATIC_URL = '/static/'
+MEDIA_URL = BASE_URI + '/media/'
+FILES_ROOT = os.environ.get("FILES_ROOT", default=BASE_DIR) #let another path outside app folder be used, such as "/data" so you can mount a network filesystem
+STATIC_ROOT = os.path.join(FILES_ROOT,'static')
+MEDIA_ROOT = os.path.join(FILES_ROOT,'media')
 
 LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 
