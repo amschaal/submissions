@@ -55,6 +55,10 @@ class Institution(models.Model):
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     logo = models.FileField(null=True, upload_to=logo_file_path)
     plugins = JSONField(default=dict)
+    def has_permission(self, user, permission, use_superuser=True):
+        if not user.is_authenticated:
+            return False
+        return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
     def from_email(self, addr='no-reply'):
         return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
 

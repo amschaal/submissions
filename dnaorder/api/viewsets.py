@@ -363,12 +363,12 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
     lookup_field = 'lab_id'
     permission_model = LabPermission
     manage_permissions_classes = [LabAdmin]#[LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
-    def get_permissions(self):
-        action = self.action
-        sys.stderr.write(action+'!!!\n')
-    #     if self.action in ['update', 'patch']:
-    #         return [IsSuperuserPermission()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     action = self.action
+    #     # sys.stderr.write(action+'!!!\n')
+    # #     if self.action in ['update', 'patch']:
+    # #         return [IsSuperuserPermission()]
+    #     return super().get_permissions()
     def get_serializer_class(self):
         # if self.detail and 'institution' in self.request.query_params:
         #     lab = self.get_object()
