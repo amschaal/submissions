@@ -1,6 +1,6 @@
 from rest_framework import permissions
-from dnaorder.models import LabPermission
-
+from dnaorder.models import LabPermission, InstitutionPermission
+import sys
 
 class SubmissionFilePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -14,7 +14,7 @@ class ReadOnlyPermissions(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
-        return request.user.is_staff
+        return False #request.user.is_staff
 
 class SubmissionTypePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -54,8 +54,8 @@ class SubmissionPermissions(permissions.BasePermission):
 class IsLabMember(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         from dnaorder.models import Lab
-        if request.method in permissions.SAFE_METHODS:
-            return True
+        # if request.method in permissions.SAFE_METHODS:
+        #     return True
         if not request.user.is_authenticated:
             return False
         if request.user.is_superuser:
@@ -96,7 +96,7 @@ class IsSuperuserPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return bool(
-            request.method in permissions.SAFE_METHODS or
+            # request.method in permissions.SAFE_METHODS or
             request.user and
             request.user.is_superuser
         )
@@ -105,9 +105,14 @@ class ObjectPermission(permissions.BasePermission):
     @classmethod
     def create(cls, permission, use_superuser=True):
         return type(cls.__name__, (cls,), {'permission': permission, 'use_superuser': use_superuser})
+    # def has_permission(self, request, view): 
+    #     if view.detail:
+    #         view.get_object() # if this isn't called from the viewset, has_object_permission is not called.  However, if it is and this is run, code is run twice.
+    #     return super().has_permission(request, view)
     def has_object_permission(self, request, view, obj):
         obj = self.get_obj(obj)
-        print(obj.permissions.filter(user=request.user))
+        sys.stderr.write('has_object_permission\n')
+        # sys.stderr.writelines([str(obj.permissions.filter(user=request.user)),self.permission])
         if not obj:
             return False
         if not request.user.is_authenticated:
@@ -142,4 +147,4 @@ class InstitutionObjectPermission(ObjectPermission):
 LabAdmin = LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)
 LabMember = LabObjectPermission.create(LabPermission.PERMISSION_MEMBER)
 
-
+InstitutionAdmin = InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)

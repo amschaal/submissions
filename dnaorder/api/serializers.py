@@ -81,20 +81,20 @@ class ProfileSerializer(serializers.ModelSerializer):
         exclude = ['user']
 
 class LabListSerializer(serializers.ModelSerializer):
-    plugins = serializers.SerializerMethodField()
+    # Need to only have plugins in detailed lab serializer for efficiency.  Frontend is currently getting it from the list of labs though. 
+    plugins = serializers.SerializerMethodField(read_only=True)
     def get_plugins(self, instance):
-        #return public configuration for enabled plugins
-        plugins = {}
-        for p, config in instance.plugins.items():
-            try:
-                if config.get('enabled', False) and p in PluginManager().plugins:
-                    plugins[p] = config.get('public', {})
-            except:
-                pass # Don't want any issues with plugin data structure to totally mess up lab API
-        return plugins
+        return instance.get_plugin_settings(private=False)
     class Meta:
         model = Lab
-        fields = ['name', 'id', 'lab_id', 'plugins']
+        fields = ['name', 'id', 'lab_id', 'plugins', 'disabled']
+        read_only_fields = ['name', 'id', 'lab_id', 'plugins', 'disabled']
+
+class InstitutionLabSerializer(LabListSerializer):
+    class Meta:
+        model = Lab
+        fields = ['name', 'id', 'lab_id', 'disabled', 'plugins']
+        read_only_fields = ['plugins']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
@@ -142,17 +142,24 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 class WritableSubmissionSerializer(serializers.ModelSerializer):
-    def __init__(self,*args,**kwargs):
+    def __init__(self,instance=None,**kwargs):
+        # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
         data = kwargs.get('data')
-        if data:
+        payment_type_id = None
+        if instance and hasattr(instance, 'type'):
+            self._type = instance.type
+            self._lab = instance.lab
+            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
+        elif data:
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-                payment_type_plugin = PluginManager().get_payment_type(self._lab.payment_type_id)
-
-                if payment_type_plugin and payment_type_plugin.serializer:
-                    self.fields['payment'] = payment_type_plugin.serializer()
-        return super(WritableSubmissionSerializer, self).__init__(*args,**kwargs)
+                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
+        if hasattr(self, '_lab'):
+            payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
+            if payment_type_plugin and payment_type_plugin.serializer:
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id)
+        return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
@@ -311,27 +318,40 @@ class LabSerializer(serializers.ModelSerializer):
             types = obj.submission_types.filter(active=True)
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
     def get_plugins(self, instance):
-        admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, LabPermission.PERMISSION_ADMIN)
-        if admin: #don't filter for admins
-            return instance.plugins 
-        else: #filter out private config
-            plugins = {}
-            for p, config in instance.plugins.items():
-                plugins[p] = {}
-                plugins[p]['public'] = config.get('public', {})
-                plugins[p]['enabled'] = config.get('enabled', False)
-            return plugins
+        return instance.get_plugin_settings(private=False)
+        # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, LabPermission.PERMISSION_ADMIN)
+        # if admin: #don't filter for admins
+        #     return instance.plugins 
+        # else: #filter out private config
+        #     plugins = {}
+        #     for p, config in instance.plugins.items():
+        #         plugins[p] = {}
+        #         plugins[p]['public'] = config.get('public', {})
+        #         plugins[p]['enabled'] = config.get('enabled', False)
+        #     return plugins
     class Meta:
         model = Lab
         exclude = ['institution']
-        read_only_fields = ('name', 'site', 'payment_type_id', 'submission_types', 'disabled','plugins')
+        read_only_fields = ('site', 'payment_type_id', 'submission_types', 'disabled','plugins')
 
         
 class InstitutionSerializer(serializers.ModelSerializer):
+    # plugins = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Institution
-        exclude = []
+        exclude = ['plugins']
         read_only_fields = ('name', 'site')
+    # def get_plugins(self, instance):
+    #     # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
+    #     admin = 'request' in self._context and self._context['request'].user.is_superuser
+    #     if admin: #don't filter for admins
+    #         return instance.plugins 
+    #     else: #filter out private config
+    #         plugins = {}
+    #         for p, config in instance.plugins.items():
+    #             plugins[p] = {}
+    #             plugins[p]['public'] = config.get('public', {})
+    #             plugins[p]['enabled'] = config.get('enabled', False)
 
 class SubmissionSerializer(WritableSubmissionSerializer):
     type = SimpleSubmissionTypeSerializer() #SubmissionTypeSerializer()

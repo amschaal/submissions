@@ -1,5 +1,5 @@
 from rest_framework import viewsets, response, status, mixins
-from dnaorder.api.serializers import SubmissionSerializer,\
+from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
@@ -17,7 +17,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission, LabAdmin
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
 # from dnaorder.views import submission
@@ -43,6 +43,7 @@ from rest_framework.authtoken.models import Token
 from dnaorder.api.mixins import PermissionMixin
 from plugins import PluginManager
 import datetime
+import sys
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
@@ -343,6 +344,7 @@ class UserEmailViewSet(viewsets.ViewSet):
         user_email.user.save()
         return response.Response({'status':'success', 'message': 'Email "{}" has been set as your primary email.'.format(email)})
 class ValidatorViewSet(viewsets.ViewSet):
+    permission_classes = (ReadOnlyPermissions,)
     def retrieve(self, request, pk=None):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
@@ -354,25 +356,37 @@ class DraftViewSet(viewsets.ModelViewSet):
     permission_classes = (DraftPermissions,)
     # @todo: should probably limit queryset to drafts for lab, or by user
 
-class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,mixins.ListModelMixin, viewsets.GenericViewSet):
+class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
 #     serializer_class = LabListSerializer
-    permission_classes = (IsLabMember,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
+    permission_classes = (InstitutionAdmin|LabAdmin|ReadOnlyPermissions,) # [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)] @todo: should only lab admins be able to update the lab?
     lookup_field = 'lab_id'
     permission_model = LabPermission
-    manage_permissions_classes = [LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
+    manage_permissions_classes = [LabAdmin]#[LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)]
+    # def get_permissions(self):
+    #     action = self.action
+    #     # sys.stderr.write(action+'!!!\n')
+    # #     if self.action in ['update', 'patch']:
+    # #         return [IsSuperuserPermission()]
+    #     return super().get_permissions()
     def get_serializer_class(self):
-        if self.request.method in ['PATCH', 'POST', 'PUT']:
+        # if self.detail and 'institution' in self.request.query_params:
+        #     lab = self.get_object()
+        #     if not lab.institution.has_permission()
+            # return InstitutionLabSerializer
+        if self.request.method in ['PATCH', 'POST', 'PUT'] or self.detail:
             return LabSerializer
-        return LabSerializer if self.detail else LabListSerializer
+        else:
+            return LabListSerializer
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         institution = get_site_institution(self.request)
-        if self.request.user.is_staff:
+        include_disabled = self.request.query_params.get('include_disabled', 'false')
+        if self.request.user.is_staff and (include_disabled == 'true' or self.detail == True):
             return queryset.filter(institution=institution)
         else:
             return queryset.filter(institution=institution, disabled=False)
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def set_permissions(self, request, **kwargs):
         import sys
         sys.stderr.write('set_permissions!!!!')
@@ -392,6 +406,21 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)
         user_perms = self.serialize_permissions(obj)
         return Response({'available_permissions': self.permission_model.PERMISSION_CHOICES, 'user_permissions': user_perms, 'removed': removed})
+    @action(detail=True, methods=['post'], permission_classes=[InstitutionAdmin])
+    def toggle_disabled(self, request, **kwargs):
+        lab = self.get_object()
+        lab.disabled = not lab.disabled
+        lab.save()
+        serializer = self.get_serializer(lab)
+        return Response(serializer.data)
+    @action(detail=True, methods=['get'], permission_classes=[LabAdmin], url_path='plugin_form/(?P<plugin_id>(.+))')
+    def plugin_form(self, request, plugin_id, **kwargs):
+        obj = self.get_object()
+        plugin = PluginManager().get_plugin(plugin_id)
+        return Response({'id': plugin_id, 'form': plugin.lab_form})
+    @action(detail=True, methods=['get'], permission_classes=[LabAdmin])
+    def plugin_settings(self, request, **kwargs):
+        return Response(self.get_object().plugins) 
     @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def update_plugin(self, request, lab_id):
         # Consider moving this under plugin viewset, or perhaps moving logic into serializer
@@ -437,12 +466,58 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     serializer_class = InstitutionSerializer
     permission_classes = (IsSuperuserPermission,)
     permission_model = InstitutionPermission
-    manage_permissions_classes = [InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)]
-    @action(detail=False, methods=['get'])
+    manage_permissions_classes = [InstitutionAdmin]#[InstitutionObjectPermission.create(InstitutionPermission.PERMISSION_ADMIN)]
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def default(self, request):
         institution = get_site_institution(request)
         serializer = self.get_serializer(institution, many=False)
         return Response(serializer.data)
+    @action(detail=True, methods=['get'], permission_classes=[IsSuperuserPermission], url_path='plugin_form/(?P<plugin_id>(.+))')
+    def plugin_form(self, request, plugin_id, **kwargs):
+        plugin = PluginManager().get_plugin(plugin_id)
+        return Response({'id': plugin_id, 'form': plugin.institution_form})
+    @action(detail=True, methods=['get'], permission_classes=[IsSuperuserPermission])
+    def plugin_settings(self, request, **kwargs):
+        return Response(self.get_object().plugins)
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission])
+    def update_plugin(self, request, **kwargs):
+        # Consider moving this under plugin viewset, or perhaps moving logic into serializer
+        plugin_id = request.data.get('plugin')
+        config = request.data.get('config')
+        instance = self.get_object()
+        plugin = PluginManager().get_plugin(plugin_id)
+        public_errors = public_warnings = private_errors = private_warnings = {}
+        if plugin.form and plugin.form:
+            public = plugin.form.get('public')
+            private = plugin.form.get('private')
+            if public:
+                validator = SubmissionValidator(public, [config.get('public')])
+                public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
+            if private:
+                validator = SubmissionValidator(private, [config.get('private')])
+                private_errors, private_warnings = validator.validate()    
+        if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
+            instance.plugins[plugin_id]['enabled'] = config.get('enabled', False)
+            instance.plugins[plugin_id]['private'] = config.get('private', {})
+            instance.plugins[plugin_id]['public'] = config.get('public', {})
+            instance.save()
+            return Response({'status':'success','message':'The plugin configuration was updated.'})
+        else:
+            return Response({'public':{'errors':public_errors, 'warnings': public_warnings},'private':{'errors':private_errors, 'warnings': private_warnings}},status=400)
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperuserPermission], url_path='manage_plugins/(?P<action>(add|remove))')
+    def manage_plugins(self, request, action, **kwargs):
+        instance = self.get_object()
+        plugins = request.data.get('plugins',[])
+        if plugins:
+            for plugin_id in plugins:
+                if plugin_id not in PluginManager().plugins:
+                    raise ValidationError('Bad plugin ID: {}'.format(plugin_id))
+                elif plugin_id not in instance.plugins and action == 'add':
+                    instance.plugins[plugin_id] = {'enabled':False, 'private': {}, 'public': {}}
+                elif plugin_id not in instance.plugins and action == 'remove':
+                    del instance.plugins[plugin_id]
+            instance.save()
+        return response.Response({'plugins': instance.plugins, 'action': action})
     
 
 class ProjectIDViewSet(viewsets.ModelViewSet):
@@ -454,6 +529,7 @@ class ProjectIDViewSet(viewsets.ModelViewSet):
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
     serializer_class = VocabularySerializer
+    permission_classes = (ReadOnlyPermissions,)
     search_fields = ['id', 'name']
     filter_fields = {
         'name':['icontains','exact'],
@@ -475,11 +551,9 @@ class TermViewSet(viewsets.ReadOnlyModelViewSet):
         return viewsets.ReadOnlyModelViewSet.get_object(self)
 
 class PluginViewSet(viewsets.ViewSet):
+    permission_classes = (ReadOnlyPermissions,)
     def list(self, request):
         return Response(PluginManager().plugins_ids)
-    def retrieve(self, request, pk=None):
-        plugin = PluginManager().get_plugin(pk)
-        return Response({'id': pk, 'form': plugin.form})
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())

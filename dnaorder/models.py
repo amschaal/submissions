@@ -54,6 +54,11 @@ class Institution(models.Model):
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     logo = models.FileField(null=True, upload_to=logo_file_path)
+    plugins = JSONField(default=dict)
+    def has_permission(self, user, permission, use_superuser=True):
+        if not user.is_authenticated:
+            return False
+        return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
     def from_email(self, addr='no-reply'):
         return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
 
@@ -103,6 +108,19 @@ class Lab(models.Model):
         if not user.is_authenticated:
             return False
         return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
+    def get_plugin_settings(self, private=False):
+        from collections import defaultdict
+        plugin_settings = defaultdict(lambda : {})
+        for key in ['public', 'private'] if private else ['public']:
+            for plugin_id, settings in self.institution.plugins.items():
+                if settings.get('enabled', False):
+                    plugin_settings[plugin_id].update(settings.get(key,{}))
+            for plugin_id, settings in self.plugins.items():
+                if settings.get('enabled', False):
+                    plugin_settings[plugin_id].update(settings.get(key,{}))
+        return plugin_settings
+        # plugin_settings = {plugin_id: {'public': settings.get('public',{})} for plugin_id, settings in self.plugins.items()}
+        # return plugin_settings
     class Meta:
         unique_together = (('institution', 'lab_id'))
 

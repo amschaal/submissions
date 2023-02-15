@@ -3,8 +3,13 @@ from django.utils.module_loading import import_string
 from django.conf.urls import url
 from django.urls.conf import include
 from functools import wraps
-import sys
+from rest_framework import serializers
+import sys, copy
 plugin_urls = []
+
+RESTRICT_TO_INSTITUTION = 'RESTRICT_TO_INSTITUTION'
+RESTRICT_TO_LAB = 'RESTRICT_TO_LAB'
+# FORM_TYPE_ANY = 'ANY'
 
 class Plugin(object):
     ID = None
@@ -13,6 +18,34 @@ class Plugin(object):
     PAYMENT = None
     def __init__(self):
         self.form = self.FORM
+    def restricted_form(self, RESTRICT_TO):
+        form = copy.deepcopy(self.form)
+        for namespace in ['public', 'private']: 
+            for field, definition in self.form[namespace]['properties'].items():
+                if 'restrict_to' in definition and RESTRICT_TO not in definition['restrict_to']:
+                    del form[namespace]['properties'][field]
+                    if field in form[namespace]['order']:
+                        form[namespace]['order'].remove(field)
+                    if field in form[namespace]['required']:
+                        form[namespace]['required'].remove(field)
+        return form
+    @property
+    def institution_form(self):
+        return self.restricted_form(RESTRICT_TO_INSTITUTION)
+    @property
+    def lab_form(self):
+        return self.restricted_form(RESTRICT_TO_LAB)
+
+class SubmissionPlugin:
+    def __init__(self, plugin_id, submission):
+        self.plugin_id = plugin_id
+        self.submission = submission
+        self.data = self.submission.plugin_data.get(self.plugin_id,{})
+    def save(self):
+        self.submission.save() 
+    @property
+    def settings(self):
+        return self.submission.lab.get_plugin_settings(private=True).get(self.plugin_id, {})
 
 class PaymentType(object):
     id = 'PAYMENT_TYPE_ID' # must override this in subclass
@@ -20,6 +53,13 @@ class PaymentType(object):
     serializer_class = None # Must override this in subclass.  Should reference Django Rest Framework serializer.
     def __unicode__(self):
         return self.name
+
+class BasePaymentSerializer(serializers.Serializer):
+    def __init__(self, instance=None, data=..., **kwargs):
+        self._plugin_id = kwargs.pop('plugin_id')
+        self.fields['plugin_id'] = serializers.CharField(default=self._plugin_id)
+        sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
+        super().__init__(instance, data, **kwargs)
 
 class PluginManager():
     __instance = None
@@ -40,7 +80,7 @@ class PluginManager():
                     _plugin = import_string(plugin)()
                     PluginManager.__instance.plugins[_plugin.ID] = _plugin
                     if _plugin.SUBMISSION_URLS:
-                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
+                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/(?P<plugin_id>{})/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                     if _plugin.PAYMENT:
                     #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                         PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
@@ -78,7 +118,9 @@ def plugin_submission_decorator(permissions=[], all=True):
             submission = Submission.objects.get(id=kwargs.pop('submission_id'))
             if not submission.has_permission(request.user, permissions, all):
                 raise PermissionDenied('The current user does not have permission to perform this action.')
+            plugin = SubmissionPlugin(kwargs.pop('plugin_id'), submission)
             kwargs['submission']  = submission
+            kwargs['plugin'] = plugin
             return view_func(request, *args, **kwargs)
         return wrapped
     return wrapper
