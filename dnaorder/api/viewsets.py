@@ -369,6 +369,11 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
     # #     if self.action in ['update', 'patch']:
     # #         return [IsSuperuserPermission()]
     #     return super().get_permissions()
+    def create(self, request, *args, **kwargs):
+        institution = get_site_institution(request)
+        if not institution.has_permission(request.user, InstitutionPermission.PERMISSION_ADMIN):
+            raise PermissionDenied('You do not have adequate instutition level permissions.')
+        return super().create(request, *args, **kwargs)
     def get_serializer_class(self):
         # if self.detail and 'institution' in self.request.query_params:
         #     lab = self.get_object()
