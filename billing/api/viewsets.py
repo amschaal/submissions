@@ -17,7 +17,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
 class LineItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = LineItem.objects.all().order_by('service__code')
-        submission = self.request.query_params.get('submission',None)
+        submission = self.request.query_params.get('submission', self.request.data.get('submission', None))
         if submission:
             submission = Submission.objects.filter(id=submission).first()
         if not submission:

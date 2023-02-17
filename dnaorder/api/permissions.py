@@ -2,6 +2,8 @@ from rest_framework import permissions
 from dnaorder.models import LabPermission, InstitutionPermission
 import sys
 
+from dnaorder.utils import get_site_institution
+
 class SubmissionFilePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -142,7 +144,8 @@ class InstitutionObjectPermission(ObjectPermission):
             return obj
         elif isinstance(obj, Lab):
             return obj.institution
-        return None
+        else:
+            return get_site_institution(self.request)
 
 LabAdmin = LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)
 LabMember = LabObjectPermission.create(LabPermission.PERMISSION_MEMBER)

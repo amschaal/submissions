@@ -20,6 +20,7 @@ from _collections import OrderedDict
 from dnaorder.utils import assign_submission
 from django.conf import settings
 from plugins import PluginManager
+from dnaorder.utils import get_site_institution
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -329,6 +330,9 @@ class LabSerializer(serializers.ModelSerializer):
         #         plugins[p]['public'] = config.get('public', {})
         #         plugins[p]['enabled'] = config.get('enabled', False)
         #     return plugins
+    def create(self, validated_data):
+        validated_data['institution'] =  get_site_institution(self.context['request'])
+        return super().create(validated_data)
     class Meta:
         model = Lab
         exclude = ['institution']
