@@ -49,7 +49,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter]
-    filter_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
     lab_filter = 'lab__lab_id'
     ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
@@ -177,7 +177,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
     serializer_class = ImportSerializer
-    filter_fields = {'submissions__id': ['isnull']}
+    filterset_fields = {'submissions__id': ['isnull']}
     search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
     permission_classes = (AllowAny,)
@@ -204,7 +204,7 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
     permission_classes = [SubmissionTypePermissions]
     permission_classes_by_action = {'validate_data': [AllowAny]}
     search_fields = ('name', 'description')
-    filter_fields = {'active':['exact']}
+    filterset_fields = {'active':['exact']}
     lab_filter = 'lab__lab_id'
     def get_permissions(self):
         try:
@@ -232,7 +232,7 @@ class SubmissionTypeViewSet(viewsets.ModelViewSet):
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
     serializer_class = SubmissionFileSerializer
-    filter_fields = {'submission':['exact']}
+    filterset_fields = {'submission':['exact']}
     permission_classes = [SubmissionFilePermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_queryset(self):
@@ -250,7 +250,7 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
-    filter_fields = {'submission':['exact']}
+    filterset_fields = {'submission':['exact']}
     permission_classes = (NotePermissions,)
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_queryset(self):
@@ -270,7 +270,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsStaffPermission,) #Maybe staff only?
     filter_backends = viewsets.ModelViewSet.filter_backends + [UserFilter]
-    filter_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
+    filterset_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
     search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
     def get_serializer_class(self):
         return UserSerializer if self.detail else UserListSerializer
@@ -529,20 +529,20 @@ class ProjectIDViewSet(viewsets.ModelViewSet):
     queryset = ProjectID.objects.all()
     serializer_class = ProjectIDSerializer
     permission_classes = (ProjectIDPermissions,)
-    filter_fields = {'lab_id':['exact']}
+    filterset_fields = {'lab_id':['exact']}
     
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
     serializer_class = VocabularySerializer
     permission_classes = (ReadOnlyPermissions,)
     search_fields = ['id', 'name']
-    filter_fields = {
+    filterset_fields = {
         'name':['icontains','exact'],
         'id':['icontains','exact']
         }
 
 class TermViewSet(viewsets.ReadOnlyModelViewSet):
-    filter_fields = {
+    filterset_fields = {
         'value':['icontains','exact']
 #         'barcodes':['icontains','exact']
         }
