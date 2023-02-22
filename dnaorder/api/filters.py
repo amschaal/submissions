@@ -62,4 +62,14 @@ class UserFilter(filters.BaseFilterBackend):
             return queryset
         users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
         return queryset.distinct() & users.distinct()
-        
+
+class JSONFilter(filters.BaseFilterBackend):
+    """
+    Allow generic filtering of configured JSONFields
+    """
+    def filter_queryset(self, request, queryset, view):
+        filter_fields = getattr(view,'json_filter_fields',[])
+        for q, v in view.request.query_params.items():
+            if q.split('__')[0] in filter_fields:
+                queryset = queryset.filter(**{q:v})
+        return queryset
