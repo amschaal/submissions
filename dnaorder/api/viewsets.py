@@ -45,6 +45,8 @@ from plugins import PluginManager
 import datetime
 import sys
 
+from schema.utils import all_submission_type_filters
+
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
@@ -466,6 +468,9 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                     del lab.plugins[plugin_id]
             lab.save()
         return response.Response({'lab':lab_id, 'plugins': lab.plugins, 'action': action})
+    @action(detail=True, methods=['get'], permission_classes=[IsLabMember])
+    def filters(self, request, lab_id):
+        return Response(all_submission_type_filters(self.get_object()))
 
 class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     queryset = Institution.objects.all()

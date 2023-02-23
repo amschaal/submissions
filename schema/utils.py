@@ -22,3 +22,26 @@ class Schema(object):
     def variable_title(self, variable):
         title =self.schema['properties'][variable].get('title', None)
         return title if title is not None else variable
+
+def schema_to_filters(schema):
+    filters = {}
+    for v, definition in schema['properties'].items():
+        if definition['type'] == 'table' and 'schema' in definition:
+            table_filters = schema_to_filters(definition['schema'])
+        elif definition['type'] == 'string':
+            filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': {'exact': 'submission_data__{}'.format(v), 'icontains': 'submission_data__{}__icontains'.format(v)}}
+            if definition.get('enum'):
+                filters[v]['enum'] = definition.get('enum')
+        elif definition['type'] == 'number':
+            filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': {'exact': 'submission_data__{}'.format(v), 'gt': 'submission_data__{}__gt'.format(v), 'lt': 'submission_data__{}__lt'.format(v)}}
+    return filters
+
+def submission_type_schema_filters(submission_type):
+    return schema_to_filters(submission_type.submission_schema)
+
+def all_submission_type_filters(lab):
+    filters = []
+    for t in lab.submission_types.all():
+        type_filters = submission_type_schema_filters(t)
+        filters.append({'name': t.name, 'filters': type_filters})
+    return filters
