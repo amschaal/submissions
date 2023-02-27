@@ -62,4 +62,20 @@ class UserFilter(filters.BaseFilterBackend):
             return queryset
         users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
         return queryset.distinct() & users.distinct()
-        
+
+class JSONFilter(filters.BaseFilterBackend):
+    """
+    Allow generic filtering of configured JSONFields
+    ex: &submission_data__libraries__i5__contains=GTACTCTC&&submission_data__pools__quantification__contains=Qubit&submission_data__pools__libkit__contains=NEB&submission_data__custom_primers__icontains=Illumina&submission_data__index_desc=Dual&submission_data__demux=Yes
+    """
+    def filter_queryset(self, request, queryset, view):
+        filter_fields = getattr(view,'json_filter_fields',[])
+        for q, v in view.request.query_params.items():
+            parts = q.split('__')
+            if parts[0] in filter_fields:
+                if parts[-1] == 'contains': # This is used for filtering lists.  We can only filter exact values, and the format is path__to__list__contains=[{key:value}]
+                    field = parts.pop(-2) # Remove the field name to add as key to [{key:value}] lookup
+                    v = [{field: v}]
+                    q = '__'.join(parts) # Create the filter lookup, which is the original query param, with the field name removed (and added to lookup)
+                queryset = queryset.filter(**{q:v})
+        return queryset
