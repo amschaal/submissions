@@ -344,7 +344,7 @@ class InstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institution
         exclude = ['plugins']
-        read_only_fields = ('name', 'site')
+        read_only_fields = ('site',)
     # def get_plugins(self, instance):
     #     # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
     #     admin = 'request' in self._context and self._context['request'].user.is_superuser

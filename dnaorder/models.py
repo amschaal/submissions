@@ -54,6 +54,7 @@ class Institution(models.Model):
     name = models.CharField(max_length=50)
     site = models.OneToOneField(Site, on_delete=models.PROTECT)
     logo = models.FileField(null=True, upload_to=logo_file_path)
+    home_page = models.TextField(default='')
     plugins = JSONField(default=dict)
     def has_permission(self, user, permission, use_superuser=True):
         if not user.is_authenticated:
