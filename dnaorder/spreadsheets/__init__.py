@@ -5,8 +5,8 @@ def get_cols(schema, table=False):
     else:
         return [v for v in schema.get('order', []) if schema['properties'][v]['type'] != 'table']
 
-def get_headers(schema, use_title=False):
-    cols = get_cols(schema, table=False)
+def get_headers(schema, use_title=False, table=False):
+    cols = get_cols(schema, table)
     return [schema['properties'][v].get('title') if use_title and 'title' in schema['properties'][v] else v for v in cols]
 
 def get_data(schema, data, default=None, list_delimiter=', '):
@@ -38,3 +38,16 @@ def get_submission_headers(submission, use_title=False):
 
 def get_submission_data(submission):
     return [[submission.id, submission.internal_id, str(submission.type), submission.first_name, submission.last_name, submission.email, submission.phone, submission.pi_first_name, submission.pi_last_name, submission.pi_email, submission.pi_phone, submission.institute] + get_data(submission.submission_schema, submission.submission_data)[0]]
+
+def get_submissions_custom_fields(submissions):
+    fields = set()
+    for s in submissions:
+        fields.update(get_headers(s.submission_schema))
+    return sorted(list(fields))
+
+def get_submissions_dataset(submissions):
+    headers = get_submissions_custom_fields(submissions)
+    dataset = tablib.Dataset(headers=headers)
+    data = [[s.submission_data.get(v) for v in headers] for s in submissions]
+    dataset.extend(data)
+    return dataset
