@@ -169,7 +169,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def export(self,request):
         submissions = self.filter_queryset(self.get_queryset())
         dataset = get_submissions_dataset(submissions)
-        format = request.query_params.get('format', 'xlsx')
+        format = request.query_params.get('export_format', 'xlsx')
         filename = "{0}.{1}".format('submissions_export',format)
         content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
         response_kwargs = {
