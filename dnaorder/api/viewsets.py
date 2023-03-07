@@ -1,4 +1,3 @@
-from django.http import HttpResponse
 from rest_framework import viewsets, response, status, mixins
 from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
@@ -21,7 +20,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
-from dnaorder.spreadsheets import get_submissions_dataset
+from dnaorder.spreadsheets import dataset_response, get_submissions_dataset
 # from dnaorder.views import submission
 from dnaorder.validators import VALIDATORS_DICT,\
     VALIDATORS, SubmissionValidator
@@ -170,14 +169,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submissions = self.filter_queryset(self.get_queryset())
         dataset = get_submissions_dataset(submissions)
         format = request.query_params.get('export_format', 'xlsx')
-        filename = "{0}.{1}".format('submissions_export',format)
-        content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
-        response_kwargs = {
-            'content_type': content_types[format]
-        }
-        response = HttpResponse(getattr(dataset, format), **response_kwargs)
-        response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
-        return response
+        return dataset_response(dataset, 'submissions_export', format)
     def perform_create(self, serializer):
         instance = serializer.save()
         emails.order_confirmed(instance, self.request)

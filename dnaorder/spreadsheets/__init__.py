@@ -1,3 +1,5 @@
+from django.http import HttpResponse
+from django.utils import timezone
 import tablib
 HEADER_TITLES = ['ID', 'Internal ID', 'Type', 'First Name', 'Last Name', 'Submitter Email', 'Submitter Phone', 'PI First Name', 'PI Last Name', 'PI Email', 'PI Phone', 'Institute']
 
@@ -61,3 +63,13 @@ def get_submissions_dataset(submissions):
     data = [(get_submission_data(s, False) + get_custom_data(s, headers)) for s in submissions]
     dataset.extend(data)
     return dataset
+
+def dataset_response(dataset, prefix, format, timestamp=True):
+    filename = "{0}.{1}.{2}".format(prefix, timezone.now().strftime("%Y_%m_%d__%H_%M"), format) if timestamp else "{0}.{2}".format(prefix, format)
+    content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+    response_kwargs = {
+        'content_type': content_types[format]
+    }
+    response = HttpResponse(getattr(dataset, format), **response_kwargs)
+    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
+    return response

@@ -7,8 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
-from dnaorder.spreadsheets import get_dataset, get_submission_dataset, get_cols
-from django.http.response import HttpResponse
+from dnaorder.spreadsheets import dataset_response, get_dataset, get_submission_dataset, get_cols
 import tablib
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -103,7 +102,7 @@ def download(request, id):
     
     if data == 'submission':
         dataset = get_submission_dataset(submission)
-        filename = "{0}.submission.{1}".format(submission.internal_id,format)
+        prefix = "{0}.submission".format(submission.internal_id or submission.id)
     elif data == 'all': #samples
         submission_data = get_submission_dataset(submission)
         submission_data.title = "Submission"
@@ -115,18 +114,12 @@ def download(request, id):
             tables.append(table_data)
         dataset = tablib.Databook(tables)
         format = 'xlsx'
-        filename = "{0}.{1}".format(submission.internal_id,format)
+        prefix = submission.internal_id or submission.id
     else: #all
         dataset = get_dataset(submission.submission_schema.get('properties',{}).get(data,{}).get('schema',{}), submission.submission_data.get(data, []))
         dataset.title = data
-        filename = "{0}.{1}.{2}".format(submission.internal_id,data,format)
-    content_types = {'xls':'application/vnd.ms-excel','tsv':'text/tsv','csv':'text/csv','json':'text/json','xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
-    response_kwargs = {
-            'content_type': content_types[format]
-        }
-    response = HttpResponse(getattr(dataset, format), **response_kwargs)
-    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
-    return response
+        prefix = "{0}.{1}".format(submission.internal_id or submission.id,data)
+    return dataset_response(dataset, prefix, format)
     # generate the file
 #     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 
