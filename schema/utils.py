@@ -42,6 +42,8 @@ def schema_to_filters(schema):
                 filters[v]['enum'] = definition.get('enum')
         elif definition['type'] == 'number':
             filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': [{'label':'=', 'filter': 'submission_data__{}'.format(v)}, {'label': '>', 'filter': 'submission_data__{}__gt'.format(v)}, {'label': '<', 'filter': 'submission_data__{}__lt'.format(v)}]}
+        elif definition['type'] == 'boolean':
+            filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': [{'label':'=', 'filter': 'submission_data__{}__boolean'.format(v)}], 'enum': ['True', 'False']}
     return filters
 
 def submission_type_schema_filters(submission_type):
