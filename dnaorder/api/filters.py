@@ -77,5 +77,12 @@ class JSONFilter(filters.BaseFilterBackend):
                     field = parts.pop(-2) # Remove the field name to add as key to [{key:value}] lookup
                     v = [{field: v}]
                     q = '__'.join(parts) # Create the filter lookup, which is the original query param, with the field name removed (and added to lookup)
+                if parts[-1] == 'boolean': # Will need to convert value from string to Python True or False
+                    parts.pop() # Remove the boolean filter.  This is an exact match, we are just cleaning the data.
+                    if v in ['true', 'True', 1, '1']:
+                        v = True
+                    elif v in ['false', 'False', 0, '0']:
+                        v = False
+                    q = '__'.join(parts)
                 queryset = queryset.filter(**{q:v})
         return queryset
