@@ -1,5 +1,7 @@
 from rest_framework import filters
 from django.contrib.auth.models import User
+
+from schema.utils import all_submission_type_filters
 class ParticipatingFilter(filters.BaseFilterBackend):
     """
     Only show submissions in which the user is a participant
@@ -77,7 +79,7 @@ class JSONFilter(filters.BaseFilterBackend):
                     field = parts.pop(-2) # Remove the field name to add as key to [{key:value}] lookup
                     v = [{field: v}]
                     q = '__'.join(parts) # Create the filter lookup, which is the original query param, with the field name removed (and added to lookup)
-                if parts[-1] == 'boolean': # Will need to convert value from string to Python True or False
+                elif parts[-1] == 'boolean': # Will need to convert value from string to Python True or False
                     parts.pop() # Remove the boolean filter.  This is an exact match, we are just cleaning the data.
                     if v in ['true', 'True', 1, '1']:
                         v = True
@@ -86,3 +88,18 @@ class JSONFilter(filters.BaseFilterBackend):
                     q = '__'.join(parts)
                 queryset = queryset.filter(**{q:v})
         return queryset
+
+def get_lab_filters(lab):
+    filters = {'type': all_submission_type_filters(lab)}
+    # {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    filters['general'] = {
+            'id': { "type": "string", "title": "System ID (random string)", "filters": [{"label": "=", "filter": "id"}, {"label": "contains", "filter": "id__icontains"}]},
+            'internal_id': { "type": "string", "title": "Project ID", "filters": [{"label": "=", "filter": "internal_id"}, {"label": "contains", "filter": "internal_id__icontains"}, {"label": "starts with", "filter": "internal_id__istartswith"}]},
+            'status': { "type": "string", "title": "Status", "enum": lab.statuses, "filters": [{"label": "=", "filter": "status__iexact"}]},
+            'email': { "type": "string", "title": "Submitter email", "filters": [{"label": "contains", "filter": "email__icontains"}]},
+            'pi_email': { "type": "string", "title": "PI email", "filters": [{"label": "contains", "filter": "pi_email__icontains"}]},
+            'biocore': { "type": "boolean", "title": "Biocore", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "biocore"}]},
+            'locked': { "type": "boolean", "title": "Locked", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "locked"}]},
+            # 'cancelled': { "type": "boolean", "title": "Cancelled", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
+        }
+    return filters

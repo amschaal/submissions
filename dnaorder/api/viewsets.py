@@ -30,7 +30,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from dnaorder.utils import get_site_institution
 from dnaorder.api.filters import JSONFilter, ParticipatingFilter, ExcludeStatusFilter,\
-    LabFilter, MySubmissionsFilter, UserFilter
+    LabFilter, MySubmissionsFilter, UserFilter, get_lab_filters
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
@@ -52,7 +52,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter]
-    filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
+    filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact', 'istartswith'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
     json_filter_fields = ['submission_data']
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
     lab_filter = 'lab__lab_id'
@@ -477,7 +477,7 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
         return response.Response({'lab':lab_id, 'plugins': lab.plugins, 'action': action})
     @action(detail=True, methods=['get'], permission_classes=[IsLabMember])
     def filters(self, request, lab_id):
-        return Response(all_submission_type_filters(self.get_object()))
+        return Response(get_lab_filters(self.get_object()))
 
 class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
     queryset = Institution.objects.all()
