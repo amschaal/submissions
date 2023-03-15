@@ -98,11 +98,16 @@ def get_lab_filters(lab):
             'status': { "type": "string", "title": "Status", "enum": lab.statuses, "filters": [{"label": "=", "filter": "status__iexact"}]},
             'email': { "type": "string", "title": "Submitter email", "filters": [{"label": "contains", "filter": "email__icontains"}]},
             'pi_email': { "type": "string", "title": "PI email", "filters": [{"label": "contains", "filter": "pi_email__icontains"}]},
+            'institute': { "type": "string", "title": "Institute", "filters": [{"label": "contains", "filter": "institute__icontains"}]},
+            'comments': { "type": "string", "title": "Comments", "filters": [{"label": "contains", "filter": "comments__icontains"}]},
             'biocore': { "type": "boolean", "title": "Biocore", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "biocore"}]},
             'locked': { "type": "boolean", "title": "Locked", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "locked"}]},
             'submitted__date': { "type": "date", "title": "Submission Date", "filters": [{"label": "=", "filter": "submitted__date"}, {"label": ">=", "filter": "submitted__date__gte"}, {"label": "<=", "filter": "submitted__date__lte"}]},
             'samples_received__date': { "type": "date", "title": "Samples received date", "filters": [{"label": "=", "filter": "samples_received"}, {"label": ">=", "filter": "samples_received__gte"}, {"label": "<=", "filter": "samples_received__lte"}]},
             'samples_received': { "type": "boolean", "title": "Samples not received", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "samples_received__isnull"}]},
+            'participants': { "type": "string", "title": "Is participant", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "participants"}]},
+            'files': { "type": "boolean", "title": "Has files", "enum": [{"label": "Yes", "value": False}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "files__isnull"}]},
             # 'cancelled': { "type": "boolean", "title": "Cancelled", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
+            # institute, recieved_by
         }
     return filters
