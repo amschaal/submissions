@@ -106,8 +106,8 @@ def get_lab_filters(lab):
             'samples_received__date': { "type": "date", "title": "Samples received date", "filters": [{"label": "=", "filter": "samples_received"}, {"label": ">=", "filter": "samples_received__gte"}, {"label": "<=", "filter": "samples_received__lte"}]},
             'samples_received': { "type": "boolean", "title": "Samples not received", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "samples_received__isnull"}]},
             'participants': { "type": "string", "title": "Is participant", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "participants"}]},
+            'received_by': { "type": "string", "title": "Samples received by", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "received_by"}]},
             'files': { "type": "boolean", "title": "Has files", "enum": [{"label": "Yes", "value": False}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "files__isnull"}]},
-            # 'cancelled': { "type": "boolean", "title": "Cancelled", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
-            # institute, recieved_by
+            'cancelled': { "type": "boolean", "title": "Cancelled", "enum": [{"label": "Yes", "value": False}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
         }
     return filters
