@@ -90,9 +90,9 @@ class JSONFilter(filters.BaseFilterBackend):
         return queryset
 
 def get_lab_filters(lab):
-    filters = {'type': all_submission_type_filters(lab)}
     # {'id':['icontains','exact'],'internal_id':['icontains','exact'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull']}
-    filters['general'] = {
+    filters = { 
+        'general': {
             'id': { "type": "string", "title": "System ID (random string)", "filters": [{"label": "=", "filter": "id"}, {"label": "contains", "filter": "id__icontains"}]},
             'internal_id': { "type": "string", "title": "Project ID", "filters": [{"label": "=", "filter": "internal_id"}, {"label": "contains", "filter": "internal_id__icontains"}, {"label": "starts with", "filter": "internal_id__istartswith"}]},
             'status': { "type": "string", "title": "Status", "enum": lab.statuses, "filters": [{"label": "=", "filter": "status__iexact"}]},
@@ -109,5 +109,7 @@ def get_lab_filters(lab):
             'received_by': { "type": "string", "title": "Samples received by", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "received_by"}]},
             'files': { "type": "boolean", "title": "Has files", "enum": [{"label": "Yes", "value": False}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "files__isnull"}]},
             'cancelled': { "type": "boolean", "title": "Cancelled", "enum": [{"label": "Yes", "value": False}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
+            },
+        'custom': all_submission_type_filters(lab)
         }
     return filters
