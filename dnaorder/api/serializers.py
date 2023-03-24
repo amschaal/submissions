@@ -385,7 +385,7 @@ class ListSubmissionSerializer(SubmissionSerializer):
     lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'submission_schema', 'sample_schema', 'import_data']
+        exclude = ['sample_data', 'sample_schema', 'import_data']#, 'submission_schema'
         
 class SubmissionFileSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
