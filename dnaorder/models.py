@@ -227,7 +227,7 @@ class Submission(models.Model):
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
     pi_first_name = models.CharField(max_length=50)
-    pi_last_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=75)
     pi_email = models.EmailField(max_length=75)
     pi_phone = models.CharField(max_length=20)
     institute = models.CharField(max_length=75)
