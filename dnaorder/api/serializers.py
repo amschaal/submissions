@@ -159,7 +159,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if hasattr(self, '_lab'):
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
-                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id)
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab)
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
