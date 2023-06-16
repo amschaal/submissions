@@ -42,7 +42,8 @@ class SubmissionPlugin:
         self.submission = submission
         self.data = self.submission.plugin_data.get(self.plugin_id,{})
     def save(self):
-        self.submission.save() 
+        self.submission.plugin_data[self.plugin_id] = self.data
+        self.submission.save()
     @property
     def settings(self):
         return self.submission.lab.get_plugin_settings(private=True).get(self.plugin_id, {})
@@ -86,8 +87,10 @@ class PluginManager():
                     if _plugin.PAYMENT:
                     #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                         PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
-                except:
+                except Exception as e:
                     sys.stderr.write('Unable to initialize plugin {}!\n'.format(plugin))
+                    if settings.DEBUG:
+                        raise e
         # else:
         #     sys.stderr.write('***CACHED PluginManager.__intance***\n')
         return PluginManager.__instance
