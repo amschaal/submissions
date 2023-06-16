@@ -431,7 +431,7 @@ class NoteSerializer(serializers.ModelSerializer):
             submission = Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
-            if request.user.is_authenticated:
+            if request.user.is_authenticated and request.user.is_staff:
                 if data.get('send_email'):
                     data.update({'emails':submission.get_submitter_emails()}) # submission.participant_emails
             else:
