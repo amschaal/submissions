@@ -155,8 +155,9 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
         if hasattr(self, '_lab'):
+            if not payment_type_id:
+                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
                 self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab)
