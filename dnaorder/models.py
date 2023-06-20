@@ -122,6 +122,9 @@ class Lab(models.Model):
         return plugin_settings
         # plugin_settings = {plugin_id: {'public': settings.get('public',{})} for plugin_id, settings in self.plugins.items()}
         # return plugin_settings
+    def get_plugin_settings_by_id(self, plugin_id, private=False):
+        plugin_settings = self.get_plugin_settings(private=private)
+        return plugin_settings.get(plugin_id)
     class Meta:
         unique_together = (('institution', 'lab_id'))
 

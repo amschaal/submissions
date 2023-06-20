@@ -100,7 +100,6 @@ def get_lab_filters(lab):
             'pi_email': { "type": "string", "title": "PI email", "filters": [{"label": "contains", "filter": "pi_email__icontains"}]},
             'institute': { "type": "string", "title": "Institute", "filters": [{"label": "contains", "filter": "institute__icontains"}]},
             'comments': { "type": "string", "title": "Comments", "filters": [{"label": "contains", "filter": "comments__icontains"}]},
-            'biocore': { "type": "boolean", "title": "Biocore", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "biocore"}]},
             'locked': { "type": "boolean", "title": "Locked", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "locked"}]},
             'submitted__date': { "type": "date", "title": "Submission Date", "filters": [{"label": "=", "filter": "submitted__date"}, {"label": ">=", "filter": "submitted__date__gte"}, {"label": "<=", "filter": "submitted__date__lte"}]},
             'samples_received__date': { "type": "date", "title": "Samples received date", "filters": [{"label": "=", "filter": "samples_received"}, {"label": ">=", "filter": "samples_received__gte"}, {"label": "<=", "filter": "samples_received__lte"}]},

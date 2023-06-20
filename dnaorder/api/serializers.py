@@ -155,11 +155,12 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
         if hasattr(self, '_lab'):
+            if not payment_type_id:
+                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
-                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id)
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab)
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
@@ -431,7 +432,7 @@ class NoteSerializer(serializers.ModelSerializer):
             submission = Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
-            if request.user.is_authenticated:
+            if request.user.is_authenticated and request.user.is_staff:
                 if data.get('send_email'):
                     data.update({'emails':submission.get_submitter_emails()}) # submission.participant_emails
             else:
