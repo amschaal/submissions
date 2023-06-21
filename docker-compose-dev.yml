@@ -12,9 +12,11 @@ services:
     environment:
       - VERSION=DOCKER
       - DEBUG=1
+      - PYTHONUNBUFFERED=1
     env_file:
       - ./.env.dev
     networks:
+      - shared-network
       - internal-network
     depends_on:
       - db
@@ -34,7 +36,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - internal-network
+      - shared-network
     volumes:
       - ./spa:/app
       # - /app
@@ -46,3 +48,5 @@ volumes:
   data_volume:
 networks:
   internal-network:
+  shared-network: #for communicating with other docker application APIs used by plugins.  First run: docker network create shared-network
+    external: true
