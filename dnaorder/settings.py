@@ -292,10 +292,11 @@ try:
 except:
     print('no config file')
 
+BIOSHARE_FILESYSTEM = os.environ.get("BIOSHARE_FILESYSTEM", default=None)
+
 BIOSHARE_SETTINGS = {
     'URL': os.environ.get("BIOSHARE_URL", default='http://localhost:8000'),
-    'AUTO_SHARE_PARTICIPANTS': bool(os.environ.get("BIOSHARE_FILESYSTEM", default=0)),
-    'DEFAULT_FILESYSTEM': int(os.environ.get("BIOSHARE_FILESYSTEM", default=1))
+    'DEFAULT_FILESYSTEM': int(BIOSHARE_FILESYSTEM) if BIOSHARE_FILESYSTEM else None
 }
 
 # raise Exception(PLUGIN_APPS)
