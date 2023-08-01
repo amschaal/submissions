@@ -1,5 +1,6 @@
 from rest_framework import filters
 from django.contrib.auth.models import User
+from django.db.models.query import Q
 
 from schema.utils import all_submission_type_filters
 class ParticipatingFilter(filters.BaseFilterBackend):
@@ -64,6 +65,17 @@ class UserFilter(filters.BaseFilterBackend):
             return queryset
         users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
         return queryset.distinct() & users.distinct()
+
+class StaffOrEmailFilter(filters.BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        staff_or_email = view.request.query_params.get('staff_or_email', None)
+        email = view.request.query_params.get('search', None)
+        if not staff_or_email:
+            return queryset
+        if not email:
+            return queryset.filter(is_staff=True)
+        users = queryset.filter(Q(is_staff=True)|Q(email__iexact=email))
+        return users.distinct()
 
 class JSONFilter(filters.BaseFilterBackend):
     """
