@@ -123,4 +123,7 @@ def get_lab_filters(lab):
             },
         'custom': all_submission_type_filters(lab)
         }
+    for p in lab.get_plugins():
+        filters[p.ID] = p.FILTERS
+
     return filters

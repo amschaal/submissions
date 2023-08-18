@@ -15,6 +15,7 @@ from django.contrib.sites.models import Site
 from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
+from plugins import PluginManager
 # from django.db.models.expressions import OuterRef, Exists
 
 def default_schema():
@@ -125,6 +126,18 @@ class Lab(models.Model):
     def get_plugin_settings_by_id(self, plugin_id, private=False):
         plugin_settings = self.get_plugin_settings(private=private)
         return plugin_settings.get(plugin_id)
+    def get_plugin_ids(self, enabled=True):
+        plugin_ids = set()
+        for plugin_id, settings in self.institution.plugins.items():
+            if settings.get('enabled', False):
+                plugin_ids.add(plugin_id)
+        for plugin_id, settings in self.plugins.items():
+            if settings.get('enabled', False):
+                plugin_ids.add(plugin_id)
+        return list(plugin_ids)
+    def get_plugins(self, enabled=True):
+        manager = PluginManager()
+        return [manager.get_plugin(pid) for pid in self.get_plugin_ids(enabled=enabled)]
     class Meta:
         unique_together = (('institution', 'lab_id'))
 

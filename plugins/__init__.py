@@ -5,6 +5,7 @@ from django.urls.conf import include
 from functools import wraps
 from rest_framework import serializers
 import sys, copy
+import itertools
 plugin_urls = []
 
 RESTRICT_TO_INSTITUTION = 'RESTRICT_TO_INSTITUTION'
@@ -16,6 +17,8 @@ class Plugin(object):
     SUBMISSION_URLS = None
     FORM = None
     PAYMENT = None
+    FILTERS = {}
+    FILTER_CLASSES = [] #Should be a list of filters inheriting rest_framework.filters.BaseFilterBackend
     def __init__(self):
         self.form = self.FORM
     def restricted_form(self, RESTRICT_TO):
@@ -111,6 +114,10 @@ class PluginManager():
     @property
     def plugins_ids(self):
         return self.plugins.keys()
+    def get_plugins(self):
+        return self.__instance.plugins.values()
+    def get_filter_classes(self):
+        return list(itertools.chain.from_iterable([plugin.FILTER_CLASSES for plugin in self.__instance.plugins.values()]))
 
 
 # This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.
