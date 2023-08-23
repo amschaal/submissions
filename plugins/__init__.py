@@ -62,6 +62,7 @@ class BasePaymentSerializer(serializers.Serializer):
     def __init__(self, instance=None, data=..., **kwargs):
         self._plugin_id = kwargs.pop('plugin_id')
         self._lab = kwargs.pop('lab')
+        self._submission_data = kwargs.pop('submission_data') # all submission data
         self._settings = self._lab.get_plugin_settings_by_id(self._plugin_id, private=True) if self._lab else {}
         self.fields['plugin_id'] = serializers.CharField(default=self._plugin_id)
         sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
