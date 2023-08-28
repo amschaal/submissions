@@ -298,7 +298,7 @@ class LabSerializer(serializers.ModelSerializer):
     def get_fields(self):
         fields = serializers.ModelSerializer.get_fields(self)
         if not self.is_lab_member:
-            for k in ['payment_type_id', 'statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
+            for k in ['statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
                 if k in fields:
                     del fields[k]
         return fields
