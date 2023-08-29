@@ -160,7 +160,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
-                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab)
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
@@ -298,7 +298,7 @@ class LabSerializer(serializers.ModelSerializer):
     def get_fields(self):
         fields = serializers.ModelSerializer.get_fields(self)
         if not self.is_lab_member:
-            for k in ['payment_type_id', 'statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
+            for k in ['statuses', 'submission_email_text', 'submission_variables', 'table_variables', 'users']:
                 if k in fields:
                     del fields[k]
         return fields
@@ -432,11 +432,14 @@ class NoteSerializer(serializers.ModelSerializer):
             submission = Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
+            data['emails'] = []
             if request.user.is_authenticated and request.user.is_staff:
                 if data.get('send_email'):
-                    data.update({'emails':submission.get_submitter_emails()}) # submission.participant_emails
+                    data['emails'] += submission.get_submitter_emails() # submission.participant_emails
+                if data.get('email_participants'):
+                    data['emails'] += submission.get_participant_emails()
             else:
-                data.update({'emails': submission.get_participant_emails()})
+                data['emails'] += submission.get_participant_emails()
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()

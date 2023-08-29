@@ -30,7 +30,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from dnaorder.utils import get_site_institution
 from dnaorder.api.filters import JSONFilter, ParticipatingFilter, ExcludeStatusFilter,\
-    LabFilter, MySubmissionsFilter, UserFilter, get_lab_filters
+    LabFilter, MySubmissionsFilter, StaffOrEmailFilter, UserFilter, get_lab_filters
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
@@ -51,7 +51,7 @@ from schema.utils import all_submission_type_filters
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
-    filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter]
+    filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter] + PluginManager().get_filter_classes()
     filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact', 'istartswith'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull'], 'submitted': ['date', 'date__gte', 'date__lte'], 'samples_received': ['exact', 'gte', 'lte', 'isnull'], 'participants': ['exact'], 'files': ['isnull'], 'comments':['icontains'], 'institute':['icontains'], 'received_by': ['exact']}
     json_filter_fields = ['submission_data']
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
@@ -279,7 +279,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     ordering_fields = ['name','first_name','last_name']
     permission_classes = (IsStaffPermission,) #Maybe staff only?
-    filter_backends = viewsets.ModelViewSet.filter_backends + [UserFilter]
+    filter_backends = viewsets.ModelViewSet.filter_backends + [UserFilter,StaffOrEmailFilter]
     filterset_fields = {'is_staff':['exact'], 'labs__lab_id':['exact'], 'labs__id':['exact']}
     search_fields = ['first_name', 'last_name', 'email', 'username', 'emails__email']
     def get_serializer_class(self):
@@ -416,6 +416,9 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                 # Remove default participation for submission types when removing all lab permissions
                 SubmissionType.default_participants.through.objects.filter(user__username=username, submissiontype__lab=obj).delete()
                 # Submission.participants.through.objects.filter(user__username=username, submission__lab=obj).delete() # Should we do this... is it too dangerous?
+            elif not user.is_staff:
+                user.is_staff = True
+                user.save()
             for p in permissions:
                 if p in [choice[0] for choice in self.permission_model.PERMISSION_CHOICES]:
                     self.permission_model.objects.get_or_create(user=user, permission_object=obj, permission=p)

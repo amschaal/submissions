@@ -5,6 +5,7 @@ from django.urls.conf import include
 from functools import wraps
 from rest_framework import serializers
 import sys, copy
+import itertools
 plugin_urls = []
 
 RESTRICT_TO_INSTITUTION = 'RESTRICT_TO_INSTITUTION'
@@ -16,6 +17,8 @@ class Plugin(object):
     SUBMISSION_URLS = None
     FORM = None
     PAYMENT = None
+    FILTERS = {}
+    FILTER_CLASSES = [] #Should be a list of filters inheriting rest_framework.filters.BaseFilterBackend
     def __init__(self):
         self.form = self.FORM
     def restricted_form(self, RESTRICT_TO):
@@ -59,6 +62,7 @@ class BasePaymentSerializer(serializers.Serializer):
     def __init__(self, instance=None, data=..., **kwargs):
         self._plugin_id = kwargs.pop('plugin_id')
         self._lab = kwargs.pop('lab')
+        self._submission_data = kwargs.pop('submission_data') # all submission data
         self._settings = self._lab.get_plugin_settings_by_id(self._plugin_id, private=True) if self._lab else {}
         self.fields['plugin_id'] = serializers.CharField(default=self._plugin_id)
         sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
@@ -111,6 +115,10 @@ class PluginManager():
     @property
     def plugins_ids(self):
         return self.plugins.keys()
+    def get_plugins(self):
+        return self.__instance.plugins.values()
+    def get_filter_classes(self):
+        return list(itertools.chain.from_iterable([plugin.FILTER_CLASSES for plugin in self.__instance.plugins.values()]))
 
 
 # This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.

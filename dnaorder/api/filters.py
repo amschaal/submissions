@@ -1,5 +1,6 @@
 from rest_framework import filters
 from django.contrib.auth.models import User
+from django.db.models.query import Q
 
 from schema.utils import all_submission_type_filters
 class ParticipatingFilter(filters.BaseFilterBackend):
@@ -65,6 +66,17 @@ class UserFilter(filters.BaseFilterBackend):
         users = User.objects.filter(lab_permissions__permission_object__lab_id=lab)
         return queryset.distinct() & users.distinct()
 
+class StaffOrEmailFilter(filters.BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        staff_or_email = view.request.query_params.get('staff_or_email', None)
+        email = view.request.query_params.get('search', None)
+        if not staff_or_email:
+            return queryset
+        if not email:
+            return queryset.filter(is_staff=True)
+        users = queryset.filter(Q(is_staff=True)|Q(email__iexact=email))
+        return users.distinct()
+
 class JSONFilter(filters.BaseFilterBackend):
     """
     Allow generic filtering of configured JSONFields
@@ -111,4 +123,7 @@ def get_lab_filters(lab):
             },
         'custom': all_submission_type_filters(lab)
         }
+    for p in lab.get_plugins():
+        filters[p.ID] = p.FILTERS
+
     return filters
