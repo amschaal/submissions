@@ -40,6 +40,7 @@ def import_submission_url(url, request=None):
     submission = Submission.objects.get(id=submission_id)
     data = SubmissionSerializer(submission).data
     data.pop('lab', None)
+    data['payment'] = {} # don't include payment
     data.pop('participants', None)
     data.pop('received_by', None)
     return data
