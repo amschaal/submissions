@@ -445,16 +445,28 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
         plugin_id = request.data.get('plugin')
         config = request.data.get('config')
         lab = self.get_object()
+        institution_settings = lab.institution.get_plugin_settings_by_id(plugin_id, private=True)
         plugin = PluginManager().get_plugin(plugin_id)
         public_errors = public_warnings = private_errors = private_warnings = {}
-        if plugin.form and plugin.form:
-            public = plugin.form.get('public')
-            private = plugin.form.get('private')
+        if plugin.lab_form:
+            public = plugin.lab_form.get('public')
+            private = plugin.lab_form.get('private')
             if public:
-                validator = SubmissionValidator(public, [config.get('public')])
+                # Don't require fields that have values for institution
+                for k in public['required'].copy():
+                    if institution_settings.get(k, None):
+                        public['required'].remove(k)
+                validator = SubmissionValidator(public, [{k:v for k, v in config.get('public').items() if v}])
                 public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
             if private:
-                validator = SubmissionValidator(private, [config.get('private')])
+                # Don't require fields that have values for institution
+                print('institution_settings', institution_settings)
+                for k in private['required'].copy():
+                    if institution_settings.get(k, None):
+                        private['required'].remove(k)
+                print('private', private)
+                print('config', {k:v for k, v in config.get('private').items() if v})
+                validator = SubmissionValidator(private, [{k:v for k, v in config.get('private').items() if v}])
                 private_errors, private_warnings = validator.validate()    
         if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
             lab.plugins[plugin_id]['enabled'] = config.get('enabled', False)
@@ -508,15 +520,15 @@ class InstitutionViewSet(PermissionMixin, viewsets.ModelViewSet):
         instance = self.get_object()
         plugin = PluginManager().get_plugin(plugin_id)
         public_errors = public_warnings = private_errors = private_warnings = {}
-        if plugin.form and plugin.form:
-            public = plugin.form.get('public')
-            private = plugin.form.get('private')
+        if plugin.institution_form:
+            public = plugin.institution_form.get('public')
+            private = plugin.institution_form.get('private')
             if public:
                 validator = SubmissionValidator(public, [config.get('public')])
                 public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
             if private:
                 validator = SubmissionValidator(private, [config.get('private')])
-                private_errors, private_warnings = validator.validate()    
+                private_errors, private_warnings = validator.validate()
         if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
             instance.plugins[plugin_id]['enabled'] = config.get('enabled', False)
             instance.plugins[plugin_id]['private'] = config.get('private', {})
