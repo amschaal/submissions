@@ -146,21 +146,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,instance=None,**kwargs):
         # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
         data = kwargs.get('data')
-        payment_type_id = None
         if instance and hasattr(instance, 'type'):
             self._type = instance.type
             self._lab = instance.lab
-            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
         elif data:
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-        if hasattr(self, '_lab'):
-            if not payment_type_id:
-                payment_type_id = self._lab.payment_type_id # get payment_type_id from lab
-            payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
-            if payment_type_plugin and payment_type_plugin.serializer:
-                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
+        self.configure_payment_serializer(instance, data, getattr(self, '_lab', None))
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
@@ -169,6 +162,16 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
+    def configure_payment_serializer(self, instance, data, lab=None):
+        payment_type_id = None
+        if instance and hasattr(instance, 'type'):
+            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
+        elif lab:
+            payment_type_id = lab.payment_type_id # get payment_type_id from lab
+        if payment_type_id:
+            payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
+            if payment_type_plugin and payment_type_plugin.serializer:
+                self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
     def get_table_count(self,instance):
         schema = Schema(instance.submission_schema)
         tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
@@ -345,7 +348,7 @@ class InstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institution
         exclude = ['plugins']
-        read_only_fields = ('site',)
+        read_only_fields = ('site','logo')
     # def get_plugins(self, instance):
     #     # admin = 'request' in self._context and hasattr(self, 'instance') and self.instance and self.instance.has_permission(self._context['request'].user, InstitutionPermission.PERMISSION_ADMIN)
     #     admin = 'request' in self._context and self._context['request'].user.is_superuser

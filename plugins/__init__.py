@@ -49,7 +49,7 @@ class SubmissionPlugin:
         self.submission.save()
     @property
     def settings(self):
-        return self.submission.lab.get_plugin_settings(private=True).get(self.plugin_id, {})
+        return self.submission.lab.get_plugin_settings_by_id(self.plugin_id, private=True, institution=True)
 
 class PaymentType(object):
     id = 'PAYMENT_TYPE_ID' # must override this in subclass

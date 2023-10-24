@@ -63,7 +63,16 @@ class Institution(models.Model):
         return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
     def from_email(self, addr='no-reply'):
         return '"{} Core Omics No-Reply" <{}@{}>'.format(self.name, addr, self.site.domain)
-
+    def get_plugin_settings(self, private=False):
+        from collections import defaultdict
+        plugin_settings = defaultdict(lambda : {})
+        for key in ['public', 'private'] if private else ['public']:
+            for plugin_id, settings in self.plugins.items():
+                plugin_settings[plugin_id].update(settings.get(key,{}))
+        return plugin_settings
+    def get_plugin_settings_by_id(self, plugin_id, private=False):
+        plugin_settings = self.get_plugin_settings(private=private)
+        return plugin_settings.get(plugin_id, {})
 
 class InstitutionPermission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
@@ -110,21 +119,21 @@ class Lab(models.Model):
         if not user.is_authenticated:
             return False
         return use_superuser and user.is_superuser or self.permissions.filter(user=user, permission=permission).exists()
-    def get_plugin_settings(self, private=False):
-        from collections import defaultdict
-        plugin_settings = defaultdict(lambda : {})
+    def get_plugin_settings(self, private=False, institution=True):
+        if institution:
+            plugin_settings = self.institution.get_plugin_settings(private=private)
+        else:
+            from collections import defaultdict
+            plugin_settings = defaultdict(lambda : {})
         for key in ['public', 'private'] if private else ['public']:
-            for plugin_id, settings in self.institution.plugins.items():
-                if settings.get('enabled', False):
-                    plugin_settings[plugin_id].update(settings.get(key,{}))
             for plugin_id, settings in self.plugins.items():
                 if settings.get('enabled', False):
-                    plugin_settings[plugin_id].update(settings.get(key,{}))
+                    plugin_settings[plugin_id].update({k: v for k,v in settings.get(key,{}).items() if v})
         return plugin_settings
         # plugin_settings = {plugin_id: {'public': settings.get('public',{})} for plugin_id, settings in self.plugins.items()}
         # return plugin_settings
-    def get_plugin_settings_by_id(self, plugin_id, private=False):
-        plugin_settings = self.get_plugin_settings(private=private)
+    def get_plugin_settings_by_id(self, plugin_id, private=False, institution=True):
+        plugin_settings = self.get_plugin_settings(private=private, institution=institution)
         return plugin_settings.get(plugin_id)
     def get_plugin_ids(self, enabled=True):
         plugin_ids = set()

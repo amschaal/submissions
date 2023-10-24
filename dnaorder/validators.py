@@ -53,6 +53,8 @@ class BaseValidator(object):
         exceptions = {}
         for idx, row in enumerate(data):
             value = row.get(variable, None)
+            if variable not in schema.get('required', []) and (value is None or value == ''):
+                continue
             try:
                 self.validate(variable, value, schema, data, row)
             except ValidationException as e:
@@ -325,6 +327,8 @@ class SamplesheetValidator: #TableValidator (List of Objects)
     def validate_values(self, variable, validators):
         for idx, row in enumerate(self.data):
             value = row.get(variable, None)
+            if variable not in self.schema.get('required', []) and (value is None or value == ''):
+                continue
             for validator in validators:
                 if validator:
                     try:
@@ -403,6 +407,8 @@ class SubmissionValidator(SamplesheetValidator): #Object validator
         self.warnings[variable].append(message)
     def validate_values(self, variable, validators):
         value = self.data.get(variable, None)
+        if variable not in self.schema.get('required', []) and (value is None or value == ''):
+            return
         for validator in validators:
             if validator:
                 try:
