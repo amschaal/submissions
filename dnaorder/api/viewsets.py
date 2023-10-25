@@ -460,12 +460,9 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
                 public_errors, public_warnings = validator.validate() #validate_samplesheet(submission_type.schema,request.data.get('data'))
             if private:
                 # Don't require fields that have values for institution
-                print('institution_settings', institution_settings)
                 for k in private['required'].copy():
                     if institution_settings.get(k, None):
                         private['required'].remove(k)
-                print('private', private)
-                print('config', {k:v for k, v in config.get('private').items() if v})
                 validator = SubmissionValidator(private, [{k:v for k, v in config.get('private').items() if v}])
                 private_errors, private_warnings = validator.validate()    
         if len(public_errors) == 0 and len(public_warnings) == 0 and len(private_errors) == 0 and len(private_warnings) == 0:
