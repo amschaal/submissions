@@ -129,7 +129,7 @@ class Lab(models.Model):
             for plugin_id, settings in self.plugins.items():
                 if settings.get('enabled', False): # if enabled override institution settings with lab settings
                     plugin_settings[plugin_id].update({k: v for k,v in settings.get(key,{}).items() if v})
-                else: # else don't return plugin settings at all
+                elif plugin_id in plugin_settings: # else don't return plugin settings at all
                     del plugin_settings[plugin_id]
         return plugin_settings
         # plugin_settings = {plugin_id: {'public': settings.get('public',{})} for plugin_id, settings in self.plugins.items()}
