@@ -32,7 +32,7 @@ class UCDPaymentSerializer(serializers.Serializer):
         elif payment_type == Submission.PAYMENT_DAFIS:
             # if not validate_dafis(payment_info):
             if not self.validate_UCD_account(payment_info):
-                raise serializers.ValidationError({"payment_info":"The account format is invalid.  Please ensure that the format matches the format for Aggie Enterprise accounts (minimally XXXX-XXXXX-XXXXXXX-XXXXXX) or legacy DaFIS accounts (X-XXXXXXX)."})
+                raise serializers.ValidationError({"payment_info":"The account format is invalid.  Please ensure that the format matches the format for Aggie Enterprise accounts (minimally XXXX-XXXXX-XXXXXXX-XXXXXX)."})
         elif payment_type in [Submission.PAYMENT_UC,Submission.PAYMENT_WIRE_TRANSFER,Submission.PAYMENT_PO] and not payment_info:
             raise serializers.ValidationError({"payment_info":"Please enter payment details."})
         return data
