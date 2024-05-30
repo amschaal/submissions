@@ -301,6 +301,22 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         nested_set(profile.settings, path, value)
         profile.save()
         return response.Response({'status':'success', 'settings':profile.settings})
+    @action(detail=False, methods=['post'])
+    def delete_setting(self,request):
+        if not request.user.is_authenticated:
+            return response.Response({'status':'error', 'message': 'You must log in to update settings.'},status=403)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        path = request.data.get('path', None)
+        if not path:
+            return response.Response({'status':'error', 'message': 'Both "path" and "value" parameters are required'},status=403)
+        path = path.split('.')
+        def nested_del(dic, keys):
+            for key in keys[:-1]:
+                dic = dic[key]
+            del dic[keys[-1]]
+        nested_del(profile.settings, path)
+        profile.save()
+        return response.Response({'status':'success', 'settings':profile.settings})
     @action(detail=False, methods=['get'])
     def get_token(self,request):
         if not request.user.is_authenticated:
