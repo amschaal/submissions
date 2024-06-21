@@ -45,6 +45,7 @@ from dnaorder.api.mixins import PermissionMixin
 from plugins import PluginManager
 import datetime
 import sys
+from dnaorder.reports import reports
 
 from schema.utils import all_submission_type_filters
 
@@ -608,3 +609,12 @@ class PluginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())
+
+class ReportViewSet(viewsets.ViewSet):
+    permission_classes = (ReadOnlyPermissions,)
+    def list(self, request):
+        return Response(reports.list_reports())
+    @action(detail=True, methods=['get'])
+    def report(self, request, pk, **kwargs):
+        Report = reports.get_report_by_id(pk)
+        return Response(Report.get_data(Submission.objects.all()))

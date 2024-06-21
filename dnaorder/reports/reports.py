@@ -15,6 +15,6 @@ class SubmissionTypeCountReport(BaseReport):
     NAME = 'Submission Type Count'
     DESCRIPTION = 'Get the number of submissions by type'
     def get_data(queryset):
-        queryset = queryset.values('type__name').annotate(count=Count('type__name')).order_by('type__name')
+        return queryset.values('type__name').annotate(count=Count('type__name')).order_by('type__name')
 
 register_report(SubmissionTypeCountReport)
