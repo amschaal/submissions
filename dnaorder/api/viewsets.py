@@ -183,7 +183,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def plugin_data(self, request, pk, plugin_id):
         submission = self.get_object()
         return response.Response({'submission': submission.id, 'plugin_id':plugin_id,'data':submission.plugin_data.get(plugin_id,{})})
-
+    @action(detail=False, methods=['get'])
+    def reports(self, request):
+        return Response(reports.list_reports())
+    @action(detail=False, methods=['get'])
+    def report(self, request, **kwargs):
+        report_id = request.query_params.get('report_id')
+        Report = reports.get_report_by_id(report_id)
+        submissions = self.filter_queryset(self.get_queryset())
+        return Response(Report.get_data(submissions))
 
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Import.objects.all().prefetch_related('submissions')
@@ -609,12 +617,3 @@ class PluginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())
-
-class ReportViewSet(viewsets.ViewSet):
-    permission_classes = (ReadOnlyPermissions,)
-    def list(self, request):
-        return Response(reports.list_reports())
-    @action(detail=True, methods=['get'])
-    def report(self, request, pk, **kwargs):
-        Report = reports.get_report_by_id(pk)
-        return Response(Report.get_data(Submission.objects.all()))
