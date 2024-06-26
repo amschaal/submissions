@@ -14,14 +14,15 @@ class SubmissionTypeCountReport(BaseReport):
     ID = 'SubmissionTypeCount'
     NAME = 'Submission Type Count'
     DESCRIPTION = 'Get the number of submissions by type'
-    def get_data(queryset, period=BaseReport.PERIOD_QUARTER):
+    @staticmethod
+    def get_headers(period) -> dict:
+        return {
+            "type__name": "Submission Type",
+            "count": 'Number of Submissions'
+        }
+    def get_data(queryset, period=BaseReport.PERIOD_MONTH):
         if period:
-            if period == BaseReport.PERIOD_MONTH:
-                queryset = SubmissionTypeCountReport.annotate_month(queryset)
-            elif period == BaseReport.PERIOD_YEAR:
-                queryset = SubmissionTypeCountReport.annotate_year(queryset)
-            elif period == BaseReport.PERIOD_QUARTER:
-                queryset = SubmissionTypeCountReport.annotate_quarter(queryset)
+            queryset = BaseReport.annotate_period(queryset, period)
             return queryset.values('type__name', period).annotate(count=Count('type__name')).order_by(period, 'type__name')
         return queryset.values('type__name').annotate(count=Count('type__name')).order_by('type__name')
 
