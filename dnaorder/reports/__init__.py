@@ -37,3 +37,30 @@ class BaseReport:
     def annotate_quarter(queryset: QuerySet) -> QuerySet:
         return queryset.annotate(quarter=Trunc("submitted", BaseReport.PERIOD_QUARTER, output_field=DateTimeField()))
 
+class FieldReport(BaseReport):
+    FIELDS = []
+    ORDER_BY = []
+    @staticmethod
+    def get_headers(period) -> dict:
+        return {
+            "type__name": "Submission Type",
+            "count": 'Number of Submissions'
+        }
+    @classmethod
+    def get_fields(cls) -> list:
+        return cls.FIELDS
+    @classmethod
+    def get_order(cls) -> list:
+        return cls.ORDER_BY
+    @classmethod
+    def annotate(cls, queryset: QuerySet) -> QuerySet:
+        return queryset
+    @classmethod
+    def get_data(cls, queryset, period=BaseReport.PERIOD_MONTH):
+        fields = cls.get_fields()
+        order = cls.get_order()
+        if period:
+            queryset = BaseReport.annotate_period(queryset, period).values(*fields, period).order_by(period, *order)
+        else:
+            queryset = queryset.values(*fields).order_by(*order)
+        return cls.annotate(queryset)
