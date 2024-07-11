@@ -192,10 +192,14 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         Report = reports.get_report_by_id(report_id)
         submissions = self.filter_queryset(self.get_queryset())
         data = Report.get_data(submissions)
-        # dataset = get_report_dataset(Report.get_headers(), data)
-        dataset = Report.get_report_dataset(data)
         format = request.query_params.get('export_format', 'tsv')
-        return dataset_response(dataset, 'report_export', format)
+        if format == 'json':
+            return Response(data)
+        # dataset = get_report_dataset(Report.get_headers(), data)
+        else:
+            dataset = Report.get_report_dataset(data)
+            format = request.query_params.get('export_format', 'tsv')
+            return dataset_response(dataset, 'report_export', format)
         # return Response(Report.get_data(submissions))
 
 class ImportViewSet(viewsets.ReadOnlyModelViewSet):
