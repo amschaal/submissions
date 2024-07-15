@@ -194,7 +194,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         data = Report.get_data(submissions)
         format = request.query_params.get('export_format', 'tsv')
         if format == 'json':
-            return Response(data)
+            return Response({ 'data': data, 'headers': Report.get_headers(), 'name': Report.NAME, 'description': Report.DESCRIPTION })
         # dataset = get_report_dataset(Report.get_headers(), data)
         else:
             dataset = Report.get_report_dataset(data)
