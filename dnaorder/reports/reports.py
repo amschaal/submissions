@@ -19,12 +19,12 @@ class SubmissionTypeCountReport(BaseReport):
         return {
             'type__name': 'Submission Type',
             'count': 'Number of Submissions',
-            period: 'Period'
+            'period': period
         }
     def get_data(queryset, period=BaseReport.PERIOD_MONTH):
         if period:
             queryset = BaseReport.annotate_period(queryset, period)
-            return queryset.values('type__name', period).order_by(period, 'type__name').annotate(count=Count('type__name'))
+            return queryset.values('type__name', 'period').order_by('period', 'type__name').annotate(count=Count('type__name'))
         return queryset.values('type__name').order_by('type__name').annotate(count=Count('type__name'))
 
 register_report(SubmissionTypeCountReport)
@@ -33,6 +33,7 @@ class SubmissionTypeCountReport2(FieldReport):
     ID = 'SubmissionTypeCount2'
     NAME = 'Submission Type Count2'
     DESCRIPTION = 'Get the number of submissions by type'
+    PERIODS = None
     FIELDS = ['type__name']
     ORDER_BY = ['type__name']
     @staticmethod
@@ -40,7 +41,7 @@ class SubmissionTypeCountReport2(FieldReport):
         return {
             'type__name': 'Submission Type',
             'count': 'Number of Submissions',
-            period: 'Period'
+            'period': period
         }
     @classmethod
     def annotate(cls, queryset):

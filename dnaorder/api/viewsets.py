@@ -189,15 +189,16 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def report(self, request, **kwargs):
         report_id = request.query_params.get('report_id')
+        period = request.query_params.get('period')
         Report = reports.get_report_by_id(report_id)
         submissions = self.filter_queryset(self.get_queryset())
-        data = Report.get_data(submissions)
+        data = Report.get_data(submissions, period=period)
         format = request.query_params.get('export_format', 'tsv')
         if format == 'json':
-            return Response({ 'data': data, 'headers': Report.get_headers(), 'name': Report.NAME, 'description': Report.DESCRIPTION })
+            return Response({ 'data': data, 'headers': Report.get_headers(period=period), 'name': Report.NAME, 'description': Report.DESCRIPTION })
         # dataset = get_report_dataset(Report.get_headers(), data)
         else:
-            dataset = Report.get_report_dataset(data)
+            dataset = Report.get_report_dataset(data, period=period)
             format = request.query_params.get('export_format', 'tsv')
             return dataset_response(dataset, 'report_export', format)
         # return Response(Report.get_data(submissions))
