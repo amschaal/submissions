@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from django.db.models.functions import Trunc
-from django.db.models import Count, DateTimeField, QuerySet
+from django.db.models import Count, DateField, QuerySet
 REPORTS = OrderedDict()
 
 class BaseReport:
@@ -30,13 +30,13 @@ class BaseReport:
             return BaseReport.annotate_quarter(queryset)
     @staticmethod
     def annotate_month(queryset: QuerySet) -> QuerySet:
-        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_MONTH, output_field=DateTimeField()))
+        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_MONTH, output_field=DateField()))
     @staticmethod
     def annotate_year(queryset: QuerySet) -> QuerySet:
-        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_YEAR, output_field=DateTimeField()))
+        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_YEAR, output_field=DateField()))
     @staticmethod
     def annotate_quarter(queryset: QuerySet) -> QuerySet:
-        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_QUARTER, output_field=DateTimeField()))
+        return queryset.annotate(period=Trunc("submitted", BaseReport.PERIOD_QUARTER, output_field=DateField()))
     @classmethod
     def get_report_dataset(cls, data=None, period=None):
         import tablib
