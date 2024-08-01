@@ -91,17 +91,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def update_status(self,request,pk):
         submission = self.get_object()
         status = request.data.get('status', None)
-        submission.status = status
-        if status.strip().lower() == 'samples received' and not submission.samples_received:
-            submission.samples_received = datetime.datetime.today().date() #str(timezone.now())[:10]
-            submission.received_by = request.user
-        submission.save()
-        text = 'Submission status updated to "{status}".'.format(status=status)
-        if request.data.get('email',False):
-            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
+        email = request.data.get('email',False)
+        submission.update_status(status, user=request.user, email=email, create_note=True)
+        if email:
             return response.Response({'status':'success','locked':submission.locked,'message':'Status updated. Email sent to "{0}".'.format(submission.email)})
-        else:
-            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_id(self, request, pk):

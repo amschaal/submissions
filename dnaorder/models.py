@@ -352,6 +352,17 @@ class Submission(models.Model):
         self.internal_id = None
         self.save()
         self.samples.all().delete() #delete associated samples
+    def update_status(self, status, user, email=False, create_note=True):
+        self.status = status
+        if status.strip().lower() == 'samples received' and not self.samples_received:
+            self.samples_received = datetime.datetime.today().date() #str(timezone.now())[:10]
+            self.received_by = user
+        self.save()
+        text = 'Submission status updated to "{status}".'.format(status=status)
+        if email:
+            Note.objects.create(submission=self,text=text,type=Note.TYPE_LOG,created_by=user,emails=[self.email],public=True)
+        else:
+            Note.objects.create(submission=self,text=text,type=Note.TYPE_LOG,created_by=user,public=True)
     def update_samples(self, sample_data):
         print('sample_data', sample_data)
         sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
