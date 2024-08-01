@@ -352,17 +352,36 @@ class Submission(models.Model):
         self.internal_id = None
         self.save()
         self.samples.all().delete() #delete associated samples
+    def add_status_update(self, status, timestamp=None, save=True):
+        if 'status_updates' not in self.data:
+            self.data['status_updates'] = []
+        if 'status_durations' not in self.data:
+            self.data['status_durations'] = {}
+        timestamp = timestamp or timezone.now()
+        update = (timestamp.isoformat(), status)
+        self.data['status_updates'].append(update)
+        if save:
+            self.save()
+        if len(self.data['status_updates']) > 1:
+            previous_update = self.data['status_updates'][-2]
+            previous_status = previous_update[1]
+            duration = (datetime.datetime.fromisoformat(update[0]) - datetime.datetime.fromisoformat(previous_update[0])).total_seconds()
+            if previous_status in self.data['status_durations']:
+                self.data['status_durations'][previous_status] += duration
+            else:
+                self.data['status_durations'][previous_status] = duration
     def update_status(self, status, user, email=False, create_note=True):
         self.status = status
         if status.strip().lower() == 'samples received' and not self.samples_received:
             self.samples_received = datetime.datetime.today().date() #str(timezone.now())[:10]
             self.received_by = user
-        self.save()
         text = 'Submission status updated to "{status}".'.format(status=status)
         if email:
             Note.objects.create(submission=self,text=text,type=Note.TYPE_LOG,created_by=user,emails=[self.email],public=True)
         else:
             Note.objects.create(submission=self,text=text,type=Note.TYPE_LOG,created_by=user,public=True)
+        self.add_status_update(status, save=False)
+        self.save()
     def update_samples(self, sample_data):
         print('sample_data', sample_data)
         sample_ids = [s['id'] for s in sample_data if s.get('id',False)]
