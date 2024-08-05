@@ -185,10 +185,11 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         period = request.query_params.get('period')
         Report = reports.get_report_by_id(report_id)
         submissions = self.filter_queryset(self.get_queryset())
-        data = Report.get_data(submissions, period=period)
+        lab_id = self.request.query_params.get('lab', None)
+        data = Report.get_data(submissions, period=period, lab_id=lab_id)
         format = request.query_params.get('export_format', 'tsv')
         if format == 'json':
-            return Response({ 'data': data, 'headers': Report.get_headers(period=period), 'name': Report.NAME, 'description': Report.DESCRIPTION })
+            return Response({ 'data': data, 'headers': Report.get_headers(period=period, lab_id=lab_id), 'name': Report.NAME, 'description': Report.DESCRIPTION })
         # dataset = get_report_dataset(Report.get_headers(), data)
         else:
             dataset = Report.get_report_dataset(data, period=period)

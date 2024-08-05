@@ -12,10 +12,10 @@ class BaseReport:
     NAME = None
     DESCRIPTION = None
     @staticmethod
-    def get_data(queryset: QuerySet) -> list[dict]:
+    def get_data(queryset: QuerySet, lab_id: str) -> list[dict]:
         raise NotImplementedError
     @staticmethod
-    def get_headers(queryset: QuerySet) -> dict:
+    def get_headers(queryset: QuerySet, lab_id: str) -> dict:
         raise NotImplementedError
     @classmethod
     def serialize(cls) -> dict:
