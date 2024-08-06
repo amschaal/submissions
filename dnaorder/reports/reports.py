@@ -49,18 +49,33 @@ class SubmissionStatusReport(BaseReport):
         }
         for h in status_headers:
             headers[h] = h
+        return headers
     def get_data(queryset, period=BaseReport.PERIOD_MONTH, lab_id=None):
-        from django.db.models import Count, F, Sum
-        queryset = queryset.filter(data__status_durations__isnull=False)
+        from django.db.models import Count, F, Sum, Avg, FloatField, IntegerField, Max, Min
+        from django.db.models.functions import Cast
+        # queryset = queryset.filter(data__status_durations__isnull=False)
         statuses = SubmissionStatusReport.get_statuses(lab_id)
-        annotations = {'STATUS_{}'.format(s).replace(' ','_') : F("data__status_durations__{}".format(s)) for s in statuses}
+        annotations = {'STATUS_{}'.format(s).replace(' ','_') : Cast(Avg(Cast(F("data__status_durations__{}".format(s)), output_field=FloatField())), IntegerField()) for s in statuses}
         # raise Exception(annotations)
         if period:
-            values = ['type__name', 'period']+['STATUS_{}'.format(s).replace(' ','_') for s in statuses]
+            values = ['type__name', 'period']#+['STATUS_{}'.format(s).replace(' ','_') for s in statuses]
             queryset = BaseReport.annotate_period(queryset, period)
-            return queryset.order_by('period', 'type__name').annotate(**annotations).values(*values)
-        values = ['type__name']+['STATUS_{}'.format(s).replace(' ','_') for s in statuses]
-        return queryset.order_by('type__name').annotate(**annotations).values(*values)
+            return queryset.values(*values).order_by(*values).annotate(**annotations)
+        values = ['type__name']#+['STATUS_{}'.format(s).replace(' ','_') for s in statuses]
+        return queryset.values(*values).order_by(*values).annotate(**annotations)
+"""
+Update status stats based on logs:
+from dnaorder.models import *
+import re
+re_text = 'Submission status updated to "(.+)"'
+for s in Submission.objects.all():
+    for n in s.note_set.filter(text__contains='Submission status updated').order_by('created'):
+        matches = re.findall(re_text, n.text)
+        if len(matches) == 1:
+            print('update status', matches[0], n.created)
+            s.add_status_update(matches[0], n.created, save=True)
+"""
+
 
 register_report(SubmissionStatusReport)
 # Submission.objects.filter(data__status_durations__isnull=False).annotate(status_data=F("data__status_durations__Samples Received"))
