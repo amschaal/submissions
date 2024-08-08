@@ -69,6 +69,9 @@ from dnaorder.models import *
 import re
 re_text = 'Submission status updated to "(.+)"'
 for s in Submission.objects.all():
+    s.data['status_updates'] = []
+    s.data['status_durations'] = {}
+    s.save()
     for n in s.note_set.filter(text__contains='Submission status updated').order_by('created'):
         matches = re.findall(re_text, n.text)
         if len(matches) == 1:

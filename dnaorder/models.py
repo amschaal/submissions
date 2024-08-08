@@ -365,7 +365,7 @@ class Submission(models.Model):
         if len(self.data['status_updates']) > 1:
             previous_update = self.data['status_updates'][-2]
             previous_status = previous_update[1]
-            duration = (datetime.datetime.fromisoformat(update[0]) - datetime.datetime.fromisoformat(previous_update[0])).total_seconds()
+            duration = int((datetime.datetime.fromisoformat(update[0]) - datetime.datetime.fromisoformat(previous_update[0])).total_seconds())
             if previous_status in self.data['status_durations']:
                 self.data['status_durations'][previous_status] += duration
             else:
