@@ -361,7 +361,7 @@ class Submission(models.Model):
         update = (timestamp.isoformat(), status)
         self.data['status_updates'].append(update)
         if save:
-            self.save()
+            self.save(update_fields=['data'])
         if len(self.data['status_updates']) > 1:
             previous_update = self.data['status_updates'][-2]
             previous_status = previous_update[1]

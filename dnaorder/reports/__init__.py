@@ -65,7 +65,7 @@ class FieldReport(BaseReport):
     def annotate(cls, queryset: QuerySet) -> QuerySet:
         return queryset
     @classmethod
-    def get_data(cls, queryset, period=BaseReport.PERIOD_MONTH):
+    def get_data(cls, queryset, period=BaseReport.PERIOD_MONTH, lab_id=None):
         fields = cls.get_fields()
         order = cls.get_order()
         if period:

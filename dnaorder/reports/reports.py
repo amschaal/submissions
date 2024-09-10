@@ -68,15 +68,16 @@ Update status stats based on logs:
 from dnaorder.models import *
 import re
 re_text = 'Submission status updated to "(.+)"'
-for s in Submission.objects.all():
-    s.data['status_updates'] = []
-    s.data['status_durations'] = {}
-    s.save()
-    for n in s.note_set.filter(text__contains='Submission status updated').order_by('created'):
-        matches = re.findall(re_text, n.text)
-        if len(matches) == 1:
-            print('update status', matches[0], n.created)
-            s.add_status_update(matches[0], n.created, save=True)
+def update_status_stats(max=100):
+    for s in Submission.objects.filter(data__status_updates__isnull=True)[:max]:
+        s.data['status_updates'] = []
+        s.data['status_durations'] = {}
+        s.save(update_fields=['data'])
+        for n in s.note_set.filter(text__contains='Submission status updated').order_by('created'):
+            matches = re.findall(re_text, n.text)
+            if len(matches) == 1:
+                print('update status', matches[0], n.created)
+                s.add_status_update(matches[0], n.created, save=True)
 """
 
 
@@ -91,7 +92,7 @@ class SubmissionTypeCountReport2(FieldReport):
     FIELDS = ['type__name']
     ORDER_BY = ['type__name']
     @staticmethod
-    def get_headers(period=BaseReport.PERIOD_MONTH) -> dict:
+    def get_headers(period=BaseReport.PERIOD_MONTH, lab_id=None) -> dict:
         return {
             'type__name': 'Submission Type',
             'count': 'Number of Submissions',
@@ -100,4 +101,4 @@ class SubmissionTypeCountReport2(FieldReport):
     @classmethod
     def annotate(cls, queryset):
         return queryset.annotate(count=Count('type__name'))
-register_report(SubmissionTypeCountReport2)
+# register_report(SubmissionTypeCountReport2)
