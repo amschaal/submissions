@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.utils import timezone
 import tablib
-HEADER_TITLES = ['ID', 'Internal ID', 'Type', 'First Name', 'Last Name', 'Submitter Email', 'Submitter Phone', 'PI First Name', 'PI Last Name', 'PI Email', 'PI Phone', 'Institute']
+HEADER_TITLES = ['ID', 'Internal ID', 'Type', 'Submitted', 'First Name', 'Last Name', 'Submitter Email', 'Submitter Phone', 'PI First Name', 'PI Last Name', 'PI Email', 'PI Phone', 'Institute', 'Status', 'Status Durations']
 
 def get_cols(schema, table=False):
     if table:
@@ -42,9 +42,9 @@ def get_submission_headers(submission, use_title=False, custom_fields=True):
 
 def get_submission_data(submission, custom_fields=True):
     if custom_fields:
-        return [submission.id, submission.internal_id, str(submission.type), submission.first_name, submission.last_name, submission.email, submission.phone, submission.pi_first_name, submission.pi_last_name, submission.pi_email, submission.pi_phone, submission.institute] + get_data(submission.submission_schema, submission.submission_data)[0]
+        return [submission.id, submission.internal_id, str(submission.type), submission.submitted, submission.first_name, submission.last_name, submission.email, submission.phone, submission.pi_first_name, submission.pi_last_name, submission.pi_email, submission.pi_phone, submission.institute, submission.status, submission.data.get('status_durations',{})] + get_data(submission.submission_schema, submission.submission_data)[0]
     else:
-        return [submission.id, submission.internal_id, str(submission.type), submission.first_name, submission.last_name, submission.email, submission.phone, submission.pi_first_name, submission.pi_last_name, submission.pi_email, submission.pi_phone, submission.institute]
+        return [submission.id, submission.internal_id, str(submission.type), submission.submitted, submission.first_name, submission.last_name, submission.email, submission.phone, submission.pi_first_name, submission.pi_last_name, submission.pi_email, submission.pi_phone, submission.institute, submission.status, submission.data.get('status_durations',{})]
 
 def get_custom_data(submission, headers):
     data = [submission.submission_data.get(v) for v in headers]

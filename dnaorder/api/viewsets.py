@@ -91,17 +91,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def update_status(self,request,pk):
         submission = self.get_object()
         status = request.data.get('status', None)
-        submission.status = status
-        if status.strip().lower() == 'samples received' and not submission.samples_received:
-            submission.samples_received = datetime.datetime.today().date() #str(timezone.now())[:10]
-            submission.received_by = request.user
-        submission.save()
-        text = 'Submission status updated to "{status}".'.format(status=status)
-        if request.data.get('email',False):
-            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,emails=[submission.email],public=True)
+        email = request.data.get('email',False)
+        submission.update_status(status, user=request.user, email=email, create_note=True)
+        if email:
             return response.Response({'status':'success','locked':submission.locked,'message':'Status updated. Email sent to "{0}".'.format(submission.email)})
-        else:
-            Note.objects.create(submission=submission,text=text,type=Note.TYPE_LOG,created_by=request.user,public=True)
         return response.Response({'status':'success','locked':submission.locked,'message':'Status updated.'})
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_id(self, request, pk):
@@ -189,15 +182,17 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def report(self, request, **kwargs):
         report_id = request.query_params.get('report_id')
+        period = request.query_params.get('period')
         Report = reports.get_report_by_id(report_id)
         submissions = self.filter_queryset(self.get_queryset())
-        data = Report.get_data(submissions)
+        lab_id = self.request.query_params.get('lab', None)
+        data = Report.get_data(submissions, period=period, lab_id=lab_id)
         format = request.query_params.get('export_format', 'tsv')
         if format == 'json':
-            return Response({ 'data': data, 'headers': Report.get_headers(), 'name': Report.NAME, 'description': Report.DESCRIPTION })
+            return Response({ 'data': data, 'headers': Report.get_headers(period=period, lab_id=lab_id), 'name': Report.NAME, 'description': Report.DESCRIPTION })
         # dataset = get_report_dataset(Report.get_headers(), data)
         else:
-            dataset = Report.get_report_dataset(data)
+            dataset = Report.get_report_dataset(data, period=period)
             format = request.query_params.get('export_format', 'tsv')
             return dataset_response(dataset, 'report_export', format)
         # return Response(Report.get_data(submissions))
