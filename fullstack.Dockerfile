@@ -1,11 +1,12 @@
 # FROM node:lts-alpine3.15 as develop-stage
-FROM node:16-alpine as develop-stage
+FROM node:18-alpine as develop-stage
 WORKDIR /app
 COPY ./spa/package*.json ./
 RUN yarn global add @quasar/cli
 COPY ./spa .
 # build stage
 FROM develop-stage as build-stage
+ENV NODE_OPTIONS=--openssl-legacy-provider
 RUN yarn
 RUN quasar build
 
