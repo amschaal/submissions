@@ -70,9 +70,6 @@ def get_data(schema, data, default=None, list_delimiter=", "):
 
 
 def get_dataset(schema, data, use_titles=False):
-    print("get_dataset")
-    print("schema", schema)
-    print("data", data)
     dataset = tablib.Dataset(headers=get_headers(schema, use_titles))
     dataset.extend(get_data(schema, data))
     return dataset
@@ -93,42 +90,26 @@ def get_submission_headers(submission, use_title=False, custom_fields=True):
 
 
 def get_submission_data(submission, custom_fields=True):
+    data = [
+        submission.id,
+        submission.internal_id,
+        str(submission.type),
+        submission.submitted.replace(tzinfo=None),
+        submission.first_name,
+        submission.last_name,
+        submission.email,
+        submission.phone,
+        submission.pi_first_name,
+        submission.pi_last_name,
+        submission.pi_email,
+        submission.pi_phone,
+        submission.institute,
+        submission.status,
+        submission.data.get("status_durations", {}),
+    ]
     if custom_fields:
-        return [
-            submission.id,
-            submission.internal_id,
-            str(submission.type),
-            submission.submitted.replace(tzinfo=None),
-            submission.first_name,
-            submission.last_name,
-            submission.email,
-            submission.phone,
-            submission.pi_first_name,
-            submission.pi_last_name,
-            submission.pi_email,
-            submission.pi_phone,
-            submission.institute,
-            submission.status,
-            submission.data.get("status_durations", {}),
-        ] + get_data(submission.submission_schema, submission.submission_data)[0]
-    else:
-        return [
-            submission.id,
-            submission.internal_id,
-            str(submission.type),
-            submission.submitted.replace(tzinfo=None),
-            submission.first_name,
-            submission.last_name,
-            submission.email,
-            submission.phone,
-            submission.pi_first_name,
-            submission.pi_last_name,
-            submission.pi_email,
-            submission.pi_phone,
-            submission.institute,
-            submission.status,
-            submission.data.get("status_durations", {}),
-        ]
+        data += get_data(submission.submission_schema, submission.submission_data)[0]
+    return data
 
 
 def get_custom_data(submission, headers):
@@ -171,37 +152,26 @@ def get_submission_table_data(submissions):
             )
 
             tables[col]["headers"].update(order)
-            for row in submission.submission_data.get(col, []):
-                tables[col]["data"].append(row)
-            # table_data = get_dataset(
-            #     submission.submission_schema.get("properties", {})
-            #     .get(col, {})
-            #     .get("schema", {}),
-            #     submission.submission_data.get(col, []),
-            # )
-            # table_data.title = col
-            # tables.append(table_data)
+            table_data = submission.submission_data.get(col)
+            if isinstance(table_data, list):
+                for row in table_data:
+                    row["submission_id"] = submission.id
+                    tables[col]["data"].append(row)
     datasets = []
-    # raise Exception([(name, len(table["data"])) for name, table in tables.items()])
     for name, table in tables.items():
-        dataset = tablib.Dataset(headers=list(table["headers"]))
+        headers = ["submission_id"] + list(table["headers"])
+        dataset = tablib.Dataset(headers=headers)
         dataset.title = name
-        # data = [
-        #     row.get(header, "") for row in table["data"] for header in table["headers"]
-        # ]
-        data = []
-        for row in table["data"]:
-            data.append([row.get(header) for header in table["headers"]])
-        # raise Exception(len(data))
-        # raise Exception(data)
-        # raise Exception(set([len(r) for r in data]))
+        data = [[row.get(header) for header in headers] for row in table["data"]]
         dataset.extend(data)
         datasets.append(dataset)
     return datasets
 
 
 def get_submissions_dataset_full_xlsx(submissions):
-    datasets = [get_submissions_dataset(submissions)]
+    submission_dataset = get_submissions_dataset(submissions)
+    submission_dataset.title = "submissions"
+    datasets = [submission_dataset]
     datasets += get_submission_table_data(submissions)
     databook = tablib.Databook(datasets)
     prefix = "submissions"
