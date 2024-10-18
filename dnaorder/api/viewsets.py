@@ -20,7 +20,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin
 from django.core.mail import send_mail
 from dnaorder import emails
-from dnaorder.spreadsheets import dataset_response, get_submissions_dataset
+from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get_submissions_dataset_full_xlsx
 # from dnaorder.views import submission
 from dnaorder.validators import VALIDATORS_DICT,\
     VALIDATORS, SubmissionValidator
@@ -161,8 +161,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def export(self,request):
         submissions = self.filter_queryset(self.get_queryset())
-        dataset = get_submissions_dataset(submissions)
         format = request.query_params.get('export_format', 'xlsx')
+        if format == 'workbook':
+            return get_submissions_dataset_full_xlsx(submissions)
+        dataset = get_submissions_dataset(submissions)
         return dataset_response(dataset, 'submissions_export', format)
     def perform_create(self, serializer):
         instance = serializer.save()
@@ -176,10 +178,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     def plugin_data(self, request, pk, plugin_id):
         submission = self.get_object()
         return response.Response({'submission': submission.id, 'plugin_id':plugin_id,'data':submission.plugin_data.get(plugin_id,{})})
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsStaffPermission], authentication_classes=[SessionAuthentication])
     def reports(self, request):
         return Response(reports.list_reports())
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsStaffPermission], authentication_classes=[SessionAuthentication])
     def report(self, request, **kwargs):
         report_id = request.query_params.get('report_id')
         period = request.query_params.get('period')
