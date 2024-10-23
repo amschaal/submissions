@@ -136,7 +136,7 @@ def get_submissions_dataset(submissions):
     return dataset
 
 
-def get_submission_table_data(submissions):
+def get_submission_table_datasets(submissions):
     tables = {}
     for submission in submissions:
         table_cols = get_cols(submission.submission_schema, table=True)
@@ -172,11 +172,8 @@ def get_submissions_dataset_full_xlsx(submissions):
     submission_dataset = get_submissions_dataset(submissions)
     submission_dataset.title = "submissions"
     datasets = [submission_dataset]
-    datasets += get_submission_table_data(submissions)
-    databook = tablib.Databook(datasets)
-    prefix = "submissions"
-    format = "xlsx"
-    return dataset_response(databook, prefix, format)
+    datasets += get_submission_table_datasets(submissions)
+    return tablib.Databook(datasets)
 
 
 def dataset_response(dataset, prefix, format, timestamp=True):
