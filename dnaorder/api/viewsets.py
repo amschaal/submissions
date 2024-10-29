@@ -163,7 +163,8 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submissions = self.filter_queryset(self.get_queryset())
         format = request.query_params.get('export_format', 'xlsx')
         if format == 'workbook':
-            return get_submissions_dataset_full_xlsx(submissions)
+            dataset = get_submissions_dataset_full_xlsx(submissions)
+            return dataset_response(dataset, 'submissions_export', 'xlsx')
         dataset = get_submissions_dataset(submissions)
         return dataset_response(dataset, 'submissions_export', format)
     def perform_create(self, serializer):
