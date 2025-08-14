@@ -56,3 +56,17 @@ def all_submission_type_filters(lab):
         type_filters = submission_type_schema_filters(t)
         filters.append({'name': t.name, 'id': t.id, 'filters': type_filters})
     return filters
+
+# Take a coreomics style schema, and convert it to a standard jsonschema, replacing 'table' type with 'array' type where necessary
+def convert_to_jsonschema(coreomics_schema):
+    import copy
+    schema = copy.deepcopy(coreomics_schema)
+    schema['type'] = 'object'
+    # Make changes to schema
+    if 'properties' in schema:
+        for prop in schema['properties'].keys():
+            if 'table' == schema['properties'].get(prop,{}).get('type', '').lower():
+                list_prop = {'type': 'array', 'items': schema['properties'][prop].pop('schema')}
+                schema['properties'][prop] = list_prop
+                schema['properties'][prop]['items']['type'] = 'object'
+    return schema

@@ -99,9 +99,15 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_id(self, request, pk):
         submission = self.get_object()
-        project_id = request.data.get('project_id', None)
-        project_id = ProjectID.objects.get(id=project_id, lab=submission.lab)
-        submission.internal_id = project_id.generate_id(True, True)
+        custom_id = request.data.get('custom_id', None)
+        if custom_id:
+            if Submission.objects.filter(internal_id=custom_id, lab=submission.lab).exists():
+                return response.Response({'status':'error', 'message': 'A submission with that Project ID already exists.'},status=403)
+            submission.internal_id = custom_id
+        else:
+            project_id = request.data.get('project_id', None)
+            project_id = ProjectID.objects.get(id=project_id, lab=submission.lab)
+            submission.internal_id = project_id.generate_id(True, True)
         submission.save()
         text = 'Assigned new submission ID "{}".'.format(submission.internal_id)
         if request.data.get('email',False):
