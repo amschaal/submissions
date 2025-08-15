@@ -268,7 +268,7 @@ class Submission(models.Model):
     plugin_data = JSONField(default=dict)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True, related_name='participating')
+    participants = models.ManyToManyField(User,blank=True, through='Participant', related_name='participating')
     users = models.ManyToManyField(User,blank=True, related_name="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
