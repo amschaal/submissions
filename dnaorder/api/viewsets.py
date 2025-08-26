@@ -85,12 +85,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         # participants = [p if isinstance(p, int) else p['id'] for p in request.data.get('participants', [])]
         instances = []
+        role_choices = set([choice[0] for choice in Participant.role_choices])
         for p in request.data.get('participants', []):
-            if isinstance(p.get('id', None), int):
-                instance = Participant.objects.get(id=p['id'])
-                instance.roles = p['roles']
-            else:
-                instance = Participant(submission=submission, user_id=p['user']['id'], roles=p['roles'])
+            instance, created = Participant.objects.get_or_create(submission=submission, user_id=p['user']['id'])
+            instance.roles = [r for r in p['roles'] if r in role_choices]
             instance.save()
             instances.append(instance)
         Participant.objects.filter(submission=submission).exclude(id__in=[p.id for p in instances]).delete()
