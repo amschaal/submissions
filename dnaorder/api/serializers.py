@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from dnaorder.models import Submission, SubmissionType, SubmissionFile,\
+from dnaorder.models import Participant, Submission, SubmissionType, SubmissionFile,\
     Note, Contact, Draft, Lab, Vocabulary, Term,\
     Import, UserProfile, Sample, Institution, ProjectID, LabPermission,\
     InstitutionPermission
@@ -142,6 +142,12 @@ class ContactSerializer(serializers.ModelSerializer):
         exclude = ['submission']
         read_only_fields = ('id',)
 
+class ParticipantSerializer(UserSerializer):
+    user = UserListSerializer()
+    class Meta:
+        model = Participant
+        fields = ['id', 'user', 'roles']
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,instance=None,**kwargs):
         # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
@@ -158,7 +164,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
-    participants = UserListSerializer(many=True, read_only=True)
+    participants = ParticipantSerializer(source="participant_set", many=True, read_only=True)
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()

@@ -9,7 +9,7 @@ from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSeriali
     InstitutionPermissionSerializer
 from dnaorder.models import Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
-    Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission
+    Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission, Participant
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -83,8 +83,16 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember], authentication_classes=[SessionAuthentication])
     def update_participants(self,request, pk):
         submission = self.get_object()
-        participants = [p if isinstance(p, int) else p['id'] for p in request.data.get('participants', [])]
-        submission.participants.set(participants)
+        # participants = [p if isinstance(p, int) else p['id'] for p in request.data.get('participants', [])]
+        instances = []
+        role_choices = set([choice[0] for choice in Participant.role_choices])
+        for p in request.data.get('participants', []):
+            instance, created = Participant.objects.get_or_create(submission=submission, user_id=p['user']['id'])
+            instance.roles = [r for r in p['roles'] if r in role_choices]
+            instance.save()
+            instances.append(instance)
+        Participant.objects.filter(submission=submission).exclude(id__in=[p.id for p in instances]).delete()
+        # submission.participants.set(participants)
 #         submission.save()
         return response.Response({'status':'success', 'message':'Participants updated.'})
     @action(detail=True, methods=['post'], permission_classes=[IsLabMember])

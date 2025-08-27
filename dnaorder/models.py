@@ -268,7 +268,7 @@ class Submission(models.Model):
     plugin_data = JSONField(default=dict)
     notes = models.TextField(null=True,blank=True) #Not really being used in interface?  Should be for admins.
     biocore = models.BooleanField(default=False)
-    participants = models.ManyToManyField(User,blank=True, related_name='participating')
+    participants = models.ManyToManyField(User,blank=True, through='Participant', related_name='participating')
     users = models.ManyToManyField(User,blank=True, related_name="submissions")
     samples_received = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
@@ -548,6 +548,23 @@ def send_note_email(sender, instance, created, **kwargs):
         emails.note_email(instance)
         instance.sent = True
         instance.save()
+
+class Participant(models.Model):
+    ROLE_LEAD = 'lead'
+    ROLE_WATCHER = 'watcher'
+    role_choices = (
+        (ROLE_LEAD, ROLE_LEAD),
+        (ROLE_WATCHER, ROLE_WATCHER)
+    )
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='temp_participants')
+    roles = ArrayField(
+        base_field=models.CharField(max_length=15, choices=role_choices),
+        default=list,
+        blank=True,
+    )
+    class Meta:
+        unique_together = ('submission', 'user')
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
