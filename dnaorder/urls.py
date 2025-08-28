@@ -13,7 +13,8 @@ Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
-from django.conf.urls import url, include
+# from django.conf.urls import url, include
+from django.urls import include, re_path
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
@@ -26,20 +27,20 @@ from django.utils.module_loading import import_string
 from plugins import PluginManager
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
-    url(r'^api/', include(api_urlpatterns)),
-    url(r'^api2/', include(api_urlpatterns)), #delete this, just testing CI/CD
-    url(r'^api/billing/', include(billing_urlpatterns)),
-    url(r'^api/validate/$', views.validate_data, name='validate'),
-    url(r'^api/login/$', views.login_view, name='api_login'),
-    url(r'^api/logout/$', views.logout_view, name='logout'),
-    url(r'^api/get_user/$', views.get_user, name='get_user'),
-    url(r'^accounts/login/$', views.login, name='login'),
+    re_path(r'^admin/', admin.site.urls),
+    re_path(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
+    re_path(r'^api/', include(api_urlpatterns)),
+    re_path(r'^api2/', include(api_urlpatterns)), #delete this, just testing CI/CD
+    re_path(r'^api/billing/', include(billing_urlpatterns)),
+    re_path(r'^api/validate/$', views.validate_data, name='validate'),
+    re_path(r'^api/login/$', views.login_view, name='api_login'),
+    re_path(r'^api/logout/$', views.logout_view, name='logout'),
+    re_path(r'^api/get_user/$', views.get_user, name='get_user'),
+    re_path(r'^accounts/login/$', views.login, name='login'),
     # url(r'^accounts/logout/$', views.logout, name='logout'),
-    url(r'^accounts/logout/$', auth_views.LogoutView.as_view(), name='logout'),
-    url(r'^social/', include('social_django.urls', namespace='social')),
-    url(r'^test/$', views.test)
+    re_path(r'^accounts/logout/$', auth_views.LogoutView.as_view(), name='logout'),
+    re_path(r'^social/', include('social_django.urls', namespace='social')),
+    re_path(r'^test/$', views.test)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
