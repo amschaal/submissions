@@ -1,12 +1,11 @@
 from django.db import models
 import uuid
 from django.utils import timezone
-from django.contrib.postgres.fields.jsonb import JSONField
 import re
 import os
 import datetime
 from django.contrib.auth.models import User
-from django.db.models import signals
+from django.db.models import signals, JSONField
 from django.dispatch.dispatcher import receiver
 from dnaorder import emails
 from django.contrib.postgres.fields.array import ArrayField
@@ -224,6 +223,7 @@ def generate_file_id():
         id = str(uuid.uuid4())[-12:]
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
+
 
 
 class Submission(models.Model):
@@ -535,7 +535,7 @@ class Note(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User,null=True, on_delete=models.PROTECT)
     emails = ArrayField(models.CharField(max_length=50),blank=True,null=True)
-    sent = models.NullBooleanField()
+    sent = models.BooleanField(null=True)
     public = models.BooleanField(default=False)
     class Meta:
         ordering = ['id']
