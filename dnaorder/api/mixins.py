@@ -1,8 +1,9 @@
 from rest_framework.response import Response
-from dnaorder.api.serializers import UserListSerializer
+from dnaorder.api.serializers import RevisionSerializer, UserListSerializer, VersionSerializer
 from django.contrib.auth.models import User
 from rest_framework.decorators import action
 from dnaorder.api.permissions import IsSuperuserPermission
+from reversion.models import Version, Revision
 
 class PermissionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
     permission_model = None # Must override this
@@ -34,3 +35,9 @@ class PermissionMixin(object): # Must include this mixin before DRF viewset clas
     def get_permissions(self):
         permission_classes = self.manage_permissions_classes if self.action in ['permissions', 'set_permissions'] else self.permission_classes
         return [permission() for permission in permission_classes]
+
+class VersionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
+    @action(detail=True, methods=['get'])
+    def versions(self, request, **kwargs):
+        versions = Version.objects.select_related('revision', 'revision__user').only('id', 'object_id', 'object_repr', 'revision').get_for_object(self.get_object())
+        return Response(VersionSerializer(versions, many=True).data)

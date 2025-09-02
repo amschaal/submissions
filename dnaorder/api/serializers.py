@@ -492,3 +492,15 @@ class InstitutionPermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstitutionPermission
         exclude = []
+
+class RevisionSerializer(serializers.ModelSerializer):
+    user = UserListSerializer()
+    class Meta:
+        model = reversion.models.Revision
+        exclude = []
+
+class VersionSerializer(serializers.ModelSerializer):
+    revision = RevisionSerializer()
+    class Meta:
+        model = reversion.models.Version
+        fields = ['id', 'revision', 'object_id', 'object_repr']

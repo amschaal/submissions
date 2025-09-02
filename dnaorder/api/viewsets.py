@@ -41,7 +41,7 @@ from dnaorder.emails import claim_email
 from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
 from rest_framework.authtoken.models import Token
-from dnaorder.api.mixins import PermissionMixin
+from dnaorder.api.mixins import PermissionMixin, VersionMixin
 from plugins import PluginManager
 import datetime
 import sys
@@ -49,7 +49,7 @@ from dnaorder.reports import reports
 
 from schema.utils import all_submission_type_filters
 
-class SubmissionViewSet(viewsets.ModelViewSet):
+class SubmissionViewSet(VersionMixin, viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter] + PluginManager().get_filter_classes()
