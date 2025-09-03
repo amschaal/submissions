@@ -37,7 +37,23 @@ class PermissionMixin(object): # Must include this mixin before DRF viewset clas
         return [permission() for permission in permission_classes]
 
 class VersionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
+    def serialize_version(self, version):
+        historical_instance = version._object_version.object
+        return self.get_serializer(historical_instance)
+    def get_version(self, version_id):
+        return Version.objects.get_for_object(self.get_object()).get(id=version_id)
     @action(detail=True, methods=['get'])
     def versions(self, request, **kwargs):
         versions = Version.objects.select_related('revision', 'revision__user').only('id', 'object_id', 'object_repr', 'revision').get_for_object(self.get_object())
         return Response(VersionSerializer(versions, many=True).data)
+    @action(detail=True, methods=['get'], url_path='versions/(?P<version_id>[^/.]+)/serialize')
+    def view_version(self, request, version_id, **kwargs):
+        version = self.get_version(version_id)
+        serializer = self.serialize_version(version)
+        return Response(serializer.data)
+    @action(detail=True, methods=['get'], url_path='versions/(?P<version_id>[^/.]+)/revert')
+    def revert_to_version(self, request, version_id, **kwargs):
+        version = self.get_version(version_id)
+        version.revision.revert()
+        serializer = self.serialize_version(version)
+        return Response(serializer.data)
