@@ -2,7 +2,8 @@ from rest_framework.response import Response
 from dnaorder.api.serializers import RevisionSerializer, UserListSerializer, VersionSerializer
 from django.contrib.auth.models import User
 from rest_framework.decorators import action
-from dnaorder.api.permissions import IsSuperuserPermission
+from dnaorder.api.permissions import IsStaffPermission, IsSuperuserPermission
+import reversion
 from reversion.models import Version, Revision
 
 class PermissionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
@@ -36,7 +37,18 @@ class PermissionMixin(object): # Must include this mixin before DRF viewset clas
         permission_classes = self.manage_permissions_classes if self.action in ['permissions', 'set_permissions'] else self.permission_classes
         return [permission() for permission in permission_classes]
 
+class ActionPermissionMixin(object):
+    permission_classes_by_action = {}
+    def get_permissions(self):
+        try:
+            # return permission_classes depending on `action` 
+            return [permission() for permission in self.permission_classes_by_action[self.action]]
+        except KeyError: 
+            # action is not set return default permission_classes
+            return [permission() for permission in self.permission_classes]
+
 class VersionMixin(object): # Must include this mixin before DRF viewset classes for get_permissions to override
+    version_permission_classes = [IsStaffPermission]
     def serialize_version(self, version):
         historical_instance = version._object_version.object
         return self.get_serializer(historical_instance)
@@ -51,9 +63,13 @@ class VersionMixin(object): # Must include this mixin before DRF viewset classes
         version = self.get_version(version_id)
         serializer = self.serialize_version(version)
         return Response(serializer.data)
-    @action(detail=True, methods=['get'], url_path='versions/(?P<version_id>[^/.]+)/revert')
+    @action(detail=True, methods=['post'], url_path='versions/(?P<version_id>[^/.]+)/revert')
     def revert_to_version(self, request, version_id, **kwargs):
-        version = self.get_version(version_id)
-        version.revision.revert()
-        serializer = self.serialize_version(version)
-        return Response(serializer.data)
+        with reversion.create_revision():
+            version = self.get_version(version_id)
+            version.revision.revert()
+            serializer = self.serialize_version(version)
+            if request:
+                reversion.set_user(request.user)
+            reversion.set_comment(f"Reverted to version id {version.id} at {version.revision.date_created}")
+            return Response(serializer.data)

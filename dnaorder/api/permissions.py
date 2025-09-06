@@ -147,6 +147,16 @@ class InstitutionObjectPermission(ObjectPermission):
         else:
             return get_site_institution(self.request)
 
+# Merely used for testing at this point
+class DenyPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return False
+
+class SubmissionVersionPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.participants.filter(username=request.user.username).exists()
+
+
 LabAdmin = LabObjectPermission.create(LabPermission.PERMISSION_ADMIN)
 LabMember = LabObjectPermission.create(LabPermission.PERMISSION_MEMBER)
 
