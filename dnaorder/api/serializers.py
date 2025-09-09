@@ -123,7 +123,24 @@ class WritableUserSerializer(serializers.ModelSerializer):
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
-        # Apply custom validation either here, or in the view.
+    def create(self, validated_data):
+        with transaction.atomic():
+            with reversion.create_revision():
+                instance = super().create(validated_data)
+                request = self._context.get('request')
+                if request:
+                    reversion.set_user(request.user)
+                reversion.set_comment("New instance created")
+                return instance
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            with reversion.create_revision():
+                instance = super().update(instance, validated_data)
+                request = self._context.get('request')
+                if request:
+                    reversion.set_user(request.user)
+                reversion.set_comment("Object updated")
+                return instance
     class Meta:
         model = SubmissionType
         fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
