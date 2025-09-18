@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'dnaorder',
     'billing',
     'corsheaders',
-    'social_django'
+    'social_django',
+    'reversion'
 #     'django_mailbox'
 ]
 

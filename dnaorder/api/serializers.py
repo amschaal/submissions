@@ -21,6 +21,7 @@ from dnaorder.utils import assign_submission
 from django.conf import settings
 from plugins import PluginManager
 from dnaorder.utils import get_site_institution
+import reversion
 
 def translate_schema_complex(schema):
     if not  'order' in schema  or not  'properties' in schema :
@@ -122,7 +123,24 @@ class WritableUserSerializer(serializers.ModelSerializer):
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
-        # Apply custom validation either here, or in the view.
+    def create(self, validated_data):
+        with transaction.atomic():
+            with reversion.create_revision():
+                instance = super().create(validated_data)
+                request = self._context.get('request')
+                if request and request.user and request.user.is_authenticated:
+                    reversion.set_user(request.user)
+                reversion.set_comment("New instance created")
+                return instance
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            with reversion.create_revision():
+                instance = super().update(instance, validated_data)
+                request = self._context.get('request')
+                if request and request.user and request.user.is_authenticated:
+                    reversion.set_user(request.user)
+                reversion.set_comment("Object updated")
+                return instance
     class Meta:
         model = SubmissionType
         fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
@@ -214,45 +232,55 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         return data if len(data) > 0 else None
     def create(self, validated_data):
         with transaction.atomic():
-            contacts = validated_data.pop('contacts')
-            validated_data['data'] = {
-#                                         'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
-                                        'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
-                                      }
-            if validated_data.get('import_data', None):
-                import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
-                validated_data['import_request'] = import_request
-            validated_data['lab'] = self._type.lab
-            submission = Submission.objects.create(**validated_data)
-            for contact in contacts:
-                Contact.objects.create(submission=submission, **contact)
-            assign_submission(submission)
-            return submission
+            with reversion.create_revision():
+                contacts = validated_data.pop('contacts')
+                validated_data['data'] = {
+    #                                         'sample_data': {'errors':self._sample_errors, 'warnings': self._sample_warnings},
+                                            'submission_data': {'errors':self._submission_errors, 'warnings': self._submission_warnings}
+                                        }
+                if validated_data.get('import_data', None):
+                    import_request = Import.objects.filter(id=validated_data['import_data'].get('id',None)).order_by('-created').first()
+                    validated_data['import_request'] = import_request
+                validated_data['lab'] = self._type.lab
+                submission = Submission.objects.create(**validated_data)
+                for contact in contacts:
+                    Contact.objects.create(submission=submission, **contact)
+                assign_submission(submission)
+                request = self._context.get('request')
+                if request and request.user and request.user.is_authenticated:
+                    reversion.set_user(request.user)
+                reversion.set_comment("Created on submission creation")
+                return submission
     def update(self, instance, validated_data):
         with transaction.atomic():
-            contacts = validated_data.pop('contacts')
-            info = serializers.model_meta.get_field_info(instance)
-    
-            # Simply set each attribute on the instance, and then save it.
-            # Note that unlike `.create()` we don't need to treat many-to-many
-            # relationships as being a special case. During updates we already
-            # have an instance pk for the relationships to be associated with.
-            for attr, value in validated_data.items():
-                if attr in info.relations and info.relations[attr].to_many:
-                    field = getattr(instance, attr)
-                    field.set(value)
-                else:
-                    setattr(instance, attr, value)
-            instance.save()
-                
-            Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
-            for c in contacts:
-                if c.get('id', False):
-                    Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
-                else:
-                    Contact.objects.create(submission=instance, **c)
-            assign_submission(instance)
-            return instance
+            with reversion.create_revision():
+                contacts = validated_data.pop('contacts')
+                info = serializers.model_meta.get_field_info(instance)
+        
+                # Simply set each attribute on the instance, and then save it.
+                # Note that unlike `.create()` we don't need to treat many-to-many
+                # relationships as being a special case. During updates we already
+                # have an instance pk for the relationships to be associated with.
+                for attr, value in validated_data.items():
+                    if attr in info.relations and info.relations[attr].to_many:
+                        field = getattr(instance, attr)
+                        field.set(value)
+                    else:
+                        setattr(instance, attr, value)
+                instance.save()
+                    
+                Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
+                for c in contacts:
+                    if c.get('id', False):
+                        Contact.objects.filter(id=c.get('id'),submission=instance).update(**c)
+                    else:
+                        Contact.objects.create(submission=instance, **c)
+                assign_submission(instance)
+                request = self._context.get('request')
+                if request and request.user and request.user.is_authenticated:
+                    reversion.set_user(request.user)
+                reversion.set_comment("Created on submission update")
+                return instance
     def get_editable(self,instance):
         request = self._context.get('request')
         if request:
@@ -481,3 +509,15 @@ class InstitutionPermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstitutionPermission
         exclude = []
+
+class RevisionSerializer(serializers.ModelSerializer):
+    user = UserListSerializer()
+    class Meta:
+        model = reversion.models.Revision
+        exclude = []
+
+class VersionSerializer(serializers.ModelSerializer):
+    revision = RevisionSerializer()
+    class Meta:
+        model = reversion.models.Version
+        fields = ['id', 'revision', 'object_id', 'object_repr']

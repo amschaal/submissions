@@ -17,7 +17,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin, SubmissionVersionPermission, SubmissionTypeVersionPermission
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get_submissions_dataset_full_xlsx
@@ -41,7 +41,7 @@ from dnaorder.emails import claim_email
 from rest_framework.authentication import SessionAuthentication,\
     TokenAuthentication
 from rest_framework.authtoken.models import Token
-from dnaorder.api.mixins import PermissionMixin
+from dnaorder.api.mixins import PermissionMixin, VersionMixin, ActionPermissionMixin
 from plugins import PluginManager
 import datetime
 import sys
@@ -49,7 +49,7 @@ from dnaorder.reports import reports
 
 from schema.utils import all_submission_type_filters
 
-class SubmissionViewSet(viewsets.ModelViewSet):
+class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter] + PluginManager().get_filter_classes()
@@ -60,7 +60,7 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
-#     permission_classes_by_action = {'cancel': [AllowAny]}
+    permission_classes_by_action = {'versions': [SubmissionVersionPermission], 'revert_to_version': [SubmissionVersionPermission], 'view_version': [SubmissionVersionPermission]}
     def get_queryset(self):
         if self.detail:
             return Submission.objects.all().select_related('lab')
@@ -237,22 +237,22 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
         data = import_submission_url(url)
         return Response({'data':data})
 
-class SubmissionTypeViewSet(viewsets.ModelViewSet):
+class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
     queryset = SubmissionType.objects.all().annotate(submission_count=Count('submissions')).order_by('sort_order', 'name')
     filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
     serializer_class = SubmissionTypeSerializer
     permission_classes = [SubmissionTypePermissions]
-    permission_classes_by_action = {'validate_data': [AllowAny]}
+    permission_classes_by_action = {'validate_data': [AllowAny],'versions': [SubmissionTypeVersionPermission], 'revert_to_version': [SubmissionTypeVersionPermission], 'view_version': [SubmissionTypeVersionPermission]}
     search_fields = ('name', 'description')
     filterset_fields = {'active':['exact']}
     lab_filter = 'lab__lab_id'
-    def get_permissions(self):
-        try:
-            # return permission_classes depending on `action` 
-            return [permission() for permission in self.permission_classes_by_action[self.action]]
-        except KeyError: 
-            # action is not set return default permission_classes
-            return [permission() for permission in self.permission_classes]
+    # def get_permissions(self):
+    #     try:
+    #         # return permission_classes depending on `action` 
+    #         return [permission() for permission in self.permission_classes_by_action[self.action]]
+    #     except KeyError: 
+    #         # action is not set return default permission_classes
+    #         return [permission() for permission in self.permission_classes]
     @action(detail=False, methods=['get'])
     def get_submission_schema(self, request):
         url = request.query_params.get('url')

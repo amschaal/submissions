@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.utils.module_loading import import_string
-from django.conf.urls import url
+from django.urls import re_path
 from django.urls.conf import include
 from functools import wraps
 from rest_framework import serializers
@@ -87,7 +87,7 @@ class PluginManager():
                     _plugin = import_string(plugin)()
                     PluginManager.__instance.plugins[_plugin.ID] = _plugin
                     if _plugin.SUBMISSION_URLS:
-                        PluginManager.__instance.url_patterns.append(url(r'^api/plugins/(?P<plugin_id>{})/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
+                        PluginManager.__instance.url_patterns.append(re_path(r'^api/plugins/(?P<plugin_id>{})/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                     if _plugin.PAYMENT:
                     #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                         PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
