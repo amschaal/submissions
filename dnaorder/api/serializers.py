@@ -128,7 +128,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
             with reversion.create_revision():
                 instance = super().create(validated_data)
                 request = self._context.get('request')
-                if request:
+                if request and request.user and request.user.is_authenticated:
                     reversion.set_user(request.user)
                 reversion.set_comment("New instance created")
                 return instance
@@ -137,7 +137,7 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
             with reversion.create_revision():
                 instance = super().update(instance, validated_data)
                 request = self._context.get('request')
-                if request:
+                if request and request.user and request.user.is_authenticated:
                     reversion.set_user(request.user)
                 reversion.set_comment("Object updated")
                 return instance
@@ -247,7 +247,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     Contact.objects.create(submission=submission, **contact)
                 assign_submission(submission)
                 request = self._context.get('request')
-                if request:
+                if request and request.user and request.user.is_authenticated:
                     reversion.set_user(request.user)
                 reversion.set_comment("Created on submission creation")
                 return submission
@@ -277,7 +277,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                         Contact.objects.create(submission=instance, **c)
                 assign_submission(instance)
                 request = self._context.get('request')
-                if request:
+                if request and request.user and request.user.is_authenticated:
                     reversion.set_user(request.user)
                 reversion.set_comment("Created on submission update")
                 return instance

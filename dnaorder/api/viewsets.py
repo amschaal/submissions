@@ -17,7 +17,7 @@ from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
-    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin, SubmissionVersionPermission
+    LabObjectPermission, InstitutionObjectPermission, LabAdmin, InstitutionAdmin, SubmissionVersionPermission, SubmissionTypeVersionPermission
 from django.core.mail import send_mail
 from dnaorder import emails
 from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get_submissions_dataset_full_xlsx
@@ -242,7 +242,7 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
     filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
     serializer_class = SubmissionTypeSerializer
     permission_classes = [SubmissionTypePermissions]
-    permission_classes_by_action = {'validate_data': [AllowAny]}
+    permission_classes_by_action = {'validate_data': [AllowAny],'versions': [SubmissionTypeVersionPermission], 'revert_to_version': [SubmissionTypeVersionPermission], 'view_version': [SubmissionTypeVersionPermission]}
     search_fields = ('name', 'description')
     filterset_fields = {'active':['exact']}
     lab_filter = 'lab__lab_id'

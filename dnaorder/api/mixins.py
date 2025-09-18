@@ -58,11 +58,13 @@ class VersionMixin(object): # Must include this mixin before DRF viewset classes
     def versions(self, request, **kwargs):
         versions = Version.objects.select_related('revision', 'revision__user').only('id', 'object_id', 'object_repr', 'revision').get_for_object(self.get_object())
         return Response(VersionSerializer(versions, many=True).data)
-    @action(detail=True, methods=['get'], url_path='versions/(?P<version_id>[^/.]+)/serialize')
+    @action(detail=True, methods=['get'], url_path='versions/(?P<version_id>[^/.]+)')
     def view_version(self, request, version_id, **kwargs):
         version = self.get_version(version_id)
         serializer = self.serialize_version(version)
-        return Response(serializer.data)
+        version_data = VersionSerializer(version).data
+        version_data['serialized'] = serializer.data
+        return Response(version_data)
     @action(detail=True, methods=['post'], url_path='versions/(?P<version_id>[^/.]+)/revert')
     def revert_to_version(self, request, version_id, **kwargs):
         with reversion.create_revision():
