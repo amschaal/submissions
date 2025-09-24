@@ -57,7 +57,7 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
     json_filter_fields = ['submission_data']
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
     lab_filter = 'lab__lab_id'
-    ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','status','biocore','locked']
+    ordering_fields = ['id','internal_id', 'import_internal_id', 'phone','first_name', 'last_name', 'email','pi_first_name', 'pi_last_name','pi_email','pi_phone','institute','type__name','submitted','updated','status','biocore','locked']
     permission_classes = [SubmissionPermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes_by_action = {'versions': [SubmissionVersionPermission], 'revert_to_version': [SubmissionVersionPermission], 'view_version': [SubmissionVersionPermission]}
