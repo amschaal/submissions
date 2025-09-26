@@ -1,4 +1,4 @@
-Django>2.2.4,<4.0.0
+Django>4.0,<5.0.0
 gunicorn
 XlsxWriter==1.0.2
 django-cors-headers
@@ -9,3 +9,4 @@ psycopg2==2.8.6
 tablib
 openpyxl
 social-auth-app-django
+django-reversion
