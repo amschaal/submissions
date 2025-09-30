@@ -49,6 +49,7 @@ class ProjectID(models.Model):
 
 def logo_file_path(instance, filename):
     return 'institutions/{}/logo/{filename}'.format(instance.id,filename=filename)
+# This is used for managing multiple websites in the same database.
 class Institution(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     name = models.CharField(max_length=50)
@@ -224,7 +225,21 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
+class PIInstitution(models.Model):
+    # source = models.CharField(max_length=25, null=True)
+    # source_id = models.CharField(max_length=50)
+    name = models.CharField(max_length=50)
+    # domains = ArrayField(models.CharField(max_length=50),blank=True,null=True)
 
+class PI(models.Model):
+    # source = models.CharField(max_length=25, null=True)
+    external_id = models.CharField(max_length=50)
+    pi_first_name = models.CharField(max_length=50)
+    pi_last_name = models.CharField(max_length=75)
+    pi_email = models.EmailField(max_length=75)
+    pi_phone = models.CharField(max_length=20)
+    department = models.CharField(max_length=30, null=True)
+    institution = models.ForeignKey(PIInstitution)
 
 class Submission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
