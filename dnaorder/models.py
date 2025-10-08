@@ -226,20 +226,18 @@ def generate_file_id():
             return id
 
 class PIInstitution(models.Model):
-    # source = models.CharField(max_length=25, null=True)
-    # source_id = models.CharField(max_length=50)
     name = models.CharField(max_length=50)
     # domains = ArrayField(models.CharField(max_length=50),blank=True,null=True)
+    meta = models.JSONField(default=dict) # store addional data such as import data
 
 class PI(models.Model):
-    # source = models.CharField(max_length=25, null=True)
-    external_id = models.CharField(max_length=50)
-    pi_first_name = models.CharField(max_length=50)
-    pi_last_name = models.CharField(max_length=75)
-    pi_email = models.EmailField(max_length=75)
-    pi_phone = models.CharField(max_length=20)
+    email = models.EmailField(max_length=75, primary_key=True)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=75)
+    phone = models.CharField(max_length=20)
     department = models.CharField(max_length=30, null=True)
-    institution = models.ForeignKey(PIInstitution)
+    institution = models.ForeignKey(PIInstitution, on_delete=models.RESTRICT)
+    meta = models.JSONField(default=dict) # store addional data such as import data
 
 class Submission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
