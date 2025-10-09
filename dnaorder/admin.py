@@ -1,6 +1,6 @@
 from django.contrib import admin
 from dnaorder.models import SubmissionType, Submission, ProjectID,\
-    Lab, Vocabulary, Term, Institution
+    Lab, Vocabulary, Term, Institution, PI, PIInstitution
 from reversion.admin import VersionAdmin
 # from dnaorder.forms import ValidatorForm
 
@@ -15,6 +15,8 @@ admin.site.register(ProjectID)
 admin.site.register(Vocabulary)
 admin.site.register(Term)
 admin.site.register(Institution)
+admin.site.register(PI)
+admin.site.register(PIInstitution)
 # admin.site.register(Validator,ValidatorAdmin)
 
 @admin.register(Submission)
