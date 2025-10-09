@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from dnaorder.models import Participant, Submission, SubmissionType, SubmissionFile,\
+from dnaorder.models import PI, Participant, Submission, SubmissionType, SubmissionFile,\
     Note, Contact, Draft, Lab, Vocabulary, Term,\
     Import, UserProfile, Sample, Institution, ProjectID, LabPermission,\
-    InstitutionPermission
+    InstitutionPermission, PIInstitution
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -376,7 +376,17 @@ class LabSerializer(serializers.ModelSerializer):
         exclude = ['institution']
         read_only_fields = ('site', 'payment_type_id', 'submission_types', 'disabled','plugins')
 
-        
+class PIInstitution(serializers.ModelSerializer):
+    class Meta:
+        model = PIInstitution
+        exclude = ['meta']
+
+class PISerializer(serializers.ModelSerializer):
+    institution = PIInstitution(read_only=True)
+    class Meta:
+        model = PI
+        exclude = ['meta']
+
 class InstitutionSerializer(serializers.ModelSerializer):
     # plugins = serializers.SerializerMethodField(read_only=True)
     class Meta:
@@ -403,6 +413,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     users = UserSerializer(many=True, read_only=True)
+    pi = PISerializer(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
