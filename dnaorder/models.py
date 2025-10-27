@@ -226,18 +226,23 @@ def generate_file_id():
             return id
 
 class PIInstitution(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=75, unique=True)
     # domains = ArrayField(models.CharField(max_length=50),blank=True,null=True)
     meta = models.JSONField(default=dict) # store addional data such as import data
+    def __str__(self):
+        return self.name
 
 class PI(models.Model):
     email = models.EmailField(max_length=75, primary_key=True)
+    # unique_id = models.CharField(max_length=25, unique=True, null=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=75)
     phone = models.CharField(max_length=20)
-    department = models.CharField(max_length=30, null=True)
+    department = models.CharField(max_length=75, null=True)
     institution = models.ForeignKey(PIInstitution, on_delete=models.RESTRICT)
     meta = models.JSONField(default=dict) # store addional data such as import data
+    def __str__(self):
+        return f"{self.last_name}, {self.first_name} ({self.email})"
 
 class Submission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
@@ -266,6 +271,7 @@ class Submission(models.Model):
     last_name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
+    pi = models.ForeignKey(PI, null=True, on_delete=models.SET_NULL)
     pi_first_name = models.CharField(max_length=50)
     pi_last_name = models.CharField(max_length=75)
     pi_email = models.EmailField(max_length=75)

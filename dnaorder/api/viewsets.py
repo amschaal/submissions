@@ -50,7 +50,7 @@ from dnaorder.reports import reports
 from schema.utils import all_submission_type_filters
 
 class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
-    queryset = Submission.objects.select_related('type').all()
+    queryset = Submission.objects.select_related('type', 'pi', 'pi__institute').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter] + PluginManager().get_filter_classes()
     filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact', 'istartswith'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull'], 'submitted': ['date', 'date__gte', 'date__lte'], 'samples_received': ['exact', 'gte', 'lte', 'isnull'], 'participants': ['exact'], 'files': ['isnull'], 'comments':['icontains'], 'institute':['icontains'], 'received_by': ['exact']}
