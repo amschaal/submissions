@@ -177,15 +177,27 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-        self.configure_payment_serializer(instance, data, getattr(self, '_lab', None))
+        self.configure_plugins(instance, data, getattr(self, '_lab', None))
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
     participants = ParticipantSerializer(source="participant_set", many=True, read_only=True)
+    plugin_validators = []
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
+    def validate(self, attrs):
+        # Run default validation
+        validated_data = super().validate(attrs)
+        # Apply each extra validator
+        for validator in self.plugin_validators:
+            validator(attrs, self)  # Pass attrs and serializer instance
+        return validated_data
+    def configure_plugins(self, instance, data, lab=None):
+        # Get validators from plugins
+        self.plugin_validators = PluginManager().get_submission_validators(self, instance, data)
+        self.configure_payment_serializer(instance, data, lab)
     def configure_payment_serializer(self, instance, data, lab=None):
         payment_type_id = None
         if instance and hasattr(instance, 'type'):
