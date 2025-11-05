@@ -303,6 +303,8 @@ BIOSHARE_SETTINGS = {
     'DEFAULT_FILESYSTEM': int(BIOSHARE_FILESYSTEM) if BIOSHARE_FILESYSTEM else None
 }
 
+MAP_SUBMISSION_PI = 'plugins.ppms.utils.map_submission_pi'
+
 # raise Exception(PLUGIN_APPS)
 INSTALLED_APPS += PLUGIN_APPS
 # for PLUGIN in PLUGINS:

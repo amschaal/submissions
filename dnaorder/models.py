@@ -15,6 +15,8 @@ from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
 from plugins import PluginManager
+from django.utils.module_loading import import_string
+
 # from django.db.models.expressions import OuterRef, Exists
 
 def default_schema():
@@ -241,6 +243,12 @@ class PI(models.Model):
     department = models.CharField(max_length=75, null=True)
     institution = models.ForeignKey(PIInstitution, on_delete=models.RESTRICT)
     meta = models.JSONField(default=dict) # store addional data such as import data
+    @staticmethod
+    def get_pi(email):
+        try:
+            return PI.objects.get(email__iexact=email)
+        except PI.DoesNotExist:
+            return None
     def __str__(self):
         return f"{self.last_name}, {self.first_name} ({self.email})"
 
@@ -445,6 +453,16 @@ class Submission(models.Model):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
         return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
+    def map_pi(self, save=True):
+        if settings.MAP_SUBMISSION_PI:
+            try:
+                map_pi = import_string(settings.MAP_SUBMISSION_PI)
+                return map_pi(self, save=save)
+            except:
+                print(f'Unable to get PI using function "{settings.MAP_SUBMISSION_PI}"')
+        self.pi = PI.get_pi(self.pi_email)
+        if save:
+            self.save()
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
