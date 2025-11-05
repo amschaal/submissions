@@ -388,13 +388,13 @@ class LabSerializer(serializers.ModelSerializer):
         exclude = ['institution']
         read_only_fields = ('site', 'payment_type_id', 'submission_types', 'disabled','plugins')
 
-class PIInstitution(serializers.ModelSerializer):
+class PIInstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PIInstitution
         exclude = ['meta']
 
 class PISerializer(serializers.ModelSerializer):
-    institution = PIInstitution(read_only=True)
+    institution = PIInstitutionSerializer(read_only=True)
     class Meta:
         model = PI
         exclude = ['meta']

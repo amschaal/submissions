@@ -1,5 +1,5 @@
 from rest_framework import viewsets, response, status, mixins
-from dnaorder.api.serializers import InstitutionLabSerializer, PISerializer, SubmissionSerializer,\
+from dnaorder.api.serializers import InstitutionLabSerializer, PIInstitutionSerializer, PISerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
@@ -7,7 +7,7 @@ from dnaorder.api.serializers import InstitutionLabSerializer, PISerializer, Sub
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
     WritableUserSerializer, ProjectIDSerializer, UserListSerializer,\
     InstitutionPermissionSerializer
-from dnaorder.models import PI, Submission, SubmissionFile, Note,\
+from dnaorder.models import PI, PIInstitution, Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission, Participant
 from rest_framework.decorators import permission_classes, action
@@ -640,10 +640,16 @@ class PluginViewSet(viewsets.ViewSet):
         return Response(PluginManager().payment_type_choices())
 
 class PIViewSet(viewsets.ReadOnlyModelViewSet):
-    filterset_fields = {
-        }
-    search_fields = ['email']
+    filterset_fields = {'institution__id':['exact']}
+    search_fields = ['email', 'first_name', 'last_name', 'institution__name']
     ordering_fields = ['first_name', 'last_name', 'email', 'institution__name']
     serializer_class = PISerializer
-    queryset = PI.objects.distinct()
+    queryset = PI.objects.distinct().select_related('institution')
     # lookup_field = 'email'
+
+class PIInstitutionViewSet(viewsets.ReadOnlyModelViewSet):
+    filterset_fields = {}
+    search_fields = ['name']
+    ordering_fields = ['name']
+    serializer_class = PIInstitutionSerializer
+    queryset = PIInstitution.objects.distinct()
