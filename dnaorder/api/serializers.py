@@ -313,7 +313,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','status','internal_id','users','sample_data', 'sample_schema']
-        read_only_fields= ['lab','data', 'participants']
+        read_only_fields= ['lab','data', 'participants', 'pi']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):

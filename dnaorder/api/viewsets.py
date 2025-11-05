@@ -1,5 +1,5 @@
 from rest_framework import viewsets, response, status, mixins
-from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSerializer,\
+from dnaorder.api.serializers import InstitutionLabSerializer, PISerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
@@ -7,7 +7,7 @@ from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSeriali
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
     WritableUserSerializer, ProjectIDSerializer, UserListSerializer,\
     InstitutionPermissionSerializer
-from dnaorder.models import Submission, SubmissionFile, Note,\
+from dnaorder.models import PI, Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission, Participant
 from rest_framework.decorators import permission_classes, action
@@ -638,3 +638,12 @@ class PluginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())
+
+class PIViewSet(viewsets.ReadOnlyModelViewSet):
+    filterset_fields = {
+        }
+    search_fields = ['email']
+    ordering_fields = ['first_name', 'last_name', 'email', 'institution__name']
+    serializer_class = PISerializer
+    queryset = PI.objects.distinct()
+    # lookup_field = 'email'
