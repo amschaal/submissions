@@ -454,6 +454,8 @@ class Submission(models.Model):
 #         return reverse('submission', args=[str(self.id)])
         return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
     def map_pi(self, save=True):
+        if self.pi and self.pi.email.strip().lower() == self.pi_email.lower():
+            return self.pi
         if settings.MAP_SUBMISSION_PI:
             try:
                 map_pi = import_string(settings.MAP_SUBMISSION_PI)
@@ -463,6 +465,7 @@ class Submission(models.Model):
         self.pi = PI.get_pi(self.pi_email)
         if save:
             self.save()
+        return self.pi
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
@@ -478,6 +481,10 @@ def set_default_participants(sender, instance, created, **kwargs):
     if created and instance.type.default_participants.count() > 0:
         for u in instance.type.default_participants.all():
             instance.participants.add(u)
+
+@receiver(signals.pre_save, sender=Submission)
+def update_pi(sender, instance, **kwargs):
+    instance.map_pi(save=False)
 
 class Sample(models.Model):
     id = models.CharField(max_length=50,primary_key=True)
