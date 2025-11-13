@@ -21,8 +21,8 @@ router.register(r'terms/(?P<vocabulary>[^/.]+)', TermViewSet)
 router.register(r'vocabularies', VocabularyViewset)
 router.register(r'emails', UserEmailViewSet, basename='emails')
 router.register(r'plugins', PluginViewSet, basename='plugins')
-router.register(r'pis', PIViewSet, basename='pis')
-router.register(r'pi_institutions', PIInstitutionViewSet, basename='pi_institutions')
+router.register(r'groups', PIViewSet, basename='pis')
+router.register(r'group_institutions', PIInstitutionViewSet, basename='group_institutions')
 
 
 urlpatterns = router.urls
