@@ -11,6 +11,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+         migrations.RemoveField(
+            model_name='submission',
+            name='old_participants',
+        ),
         migrations.AlterField(
             model_name='draft',
             name='data',

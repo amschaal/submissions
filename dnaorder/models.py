@@ -235,7 +235,9 @@ class PIInstitution(models.Model):
         return self.name
 
 class PI(models.Model):
-    email = models.EmailField(max_length=75, primary_key=True)
+    id = models.AutoField(primary_key=True)
+    # id = models.IntegerField(null=True, blank=True)
+    email = models.EmailField(max_length=75, unique=True, primary_key=False)
     # unique_id = models.CharField(max_length=25, unique=True, null=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=75)
