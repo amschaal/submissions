@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'rest_framework',
     'rest_framework.authtoken',
 #     'rest_framework_filters',
@@ -301,6 +302,8 @@ BIOSHARE_SETTINGS = {
     'URL': os.environ.get("BIOSHARE_URL", default='http://localhost:8000'),
     'DEFAULT_FILESYSTEM': int(BIOSHARE_FILESYSTEM) if BIOSHARE_FILESYSTEM else None
 }
+
+MAP_SUBMISSION_PI = 'plugins.ppms.utils.map_submission_pi'
 
 # raise Exception(PLUGIN_APPS)
 INSTALLED_APPS += PLUGIN_APPS

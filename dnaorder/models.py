@@ -15,6 +15,8 @@ from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
 from plugins import PluginManager
+from django.utils.module_loading import import_string
+
 # from django.db.models.expressions import OuterRef, Exists
 
 def default_schema():
@@ -49,6 +51,7 @@ class ProjectID(models.Model):
 
 def logo_file_path(instance, filename):
     return 'institutions/{}/logo/{filename}'.format(instance.id,filename=filename)
+# This is used for managing multiple websites in the same database.
 class Institution(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     name = models.CharField(max_length=50)
@@ -224,7 +227,32 @@ def generate_file_id():
         if not SubmissionFile.objects.filter(id=id).exists():
             return id
 
+class PIInstitution(models.Model):
+    name = models.CharField(max_length=75, unique=True)
+    # domains = ArrayField(models.CharField(max_length=50),blank=True,null=True)
+    meta = models.JSONField(default=dict) # store addional data such as import data
+    def __str__(self):
+        return self.name
 
+class PI(models.Model):
+    id = models.AutoField(primary_key=True)
+    # id = models.IntegerField(null=True, blank=True)
+    email = models.EmailField(max_length=75, unique=True, primary_key=False)
+    # unique_id = models.CharField(max_length=25, unique=True, null=True)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=75)
+    phone = models.CharField(max_length=20)
+    department = models.CharField(max_length=75, null=True)
+    institution = models.ForeignKey(PIInstitution, on_delete=models.RESTRICT)
+    meta = models.JSONField(default=dict) # store addional data such as import data
+    @staticmethod
+    def get_pi(email):
+        try:
+            return PI.objects.get(email__iexact=email)
+        except PI.DoesNotExist:
+            return None
+    def __str__(self):
+        return f"{self.last_name}, {self.first_name} ({self.email})"
 
 class Submission(models.Model):
     PERMISSION_ADMIN = 'ADMIN'
@@ -253,6 +281,7 @@ class Submission(models.Model):
     last_name = models.CharField(max_length=50)
     email = models.EmailField(max_length=75)
     phone = models.CharField(max_length=20)
+    pi = models.ForeignKey(PI, null=True, on_delete=models.SET_NULL)
     pi_first_name = models.CharField(max_length=50)
     pi_last_name = models.CharField(max_length=75)
     pi_email = models.EmailField(max_length=75)
@@ -426,6 +455,19 @@ class Submission(models.Model):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
         return '{}/submissions/{}'.format(get_lab_uri(self.lab) if full_url else '', self.id)
+    def map_pi(self, save=True):
+        if self.pi and self.pi.email.strip().lower() == self.pi_email.lower():
+            return self.pi
+        if settings.MAP_SUBMISSION_PI:
+            try:
+                map_pi = import_string(settings.MAP_SUBMISSION_PI)
+                return map_pi(self, save=save)
+            except:
+                print(f'Unable to get PI using function "{settings.MAP_SUBMISSION_PI}"')
+        self.pi = PI.get_pi(self.pi_email)
+        if save:
+            self.save()
+        return self.pi
     @property
     def participant_emails(self):
         participants = [u.email for u in self.participants.all()]
@@ -441,6 +483,10 @@ def set_default_participants(sender, instance, created, **kwargs):
     if created and instance.type.default_participants.count() > 0:
         for u in instance.type.default_participants.all():
             instance.participants.add(u)
+
+@receiver(signals.pre_save, sender=Submission)
+def update_pi(sender, instance, **kwargs):
+    instance.map_pi(save=False)
 
 class Sample(models.Model):
     id = models.CharField(max_length=50,primary_key=True)

@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from dnaorder.models import Participant, Submission, SubmissionType, SubmissionFile,\
+from dnaorder.models import PI, Participant, Submission, SubmissionType, SubmissionFile,\
     Note, Contact, Draft, Lab, Vocabulary, Term,\
     Import, UserProfile, Sample, Institution, ProjectID, LabPermission,\
-    InstitutionPermission
+    InstitutionPermission, PIInstitution
 import os
 from django.contrib.auth.models import User
 from dnaorder.validators import SamplesheetValidator, SubmissionValidator
@@ -177,15 +177,27 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
                 self._lab = self._type.lab
-        self.configure_payment_serializer(instance, data, getattr(self, '_lab', None))
+        self.configure_plugins(instance, data, getattr(self, '_lab', None))
         return super(WritableSubmissionSerializer, self).__init__(instance,**kwargs)
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
     participants = ParticipantSerializer(source="participant_set", many=True, read_only=True)
+    plugin_validators = []
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
+    def validate(self, attrs):
+        # Run default validation
+        validated_data = super().validate(attrs)
+        # Apply each extra validator
+        for validator in self.plugin_validators:
+            validator(attrs, self)  # Pass attrs and serializer instance
+        return validated_data
+    def configure_plugins(self, instance, data, lab=None):
+        # Get validators from plugins
+        self.plugin_validators = PluginManager().get_submission_validators(self, instance, data)
+        self.configure_payment_serializer(instance, data, lab)
     def configure_payment_serializer(self, instance, data, lab=None):
         payment_type_id = None
         if instance and hasattr(instance, 'type'):
@@ -301,7 +313,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','status','internal_id','users','sample_data', 'sample_schema']
-        read_only_fields= ['lab','data', 'participants']
+        read_only_fields= ['lab','data', 'participants', 'pi']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
@@ -376,7 +388,17 @@ class LabSerializer(serializers.ModelSerializer):
         exclude = ['institution']
         read_only_fields = ('site', 'payment_type_id', 'submission_types', 'disabled','plugins')
 
-        
+class PIInstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PIInstitution
+        exclude = ['meta']
+
+class PISerializer(serializers.ModelSerializer):
+    institution = PIInstitutionSerializer(read_only=True)
+    class Meta:
+        model = PI
+        exclude = ['meta']
+
 class InstitutionSerializer(serializers.ModelSerializer):
     # plugins = serializers.SerializerMethodField(read_only=True)
     class Meta:
@@ -403,6 +425,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
     users = UserSerializer(many=True, read_only=True)
+    pi = PISerializer(read_only=True)
     def get_participant_names(self,instance):
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
     def get_received_by_name(self,instance):
