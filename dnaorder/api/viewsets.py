@@ -1,5 +1,5 @@
 from rest_framework import viewsets, response, status, mixins
-from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSerializer,\
+from dnaorder.api.serializers import InstitutionLabSerializer, PIInstitutionSerializer, PISerializer, SubmissionSerializer,\
     SubmissionFileSerializer, NoteSerializer, SubmissionTypeSerializer,\
     UserSerializer, WritableSubmissionSerializer,\
     DraftSerializer, LabSerializer,  VocabularySerializer,\
@@ -7,7 +7,7 @@ from dnaorder.api.serializers import InstitutionLabSerializer, SubmissionSeriali
     ListSubmissionSerializer, InstitutionSerializer, LabListSerializer,\
     WritableUserSerializer, ProjectIDSerializer, UserListSerializer,\
     InstitutionPermissionSerializer
-from dnaorder.models import Submission, SubmissionFile, Note,\
+from dnaorder.models import PI, PIInstitution, Submission, SubmissionFile, Note,\
     SubmissionType, Draft, Lab, Vocabulary, Term, Import, UserProfile,\
     Institution, UserEmail, ProjectID, InstitutionPermission, LabPermission, Participant
 from rest_framework.decorators import permission_classes, action
@@ -50,10 +50,10 @@ from dnaorder.reports import reports
 from schema.utils import all_submission_type_filters
 
 class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
-    queryset = Submission.objects.select_related('type').all()
+    queryset = Submission.objects.select_related('type', 'pi', 'pi__institute').all()
     serializer_class = SubmissionSerializer
     filter_backends = viewsets.ModelViewSet.filter_backends + [ParticipatingFilter, MySubmissionsFilter, ExcludeStatusFilter, LabFilter, JSONFilter] + PluginManager().get_filter_classes()
-    filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact', 'istartswith'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull'], 'submitted': ['date', 'date__gte', 'date__lte'], 'samples_received': ['exact', 'gte', 'lte', 'isnull'], 'participants': ['exact'], 'files': ['isnull'], 'comments':['icontains'], 'institute':['icontains'], 'received_by': ['exact']}
+    filterset_fields = {'id':['icontains','exact'],'internal_id':['icontains','exact', 'istartswith'],'import_internal_id':['icontains','exact'],'phone':['icontains'],'first_name':['icontains'],'last_name':['icontains'],'email':['icontains'],'pi_first_name':['icontains'],'pi_last_name':['icontains'],'pi_email':['icontains'],'institute':['icontains'],'type__name':['icontains'],'status':['icontains','iexact'],'biocore':['exact'],'locked':['exact'],'type':['exact'],'cancelled':['isnull'], 'submitted': ['date', 'date__gte', 'date__lte'], 'samples_received': ['exact', 'gte', 'lte', 'isnull'], 'participants': ['exact'], 'files': ['isnull'], 'comments':['icontains'], 'institute':['icontains'], 'received_by': ['exact'], 'pi__id': ['exact'], 'pi__email': ['exact'], 'pi__institution__id':['exact'], 'pi':['isnull']}
     json_filter_fields = ['submission_data']
     search_fields = ('id', 'internal_id', 'import_internal_id', 'institute', 'first_name', 'last_name', 'notes', 'email', 'pi_email', 'pi_first_name','pi_last_name','pi_phone', 'type__name', 'status')
     lab_filter = 'lab__lab_id'
@@ -638,3 +638,19 @@ class PluginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def payment_types(self, request):
         return Response(PluginManager().payment_type_choices())
+
+class PIViewSet(viewsets.ReadOnlyModelViewSet):
+    filterset_fields = {'institution__id':['exact']}
+    search_fields = ['email', 'first_name', 'last_name', 'institution__name']
+    ordering_fields = ['first_name', 'last_name', 'email', 'institution__name']
+    serializer_class = PISerializer
+    queryset = PI.objects.distinct().select_related('institution')
+    # lookup_field = 'email'
+    # lookup_value_regex = '[^/]+'  # allows dots and @
+
+class PIInstitutionViewSet(viewsets.ReadOnlyModelViewSet):
+    filterset_fields = {}
+    search_fields = ['name']
+    ordering_fields = ['name']
+    serializer_class = PIInstitutionSerializer
+    queryset = PIInstitution.objects.distinct()

@@ -119,7 +119,8 @@ def get_lab_filters(lab):
             'participants': { "type": "string", "title": "Is participant", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "participants"}]},
             'received_by': { "type": "string", "title": "Samples received by", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "received_by"}]},
             'files': { "type": "boolean", "title": "Has files", "enum": [{"label": "Yes", "value": "False"}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "files__isnull"}]},
-            'cancelled': { "type": "boolean", "title": "Cancelled", "enum": [{"label": "Yes", "value": "False"}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "cancelled__isnull"}]}
+            'cancelled': { "type": "boolean", "title": "Cancelled", "enum": [{"label": "Yes", "value": "False"}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "cancelled__isnull"}]},
+            'pi_mapped': { "type": "boolean", "title": "PI Mapped", "enum": [{"label": "Yes", "value": "False"}, {"label": "No", "value": True}], "filters": [{"label": "=", "filter": "pi__isnull"}]}
             },
         'custom': all_submission_type_filters(lab)
         }

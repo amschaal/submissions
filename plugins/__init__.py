@@ -19,6 +19,7 @@ class Plugin(object):
     PAYMENT = None
     FILTERS = {}
     FILTER_CLASSES = [] #Should be a list of filters inheriting rest_framework.filters.BaseFilterBackend
+    SUBMISSION_VALIDATOR = None
     def __init__(self):
         self.form = self.FORM
     def restricted_form(self, RESTRICT_TO):
@@ -80,6 +81,7 @@ class PluginManager():
             PluginManager.__instance.url_patterns = []#[url(r'^api/plugins/{}/submissions/(?P<submission_id>[0-9a-f-]+)/'.format('ppms'), include('plugins.{}.urls'.format('ppms')))]
             PluginManager.__instance.plugins = {}
             PluginManager.__instance.payment_types = {}
+            PluginManager.__instance.submission_validators = {}
             PluginManager.__instance.val = val
     #         PluginManager.__instance.configure_urls()
             for plugin in PLUGINS:
@@ -91,6 +93,8 @@ class PluginManager():
                     if _plugin.PAYMENT:
                     #    PluginManager.__instance.payment_types[_plugin.PAYMENT.id]=_plugin.PAYMENT
                         PluginManager.__instance.payment_types[_plugin.ID]=_plugin.PAYMENT
+                    if _plugin.SUBMISSION_VALIDATOR:
+                        PluginManager.__instance.submission_validators[_plugin.ID]=_plugin.SUBMISSION_VALIDATOR
                 except Exception as e:
                     sys.stderr.write('Unable to initialize plugin {}!\n'.format(plugin))
                     if settings.DEBUG:
@@ -119,6 +123,11 @@ class PluginManager():
         return self.__instance.plugins.values()
     def get_filter_classes(self):
         return list(itertools.chain.from_iterable([plugin.FILTER_CLASSES for plugin in self.__instance.plugins.values()]))
+    def get_submission_validators(self, serializer, instance, data):
+        # TODO: filter validators by lab or submission type by using serializer
+        validators = self.__instance.submission_validators.values()
+        return self.__instance.submission_validators.values()
+
 
 
 # This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.
