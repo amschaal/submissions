@@ -641,8 +641,8 @@ class PluginViewSet(viewsets.ViewSet):
 
 class PIViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = {'institution__id':['exact']}
-    search_fields = ['email', 'first_name', 'last_name', 'institution__name']
-    ordering_fields = ['first_name', 'last_name', 'email', 'institution__name']
+    search_fields = ['email', 'first_name', 'last_name', 'department', 'institution__name']
+    ordering_fields = ['first_name', 'last_name', 'email', 'department', 'institution__name']
     serializer_class = PISerializer
     queryset = PI.objects.distinct().select_related('institution')
     # lookup_field = 'email'

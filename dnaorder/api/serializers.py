@@ -395,6 +395,9 @@ class PIInstitutionSerializer(serializers.ModelSerializer):
 
 class PISerializer(serializers.ModelSerializer):
     institution = PIInstitutionSerializer(read_only=True)
+    name = serializers.SerializerMethodField()
+    def get_name(self, instance):
+        return f"{instance.last_name}, {instance.first_name}" if instance.first_name else instance.last_name
     class Meta:
         model = PI
         exclude = ['meta']
