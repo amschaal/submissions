@@ -14,6 +14,7 @@ RESTRICT_TO_LAB = 'RESTRICT_TO_LAB'
 
 class Plugin(object):
     ID = None
+    URLS = None
     SUBMISSION_URLS = None
     FORM = None
     PAYMENT = None
@@ -88,6 +89,8 @@ class PluginManager():
                 try:
                     _plugin = import_string(plugin)()
                     PluginManager.__instance.plugins[_plugin.ID] = _plugin
+                    if _plugin.URLS:
+                        PluginManager.__instance.url_patterns.append(re_path(r'^api/plugins/(?P<plugin_id>{})/'.format(_plugin.ID), include(_plugin.URLS)))
                     if _plugin.SUBMISSION_URLS:
                         PluginManager.__instance.url_patterns.append(re_path(r'^api/plugins/(?P<plugin_id>{})/submissions/(?P<submission_id>[0-9a-f-]+)/'.format(_plugin.ID), include(_plugin.SUBMISSION_URLS)))
                     if _plugin.PAYMENT:

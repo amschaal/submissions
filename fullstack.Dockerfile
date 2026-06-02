@@ -2,7 +2,7 @@
 FROM node:18-alpine as develop-stage
 WORKDIR /app
 COPY ./spa/package*.json ./
-RUN yarn global add @quasar/cli
+RUN yarn global add @quasar/cli@1
 COPY ./spa .
 # build stage
 FROM develop-stage as build-stage
