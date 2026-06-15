@@ -5,6 +5,10 @@ RUN yarn global add @quasar/cli
 COPY ./spa .
 # build stage
 FROM develop-stage as build-stage
+# Frontend build identity for the version.json refresh prompt (passed by
+# buildspec.yml as --build-arg APP_COMMIT=<spa commit>).
+ARG APP_COMMIT
+ENV APP_COMMIT=$APP_COMMIT
 RUN yarn
 RUN quasar build
 
