@@ -1,12 +1,15 @@
 from django.shortcuts import redirect
 from dnaorder.models import SubmissionType, Submission, UserEmail
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
+from dnaorder.api.throttling import (
+    LoginAnonThrottle, ValidateAnonThrottle, SubmissionReadAnonThrottle, USER_TIERS,
+)
 from dnaorder.spreadsheets import (
     dataset_response,
     get_dataset,
@@ -62,6 +65,7 @@ def logout(request):
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes((AllowAny,))
+@throttle_classes([LoginAnonThrottle])
 def login_view(request):
     username = request.data.get("username")
     password = request.data.get("password")
@@ -99,6 +103,7 @@ def logout_view(request):
 
 @api_view(["POST"])
 @permission_classes((AllowAny,))
+@throttle_classes([ValidateAnonThrottle, *USER_TIERS])
 def validate_data(request, type_id=None):
     if type_id:
         schema = SubmissionType.objects.get(id=type).sample_schema
@@ -116,7 +121,9 @@ def validate_data(request, type_id=None):
         return Response({"errors": errors, "warnings": warnings}, status=400)
 
 
+@api_view(["GET"])
 @permission_classes((AllowAny,))
+@throttle_classes([SubmissionReadAnonThrottle, *USER_TIERS])
 def download(request, id):
     submission = Submission.objects.get(id=id)
     data = request.GET.get("data", "combined")  # samples or submission

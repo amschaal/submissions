@@ -13,6 +13,9 @@ from dnaorder.models import PI, PIInstitution, Submission, SubmissionFile, Note,
 from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from dnaorder.api.throttling import (
+    SubmissionReadAnonThrottle, SubmissionWriteAnonThrottle, EmailUserThrottle, scoped,
+)
 from dnaorder.api.permissions import SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
@@ -61,6 +64,16 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
     permission_classes = [SubmissionPermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes_by_action = {'versions': [SubmissionVersionPermission], 'revert_to_version': [SubmissionVersionPermission], 'view_version': [SubmissionVersionPermission]}
+    def get_throttles(self):
+        scope = {
+            'retrieve': SubmissionReadAnonThrottle,
+            'create': SubmissionWriteAnonThrottle,
+            'cancel': SubmissionWriteAnonThrottle,
+            'confirm': SubmissionWriteAnonThrottle,
+        }.get(self.action)
+        if scope:
+            return scoped(scope)
+        return super().get_throttles()
     def get_queryset(self):
         if self.detail:
             return Submission.objects.all().select_related('lab')
@@ -221,6 +234,10 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
     permission_classes = (AllowAny,)
+    def get_throttles(self):
+        if self.action in ('import_submission', 'get_submission'):
+            return scoped(SubmissionReadAnonThrottle)
+        return super().get_throttles()
     @action(detail=False, methods=['post'])
     def import_submission(self, request):
         url = request.data.get('url')
@@ -275,6 +292,10 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     filterset_fields = {'submission':['exact']}
     permission_classes = [SubmissionFilePermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
+    def get_throttles(self):
+        if self.action == 'create':
+            return scoped(SubmissionWriteAnonThrottle)
+        return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
@@ -293,6 +314,10 @@ class NoteViewSet(viewsets.ModelViewSet):
     filterset_fields = {'submission':['exact']}
     permission_classes = (NotePermissions,)
     authentication_classes = [SessionAuthentication, TokenAuthentication]
+    def get_throttles(self):
+        if self.action == 'create':
+            return scoped(SubmissionWriteAnonThrottle)
+        return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
@@ -369,6 +394,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class UserEmailViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
+    def get_throttles(self):
+        if self.action == 'claim':
+            return [EmailUserThrottle()]
+        return super().get_throttles()
     @action(detail=False, methods=['post'])
     def claim(self, request):
         email = request.data.get('email', '')

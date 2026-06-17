@@ -5,7 +5,7 @@ services:
     build: .
     hostname: api
     # command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command: ["sh", "-c", "python manage.py createcachetable && python manage.py runserver 0.0.0.0:8000"]
     volumes:
       - .:/usr/src/app 
       - data_volume:/data
