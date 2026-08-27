@@ -446,10 +446,17 @@ class ValidatorViewSet(viewsets.ViewSet):
 class TableImportViewSet(viewsets.ViewSet):
     """XLSX round-trip for the table (list-of-objects) grid.
 
-    Stateless by design: both actions take the table ``schema`` in the request
-    body so they work equally for a saved submission and for the (possibly
-    unsaved) schema in the submission-type editor. Submission entry is open by
-    design, so these mirror that with ``AllowAny``.
+    Two ways to supply the table, in priority order:
+
+    * ``schema`` (+ ``data`` for the template) in the request body -- the
+      stateless path used by the grid, which has the live (possibly unsaved)
+      schema and in-progress rows on hand.
+    * ``submission`` id + ``table`` variable -- lets a caller that only has a
+      submission (a direct download link, an external script) omit the schema
+      and rows; the server uses that submission's snapshotted table schema and
+      saved rows. Body ``schema``/``data`` still win when both are provided.
+
+    Submission entry is open by design, so these mirror that with ``AllowAny``.
     """
     permission_classes = (AllowAny,)
 
@@ -459,12 +466,34 @@ class TableImportViewSet(viewsets.ViewSet):
             schema = json.loads(schema)
         return schema
 
+    def _submission_context(self, request):
+        """Resolve ``(schema, saved_rows)`` from an optional submission+table.
+
+        Returns ``(None, None)`` when no ``submission``/``table`` is supplied (or
+        it can't be resolved), so the stateless schema-in-body path still runs.
+        """
+        submission_id = request.data.get('submission')
+        table = request.data.get('table')
+        if not (submission_id and table):
+            return None, None
+        try:
+            submission = Submission.objects.get(id=submission_id)
+        except Submission.DoesNotExist:
+            return None, None
+        table_def = (submission.submission_schema or {}).get('properties', {}).get(table) or {}
+        return table_def.get('schema'), (submission.submission_data or {}).get(table) or []
+
     @action(detail=False, methods=['post'])
     def template(self, request):
-        schema = self._get_schema(request)
+        schema, saved_rows = self._submission_context(request)
+        schema = self._get_schema(request) or schema
         if not schema or 'properties' not in schema:
             return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        data = request.data.get('data') or []
+        # Prefer live rows from the body (unsaved edits); fall back to the
+        # submission's saved rows when only a submission id was given.
+        data = request.data.get('data')
+        if data is None:
+            data = saved_rows or []
         if isinstance(data, str):
             data = json.loads(data)
         content = build_table_template(schema, data)
@@ -474,7 +503,8 @@ class TableImportViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def parse(self, request):
-        schema = self._get_schema(request)
+        submission_schema, _saved_rows = self._submission_context(request)
+        schema = self._get_schema(request) or submission_schema
         upload = request.FILES.get('file')
         if not schema or 'properties' not in schema:
             return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
