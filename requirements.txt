@@ -1,12 +1,38 @@
-Django>4.0,<5.0.0
-gunicorn
-XlsxWriter==1.0.2
-django-cors-headers
-django-filter
-django-sendfile
-djangorestframework
-psycopg2==2.8.6
-tablib
-openpyxl
-social-auth-app-django
-django-reversion
+# Backend Python dependencies — locked to the confirmed-working container
+# (Python 3.12 + Django 5.2 LTS + PostgreSQL 16).
+# To refresh after an upgrade: `pip freeze > requirements.txt`, then restore these comments.
+
+# ---- Direct dependencies ----
+Django==5.2.15               # LTS, supported to Apr 2028; requires Python >=3.10 and PostgreSQL >=14
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+django-filter==25.1
+django-reversion==6.2.0
+django-sendfile==0.3.11      # unmaintained — consider migrating to django-sendfile2
+social-auth-app-django==5.4.3
+psycopg2==2.9.12             # >=2.9.9 required by Django 5.2
+gunicorn==23.0.0             # >=23 fixes request-smuggling CVE-2024-1135 / CVE-2024-6827
+openpyxl==3.1.5
+tablib==3.9.0
+xlsxwriter==3.2.9
+
+# ---- Transitive dependencies (pinned for reproducibility) ----
+asgiref==3.11.1
+certifi==2026.5.20
+cffi==2.0.0
+charset-normalizer==3.4.7
+cryptography==48.0.0
+defusedxml==0.7.1
+et_xmlfile==2.0.0
+idna==3.15
+oauthlib==3.3.1
+packaging==26.2
+pycparser==2.23
+PyJWT==2.12.1
+python3-openid==3.2.0
+requests==2.32.5
+requests-oauthlib==2.0.0
+social-auth-core==4.7.0
+sqlparse==0.5.5
+typing_extensions==4.15.0
+urllib3==2.6.3

@@ -155,8 +155,6 @@ TIME_ZONE = 'America/Los_Angeles'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 
@@ -183,7 +181,38 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'dnaorder.api.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication'
-    ]
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',          # unauthenticated (by IP)
+        'dnaorder.api.throttling.RegularUserRateThrottle',     # authed, non lab-staff
+        'dnaorder.api.throttling.StaffRateThrottle',           # authed, lab-permissioned (is_staff)
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/min',             # unauthenticated baseline
+        'user': '90/min',             # authenticated regular users (submitters/participants)
+        'staff': '300/min',           # lab-permissioned users (is_staff) — generous
+        'login': '10/min',             # credential stuffing / brute force
+        'submission_read': '60/min',  # open detail read + export + import lookups
+        'submission_write': '30/hour', # unauth create / cancel / confirm / note / file
+        'validate': '20/min',          # validator CPU
+        'email': '10/hour',            # endpoints that send email, per user
+    },
+    # Number of proxies in front of the app, so anon throttling keys on the real client IP
+    # from X-Forwarded-For (1 = nginx only; set to 2 if behind ALB+nginx).
+    'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '2')),
+}
+
+# Cache backing DRF throttle counters. Defaults to the database cache (no extra service);
+# set REDIS_URL to switch to Redis. The DB cache table is created by `manage.py createcachetable`.
+REDIS_URL = os.environ.get("REDIS_URL")
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    } if REDIS_URL else {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "throttle_cache",
+    }
 }
 
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", default='django.core.mail.backends.console.EmailBackend')#'django.core.mail.backends.smtp.EmailBackend'

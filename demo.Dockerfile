@@ -1,15 +1,19 @@
-FROM node:lts-alpine3.15 as develop-stage
+FROM node:22-alpine as develop-stage
 WORKDIR /app
 COPY ./spa/package*.json ./
-RUN yarn global add @quasar/cli@1
+RUN yarn global add @quasar/cli
 COPY ./spa .
 # build stage
 FROM develop-stage as build-stage
+# Frontend build identity for the version.json refresh prompt (passed by
+# buildspec.yml as --build-arg APP_COMMIT=<spa commit>).
+ARG APP_COMMIT
+ENV APP_COMMIT=$APP_COMMIT
 RUN yarn
 RUN quasar build
 
 # production stage
-FROM python:3.9
+FROM python:3.12
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \

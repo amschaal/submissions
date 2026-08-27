@@ -276,7 +276,7 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(choices=[('LOG', 'LOG'), ('NOTE', 'NOTE')], max_length=20)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('emails', django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=50), blank=True, null=True, size=None)),
-                ('sent', models.NullBooleanField()),
+                ('sent', models.BooleanField(null=True)),
                 ('public', models.BooleanField(default=False)),
                 ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
                 ('submission', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='dnaorder.Submission')),

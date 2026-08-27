@@ -5,7 +5,7 @@ services:
     build: .
     hostname: api
     # command: gunicorn dnaorder.wsgi:application --bind 0.0.0.0:8000
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command: ["sh", "-c", "python manage.py createcachetable && python manage.py runserver 0.0.0.0:8000"]
     volumes:
       - .:/usr/src/app 
       - data_volume:/data
@@ -17,17 +17,17 @@ services:
       - ./.env.dev
     networks:
       - shared-network
-      - internal-network
+      - coreomics-network
     depends_on:
       - db
   db:
-    image: postgres:13
+    image: postgres:16
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
       - "POSTGRES_HOST_AUTH_METHOD=trust"
     networks:
-      - internal-network
+      - coreomics-network
   spa:
     build:
         context: ./spa
@@ -37,6 +37,7 @@ services:
       - "8080:8080"
     networks:
       - shared-network
+      - coreomics-network
     volumes:
       - ./spa:/app
       # - /app
@@ -47,6 +48,7 @@ volumes:
   postgres_data:
   data_volume:
 networks:
-  internal-network:
+  coreomics-network: # also used by the Claude Code devcontainer (--network=coreomics-network); external so both sides share it
+    external: true
   shared-network: #for communicating with other docker application APIs used by plugins.  First run: docker network create shared-network
     external: true
