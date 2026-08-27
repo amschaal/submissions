@@ -26,7 +26,10 @@ from dnaorder import emails
 from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get_submissions_dataset_full_xlsx
 # from dnaorder.views import submission
 from dnaorder.validators import VALIDATORS_DICT,\
-    VALIDATORS, SubmissionValidator
+    VALIDATORS, SubmissionValidator, SamplesheetValidator
+from dnaorder.spreadsheets.tables import build_table_template, parse_table_xlsx
+from django.http import HttpResponse
+import json
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.utils import timezone
@@ -439,6 +442,55 @@ class ValidatorViewSet(viewsets.ViewSet):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
         return response.Response([v.serialize() for v in VALIDATORS])
+
+class TableImportViewSet(viewsets.ViewSet):
+    """XLSX round-trip for the table (list-of-objects) grid.
+
+    Stateless by design: both actions take the table ``schema`` in the request
+    body so they work equally for a saved submission and for the (possibly
+    unsaved) schema in the submission-type editor. Submission entry is open by
+    design, so these mirror that with ``AllowAny``.
+    """
+    permission_classes = (AllowAny,)
+
+    def _get_schema(self, request):
+        schema = request.data.get('schema') or request.data.get('sample_schema')
+        if isinstance(schema, str):
+            schema = json.loads(schema)
+        return schema
+
+    @action(detail=False, methods=['post'])
+    def template(self, request):
+        schema = self._get_schema(request)
+        if not schema or 'properties' not in schema:
+            return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.get('data') or []
+        if isinstance(data, str):
+            data = json.loads(data)
+        content = build_table_template(schema, data)
+        http_response = HttpResponse(content, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        http_response['Content-Disposition'] = 'attachment; filename=table_template.xlsx'
+        return http_response
+
+    @action(detail=False, methods=['post'])
+    def parse(self, request):
+        schema = self._get_schema(request)
+        upload = request.FILES.get('file')
+        if not schema or 'properties' not in schema:
+            return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not upload:
+            return response.Response({'detail': 'No file was uploaded (expected multipart field "file").'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = parse_table_xlsx(schema, upload)
+        except Exception as e:
+            return response.Response({'detail': 'Could not parse the spreadsheet: {}'.format(e)}, status=status.HTTP_400_BAD_REQUEST)
+        result = {'data': data}
+        validate = request.data.get('validate', True)
+        if validate not in (False, 'false', '0', 0):
+            errors, warnings = SamplesheetValidator(schema, data).validate()
+            result['errors'] = errors
+            result['warnings'] = warnings
+        return response.Response(result)
 
 class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')

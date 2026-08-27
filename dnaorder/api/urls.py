@@ -3,7 +3,7 @@ from dnaorder.api.viewsets import PIInstitutionViewSet, PIViewSet, SubmissionVie
     NoteViewSet, SubmissionTypeViewSet, UserViewSet, ValidatorViewSet,\
     DraftViewSet, LabViewSet, ProjectIDViewSet, VocabularyViewset,\
     TermViewSet, ImportViewSet, InstitutionViewSet, UserEmailViewSet,\
-    PluginViewSet
+    PluginViewSet, TableImportViewSet
 
 router = routers.SimpleRouter()
 router.register(r'submissions', SubmissionViewSet)
@@ -21,6 +21,7 @@ router.register(r'terms/(?P<vocabulary>[^/.]+)', TermViewSet)
 router.register(r'vocabularies', VocabularyViewset)
 router.register(r'emails', UserEmailViewSet, basename='emails')
 router.register(r'plugins', PluginViewSet, basename='plugins')
+router.register(r'tables', TableImportViewSet, basename='tables')
 router.register(r'groups', PIViewSet, basename='pis')
 router.register(r'group_institutions', PIInstitutionViewSet, basename='group_institutions')
 
