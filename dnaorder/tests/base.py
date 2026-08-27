@@ -161,6 +161,14 @@ class ApiTestCase(APITestCase):
       * ``sub_b``      - submission in Lab B
     """
 
+    def setUp(self):
+        # Throttling is effectively active in tests: DRF captures THROTTLE_RATES
+        # at import time, so override_settings can't disable it. Clearing the
+        # cache each test keeps every test well under the real per-scope limits
+        # and stops counters from accumulating across the suite.
+        from django.core.cache import cache
+        cache.clear()
+
     @classmethod
     def setUpTestData(cls):
         cls.institution = make_institution()

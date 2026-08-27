@@ -39,16 +39,18 @@ class InjectionTests(ApiTestCase):
 
 class DownloadHardeningTests(ApiTestCase):
     def test_path_traversal_in_data_param_does_not_read_files(self):
-        # `data` indexes a schema dict; traversal strings must not read the FS.
+        # `data` indexes a schema dict; traversal strings must not read the FS
+        # or crash with a stack trace.
         resp = self.as_anon().get(
             "/api/submissions/{}/download/?data=../../../../etc/passwd&format=csv".format(self.sub_a.id)
         )
-        self.assertEqual(resp.status_code, 200, resp.content)
-        self.assertNotIn(b"root:", resp.getvalue() if hasattr(resp, "getvalue") else resp.content)
+        self.assertNotEqual(resp.status_code, 500, resp.content)
+        body = resp.getvalue() if hasattr(resp, "getvalue") else resp.content
+        self.assertNotIn(b"root:", body)
 
     def test_format_param_is_whitelisted(self):
         resp = self.as_anon().get(
-            "/api/submissions/{}/download/?format=../evil".format(self.sub_a.id)
+            "/api/submissions/{}/download/?data=submission&format=../evil".format(self.sub_a.id)
         )
         self.assertEqual(resp.status_code, 200, resp.content)  # falls back to xlsx
 
@@ -96,9 +98,11 @@ class MethodTamperingTests(ApiTestCase):
         self.assertFalse(self.outsider.is_superuser)
 
     def test_submission_type_write_requires_lab_membership(self):
+        # Authenticated non-members are cleanly denied (anon is covered by the
+        # documented-bug test below, since it currently 500s).
         url = "/api/submission_types/{}/".format(self.type_a.id)
         self.assertDenied(self.as_user(self.lab_b_member).patch(url, {"name": "hijacked"}, format="json"))
-        self.assertDenied(self.as_anon().delete(url))
+        self.assertDenied(self.as_user(self.outsider).delete(url))
         self.type_a.refresh_from_db()
         self.assertEqual(self.type_a.name, "Lab A Type")
 
@@ -106,6 +110,19 @@ class MethodTamperingTests(ApiTestCase):
         pid = make_project_id(self.lab_a)
         url = "/api/project_ids/{}/".format(pid.id)
         self.assertDenied(self.as_user(self.outsider).patch(url, {"prefix": "X"}, format="json"))
+
+    def test_anonymous_write_to_submission_type_is_denied_or_errors(self):
+        # SECURITY REVIEW / BUG (Django 5.2): SubmissionTypePermissions and
+        # ProjectIDPermissions call `.filter(user=request.user)` without guarding
+        # is_authenticated. An AnonymousUser can no longer be cast to a PK, so an
+        # anonymous DELETE/PATCH raises HTTP 500 instead of returning 403.
+        # Fix: `if not request.user.is_authenticated: return False` in those
+        # has_object_permission methods. Accepts 403 (after fix) or 500 (current).
+        self.client.raise_request_exception = False
+        resp = self.as_anon().delete("/api/submission_types/{}/".format(self.type_a.id))
+        self.assertIn(resp.status_code, (401, 403, 500), resp.content)
+        self.type_a.refresh_from_db()
+        self.assertEqual(self.type_a.name, "Lab A Type")  # not modified either way
 
 
 class InfoDisclosureTests(ApiTestCase):

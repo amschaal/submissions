@@ -14,8 +14,10 @@ class SubmissionListingBehaviorTests(ApiTestCase):
         self.assertGreaterEqual(resp.data["count"], 2)  # sub_a + sub_a_locked
 
     def test_exact_id_filter(self):
+        # django-filter maps the `exact` lookup to the bare field name (`id`),
+        # not `id__exact`.
         resp = self.as_user(self.lab_a_member).get(
-            "/api/submissions/?lab=lab-a&id__exact={}".format(self.sub_a.id)
+            "/api/submissions/?lab=lab-a&id={}".format(self.sub_a.id)
         )
         ids = {r["id"] for r in resp.data["results"]}
         self.assertEqual(ids, {self.sub_a.id})

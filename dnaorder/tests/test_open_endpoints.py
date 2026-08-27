@@ -25,9 +25,17 @@ class PublicSubmissionAccessTests(ApiTestCase):
         self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_anonymous_can_download_submission(self):
-        resp = self.as_anon().get(
-            "/api/submissions/{}/download/?format=csv".format(self.sub_a.id)
+        from django.urls import resolve
+        from dnaorder.models import Submission
+        path = "/api/submissions/{}/download/".format(self.sub_a.id)
+        # Diagnostics: confirm the object exists and the path maps to the
+        # dedicated download view (not the router) before asserting behavior.
+        self.assertTrue(Submission.objects.filter(id=self.sub_a.id).exists())
+        self.assertEqual(
+            resolve(path).url_name, "download",
+            "download path resolved to {!r}".format(resolve(path).url_name),
         )
+        resp = self.as_anon().get(path + "?data=submission&format=csv")
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
 
@@ -67,6 +75,7 @@ class PublicSubmissionAccessTests(ApiTestCase):
 
 class PublicNotesTests(ApiTestCase):
     def setUp(self):
+        super().setUp()
         from dnaorder.tests.base import make_note
         self.public_note = make_note(self.sub_a, "public", public=True)
         self.private_note = make_note(self.sub_a, "private", public=False)

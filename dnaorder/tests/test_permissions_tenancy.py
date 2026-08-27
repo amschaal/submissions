@@ -71,6 +71,7 @@ class PermissionTierTests(ApiTestCase):
 
 class NoteIsolationTests(ApiTestCase):
     def setUp(self):
+        super().setUp()
         self.pub = make_note(self.sub_a, "pub-a", public=True)
         self.priv = make_note(self.sub_a, "priv-a", public=False)
 
