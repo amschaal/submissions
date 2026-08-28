@@ -27,7 +27,7 @@ from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get
 # from dnaorder.views import submission
 from dnaorder.validators import VALIDATORS_DICT,\
     VALIDATORS, SubmissionValidator, SamplesheetValidator
-from dnaorder.spreadsheets.tables import build_table_template, parse_table_xlsx
+from dnaorder.spreadsheets.tables import build_table, parse_table, TABLE_FORMATS
 from django.http import HttpResponse
 import json
 from django.contrib.auth.models import User
@@ -483,12 +483,26 @@ class TableImportViewSet(viewsets.ViewSet):
         table_def = (submission.submission_schema or {}).get('properties', {}).get(table) or {}
         return table_def.get('schema'), (submission.submission_data or {}).get(table) or []
 
+    def _get_format(self, request, upload=None, default='xlsx'):
+        """Resolve the file format from an explicit ``format`` param, falling
+        back to the uploaded file's extension, then to ``default``."""
+        fmt = (request.data.get('format') or '').lower()
+        if not fmt and upload is not None:
+            name = getattr(upload, 'name', '') or ''
+            ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+            if ext in TABLE_FORMATS:
+                fmt = ext
+        return fmt or default
+
     @action(detail=False, methods=['post'])
     def template(self, request):
         schema, saved_rows = self._submission_context(request)
         schema = self._get_schema(request) or schema
         if not schema or 'properties' not in schema:
             return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        fmt = self._get_format(request)
+        if fmt not in TABLE_FORMATS:
+            return response.Response({'detail': 'Unsupported format "{}".'.format(fmt)}, status=status.HTTP_400_BAD_REQUEST)
         # Prefer live rows from the body (unsaved edits); fall back to the
         # submission's saved rows when only a submission id was given.
         data = request.data.get('data')
@@ -496,9 +510,9 @@ class TableImportViewSet(viewsets.ViewSet):
             data = saved_rows or []
         if isinstance(data, str):
             data = json.loads(data)
-        content = build_table_template(schema, data)
-        http_response = HttpResponse(content, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        http_response['Content-Disposition'] = 'attachment; filename=table_template.xlsx'
+        content = build_table(schema, data, fmt)
+        http_response = HttpResponse(content, content_type=TABLE_FORMATS[fmt]['content_type'])
+        http_response['Content-Disposition'] = 'attachment; filename=table_template.{}'.format(TABLE_FORMATS[fmt]['extension'])
         return http_response
 
     @action(detail=False, methods=['post'])
@@ -510,10 +524,13 @@ class TableImportViewSet(viewsets.ViewSet):
             return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
         if not upload:
             return response.Response({'detail': 'No file was uploaded (expected multipart field "file").'}, status=status.HTTP_400_BAD_REQUEST)
+        fmt = self._get_format(request, upload)
+        if fmt not in TABLE_FORMATS:
+            return response.Response({'detail': 'Unsupported format "{}".'.format(fmt)}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            data = parse_table_xlsx(schema, upload)
+            data = parse_table(schema, upload, fmt)
         except Exception as e:
-            return response.Response({'detail': 'Could not parse the spreadsheet: {}'.format(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return response.Response({'detail': 'Could not parse the file: {}'.format(e)}, status=status.HTTP_400_BAD_REQUEST)
         result = {'data': data}
         validate = request.data.get('validate', True)
         if validate not in (False, 'false', '0', 0):

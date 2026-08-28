@@ -27,6 +27,7 @@ visible titles and reorder columns and we can still map each column back to the
 right variable. :func:`parse_table_xlsx` falls back to matching visible titles
 (or the raw variable id) when the hidden row has been removed.
 """
+import csv
 import io
 import re
 
@@ -38,6 +39,19 @@ from dnaorder.spreadsheets import get_cols, get_data
 DATA_SHEET = "Data"
 INSTRUCTIONS_SHEET = "Instructions"
 LISTS_SHEET = "_lists"
+
+# Supported export/import formats. xlsx is the rich round-trip (validation,
+# descriptions, dropdowns); csv/tsv are flat (variable-name header + data).
+_DELIMITERS = {"csv": ",", "tsv": "\t"}
+TABLE_FORMATS = {
+    "xlsx": {
+        "content_type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "extension": "xlsx",
+    },
+    "csv": {"content_type": "text/csv", "extension": "csv"},
+    "tsv": {"content_type": "text/tab-separated-values", "extension": "tsv"},
+}
 
 ID_ROW = 0
 TITLE_ROW = 1
@@ -72,6 +86,37 @@ def _is_required(schema, variable):
 # ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
+
+def build_table(schema, data=None, fmt="xlsx"):
+    """Return the bytes of an exported table in ``fmt`` (xlsx / csv / tsv)."""
+    if fmt == "xlsx":
+        return build_table_template(schema, data)
+    if fmt in _DELIMITERS:
+        return build_table_delimited(schema, data, _DELIMITERS[fmt]).encode("utf-8")
+    raise ValueError("Unsupported format: %s" % fmt)
+
+
+def build_table_delimited(schema, data, delimiter):
+    """Return CSV/TSV text: a variable-name header row followed by data rows.
+
+    Flat by nature -- no descriptions, validation or examples (those are
+    xlsx-only). Values are written verbatim (list values joined like the xlsx
+    export); no spreadsheet formula-injection guard is applied, so the
+    round-trip stays exact.
+    """
+    columns = _columns(schema)
+    variables = [v for v, _ in columns]
+    rows = get_data(
+        {"order": variables, "properties": {v: p for v, p in columns}}, data
+    )
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
+    writer.writerow(variables)
+    if data:
+        for row in rows:
+            writer.writerow(["" if v is None else v for v in row])
+    return output.getvalue()
+
 
 def build_table_template(schema, data=None):
     """Return the bytes of an ``.xlsx`` template for ``schema``.
@@ -309,6 +354,18 @@ def _describe_rules(prop):
 # Import
 # ---------------------------------------------------------------------------
 
+def parse_table(schema, file_obj, fmt="xlsx"):
+    """Parse an uploaded table file into a list of row dicts keyed by variable.
+
+    ``fmt`` is one of ``xlsx`` / ``csv`` / ``tsv``.
+    """
+    if fmt == "xlsx":
+        return parse_table_xlsx(schema, file_obj)
+    if fmt in _DELIMITERS:
+        return parse_table_delimited(schema, file_obj, _DELIMITERS[fmt])
+    raise ValueError("Unsupported format: %s" % fmt)
+
+
 def parse_table_xlsx(schema, file_obj, sheet_name=DATA_SHEET):
     """Parse an uploaded ``.xlsx`` into a list of row dicts keyed by variable.
 
@@ -323,22 +380,40 @@ def parse_table_xlsx(schema, file_obj, sheet_name=DATA_SHEET):
         rows = [tuple(r) for r in sheet.iter_rows(values_only=True)]
     finally:
         workbook.close()
+    return _rows_to_records(schema, rows)
 
+
+def parse_table_delimited(schema, file_obj, delimiter):
+    """Parse an uploaded CSV/TSV (variable-name header + data rows)."""
+    text = file_obj.read()
+    if isinstance(text, bytes):
+        # utf-8-sig transparently strips a BOM that Excel may have written.
+        text = text.decode("utf-8-sig")
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows = [tuple(r) for r in reader]
+    return _rows_to_records(schema, rows)
+
+
+def _rows_to_records(schema, rows):
+    """Shared row-list -> record-list logic for every import format.
+
+    Handles both the xlsx two-header-row layout (hidden id row + title row) and
+    the single-header-row CSV/TSV layout: :func:`_find_header` locates the
+    header, and a following row is only skipped when it, too, maps cleanly to
+    the schema (i.e. it is the second header row, not data).
+    """
     if not rows:
         return []
 
     header_index, col_map = _find_header(schema, rows)
     if col_map is None:
         raise ValueError(
-            "Could not find a header row matching the schema. Expected column "
-            "titles such as: %s"
-            % ", ".join(_title(v, schema["properties"][v])
-                        for v in get_cols(schema, table=False)[:5])
+            "Could not find a header row matching the schema. Expected columns "
+            "such as: %s"
+            % ", ".join(get_cols(schema, table=False)[:5])
         )
 
     data_start = header_index + 1
-    # If the row after the header ALSO maps cleanly, it's the second header row
-    # (hidden id row + visible title row) -- skip it too.
     if data_start < len(rows):
         follow = _match_row(schema, rows[data_start])
         if len(follow) >= len(col_map):
