@@ -264,6 +264,13 @@ SOCIAL_AUTH_JSONFIELD_ENABLED = True
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
+# Absolute URL Keycloak returns the browser to after ending the SSO session; it
+# must be registered as a valid post logout redirect URI on the Keycloak client.
+# When unset we use the requesting origin, which is right in dev but not behind
+# the TLS proxy (nginx does not forward X-Forwarded-Proto, so Django would build
+# an http:// URL there) -- set this in the environment for those deployments.
+POST_LOGOUT_REDIRECT_URL = os.environ.get("POST_LOGOUT_REDIRECT_URL", default=None)
+
 SOCIAL_AUTH_KEYCLOAK_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_KEY", default='client_id')
 SOCIAL_AUTH_KEYCLOAK_SECRET = os.environ.get("SOCIAL_AUTH_KEYCLOAK_SECRET", default='')
 SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY", default='')
@@ -324,6 +331,15 @@ try:
     from dnaorder.config import *
 except:
     print('no config file')
+
+# Keycloak's RP-initiated logout ("end session") endpoint.
+if not globals().get("SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL"):
+    _keycloak_auth_url = SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL.rstrip("/")
+    SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL = os.environ.get(
+        "SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL",
+        # .../protocol/openid-connect/auth -> .../protocol/openid-connect/logout
+        default=(_keycloak_auth_url.removesuffix("/auth") + "/logout") if _keycloak_auth_url else "",
+    )
 
 BIOSHARE_FILESYSTEM = os.environ.get("BIOSHARE_FILESYSTEM", default=None)
 
