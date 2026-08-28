@@ -483,10 +483,29 @@ def _coerce(value, prop):
         return number if number is not None else str(value).strip()
     if col_type == "boolean":
         return _to_bool(value)
+    if _is_multivalued(prop):
+        # Multi-value columns (multiple-choice enums, array types) are joined
+        # with ", " on export; split them back into a list so they round-trip
+        # to the shape the grid and validators expect.
+        return _split_multi(value)
     if isinstance(value, float) and value.is_integer():
         # openpyxl returns floats for integer-looking cells; avoid "12.0".
         value = int(value)
     return str(value).strip()
+
+
+def _is_multivalued(prop):
+    return bool(prop.get("multiple")) or prop.get("type") == "array"
+
+
+def _split_multi(value):
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    text = str(value).strip()
+    if not text:
+        # Return None (not []) so the required check still treats it as empty.
+        return None
+    return [part.strip() for part in text.split(",") if part.strip()]
 
 
 def _to_number(value):
