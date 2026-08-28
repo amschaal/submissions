@@ -20,6 +20,7 @@ import tablib
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
+from urllib.parse import urlencode
 
 
 def login(request):
@@ -99,10 +100,42 @@ def get_user(request):
         return Response({"message": "Not authenticated."}, status=403)
 
 
+def keycloak_logout_url(request):
+    """URL that ends the Keycloak SSO session and returns the browser to us.
+
+    Keycloak 18+ expects client_id + post_logout_redirect_uri, older releases
+    used redirect_uri; we send both so either version behaves, since each
+    ignores the parameter it does not know.
+    """
+    end_session_url = getattr(settings, "SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL", None)
+    if not end_session_url:
+        return None
+    redirect_url = getattr(
+        settings, "POST_LOGOUT_REDIRECT_URL", None
+    ) or request.build_absolute_uri("/")
+    params = urlencode(
+        {
+            "client_id": settings.SOCIAL_AUTH_KEYCLOAK_KEY,
+            "post_logout_redirect_uri": redirect_url,
+            "redirect_uri": redirect_url,
+        }
+    )
+    return "{}?{}".format(end_session_url, params)
+
+
 @api_view(["POST"])
 def logout_view(request):
+    # Django's session is only half of it: a user who signed in through
+    # Keycloak keeps their SSO session there and would be signed straight back
+    # in, so hand the SPA a URL to finish the job.  Both reads have to happen
+    # before auth_logout flushes the session.
+    keycloak_url = (
+        keycloak_logout_url(request)
+        if request.user.is_authenticated and request.user.social_auth.exists()
+        else None
+    )
     auth_logout(request)
-    return Response({"status": "success"})
+    return Response({"status": "success", "redirect_url": keycloak_url or "/"})
 
 
 @api_view(["POST"])
