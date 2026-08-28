@@ -3,7 +3,7 @@ from dnaorder.models import SubmissionType, Submission, UserEmail
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from dnaorder.validators import SamplesheetValidator
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
@@ -82,6 +82,10 @@ def login_view(request):
         return Response({"message": "Authentication failed."}, status=400)
 
 
+# The SPA calls this on boot, so it doubles as the point where we hand the
+# browser a CSRF cookie -- without it the logout POST (and any other write)
+# made right after a social login would be rejected.
+@ensure_csrf_cookie
 @api_view(["GET"])
 @csrf_exempt
 @permission_classes((AllowAny,))
