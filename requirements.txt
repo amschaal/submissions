@@ -13,7 +13,7 @@ social-auth-app-django==5.4.3
 psycopg2==2.9.12             # >=2.9.9 required by Django 5.2
 gunicorn==23.0.0             # >=23 fixes request-smuggling CVE-2024-1135 / CVE-2024-6827
 openpyxl==3.1.5
-tablib==3.9.0
+tablib==3.10.0
 xlsxwriter==3.2.9
 
 # ---- Transitive dependencies (pinned for reproducibility) ----
