@@ -164,7 +164,12 @@ def validate_data(request, type_id=None):
 def download(request, id):
     submission = Submission.objects.get(id=id)
     data = request.GET.get("data", "combined")  # samples or submission
-    format = request.GET.get("format", "xlsx")
+    # Read the export format from `export_format`, not `format`: this is a DRF
+    # @api_view, and DRF content negotiation claims a `?format=` query param
+    # (URL_FORMAT_OVERRIDE) — a value like xlsx/tsv/csv matches no configured
+    # renderer and 404s before this view runs. The list/report exports use the
+    # same `export_format` convention.
+    format = request.GET.get("export_format", "xlsx")
     format = format if format in ["xls", "xlsx", "csv", "tsv", "json"] else "xlsx"
     filename = None
 
