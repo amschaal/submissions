@@ -488,6 +488,30 @@ class ProjectIDSerializer(serializers.ModelSerializer):
         exclude = []
 #         read_only_fields = ('lab',)
         
+def note_flag(data, field):
+    # Checkbox values arrive as JSON booleans from the SPA, but form encoded posts
+    # send them as strings, where the naive truthiness check treats "false" as True.
+    value = data.get(field)
+    try:
+        return value in serializers.BooleanField.TRUE_VALUES
+    except TypeError:
+        return bool(value)
+
+def clean_emails(emails):
+    # Drop the blanks that get_submitter_emails() can return (email/pi_email are
+    # nullable) and de-duplicate case insensitively, keeping the first spelling.
+    cleaned = []
+    seen = set()
+    for email in emails:
+        if not email or not email.strip():
+            continue
+        email = email.strip()
+        if email.lower() in seen:
+            continue
+        seen.add(email.lower())
+        cleaned.append(email)
+    return cleaned
+
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         data = kwargs.get('data')
@@ -495,14 +519,21 @@ class NoteSerializer(serializers.ModelSerializer):
             submission = Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
-            data['emails'] = []
+            emails = []
+            # Never mail the submitter/PI/contacts about a private (lab only) note.
+            public = note_flag(data, 'public')
             if request.user.is_authenticated and request.user.is_staff:
-                if data.get('send_email'):
-                    data['emails'] += submission.get_submitter_emails() # submission.participant_emails
-                if data.get('email_participants'):
-                    data['emails'] += submission.get_participant_emails()
+                if note_flag(data, 'send_email') and public:
+                    emails += submission.get_submitter_emails() # submission.participant_emails
+                if note_flag(data, 'email_participants'):
+                    emails += submission.get_participant_emails()
             else:
-                data['emails'] += submission.get_participant_emails()
+                # Clients always notify the lab.  Authenticated clients may also copy
+                # the collaborators (submitter/PI/contacts) on the submission.
+                emails += submission.get_participant_emails()
+                if request.user.is_authenticated and note_flag(data, 'send_email') and public:
+                    emails += submission.get_submitter_emails()
+            data['emails'] = clean_emails(emails)
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()
