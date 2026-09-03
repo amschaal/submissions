@@ -143,14 +143,14 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
                 return instance
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
+        fields = ['id', 'prefix','lab','active', 'internal', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
         read_only_fields = ('updated',)
 
 class SimpleSubmissionTypeSerializer(SubmissionTypeSerializer):
     pass
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix', 'name', 'statuses']
+        fields = ['id', 'prefix', 'name', 'statuses', 'internal']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -362,11 +362,11 @@ class LabSerializer(serializers.ModelSerializer):
         else:
             return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
     def get_submission_types(self, obj):
-        # Only return inactive types for lab members
+        # Only return inactive or internal types for lab members
         if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
             types = obj.submission_types.all()
         else:
-            types = obj.submission_types.filter(active=True)
+            types = obj.submission_types.filter(active=True, internal=False)
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
     def get_plugins(self, instance):
         return instance.get_plugin_settings(private=False)
