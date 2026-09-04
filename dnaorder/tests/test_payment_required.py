@@ -5,7 +5,9 @@ driven: payment already captured on a submission is never thrown away (it
 stays shown, validated and editable with its stored payment plugin), and
 otherwise the submission's current type decides whether payment is collected
 at all.  Moving a submission to a different type simply applies that type's
-requirement to a submission that has no payment yet.
+requirement to a submission that has no payment yet.  Payment that was
+validated when captured is not validated or rewritten again unless the client
+actually changes it (KeepValidatedPaymentTests).
 
 The fixture labs have no payment plugin configured, so the default UC Davis
 payment serializer applies whenever payment is required.
@@ -16,6 +18,8 @@ from plugins import PluginManager
 
 #: Minimal valid payment for the default (UCD) payment serializer.
 CREDIT_CARD = {"payment_type": "Credit Card", "payment_info": ""}
+#: Valid when it was captured, invalid under today's UCD account rules.
+STALE_ACCOUNT = {"payment_type": "DaFIS", "payment_info": "3-OLDSTYLE"}
 
 
 def submission_payload(submission_type, **overrides):
@@ -183,17 +187,21 @@ class ReadSubmissionPaymentTests(PaymentRequiredFixture):
 
 
 class UpdateSubmissionPaymentTests(PaymentRequiredFixture):
-    def test_paid_submission_keeps_requiring_payment_when_type_stops(self):
+    def test_paid_submission_keeps_its_payment_when_type_stops_requiring_it(self):
         sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
         self.type_a.payment_required = False
         self.type_a.save()
+        # Editing without touching payment keeps it; changing it still validates it.
         resp = self.put(sub, submission_payload(self.type_a))
-        self.assertEqual(resp.status_code, 400, resp.content)
-        self.assertIn("payment", resp.data)
-        resp = self.put(sub, submission_payload(self.type_a, payment=CREDIT_CARD))
         self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIs(resp.data["payment_required"], True)
         sub.refresh_from_db()
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
+        resp = self.put(sub, submission_payload(
+            self.type_a, payment={"payment_type": "DaFIS", "payment_info": "bad"}
+        ))
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("payment", resp.data)
 
     def test_unpaid_submission_needs_nothing_while_type_does_not_require_payment(self):
         sub = make_submission(self.type_free)
@@ -236,13 +244,65 @@ class UpdateSubmissionPaymentTests(PaymentRequiredFixture):
     def test_moving_paid_submission_to_a_no_payment_type_keeps_its_payment(self):
         sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
         resp = self.put(sub, submission_payload(self.type_free))
-        self.assertEqual(resp.status_code, 400, resp.content)
-        self.assertIn("payment", resp.data)
-        resp = self.put(sub, submission_payload(self.type_free, payment=CREDIT_CARD))
         self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIs(resp.data["payment_required"], True)
         sub.refresh_from_db()
         self.assertEqual(sub.type_id, self.type_free.id)
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
+
+
+class KeepValidatedPaymentTests(PaymentRequiredFixture):
+    """Payment that was validated when captured is neither validated again nor
+    rewritten unless the client actually changes it."""
+
+    def setUp(self):
+        super().setUp()
+        self.sub = make_submission(self.type_a, payment=dict(STALE_ACCOUNT))
+
+    def assertPaymentKept(self, resp):
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.payment, STALE_ACCOUNT)
+
+    def test_omitted_payment_is_kept(self):
+        self.assertPaymentKept(self.put(self.sub, submission_payload(self.type_a)))
+
+    def test_emptied_payment_is_kept(self):
+        self.assertPaymentKept(self.put(self.sub, submission_payload(self.type_a, payment={})))
+
+    def test_round_tripped_payment_is_kept_without_revalidation(self):
+        # What the form does: send back exactly what the API gave it, derived
+        # display included.  A stale account string must not block the edit.
+        given = self.as_user(self.lab_a_admin).get(self.url(self.sub)).data["payment"]
+        self.assertIn("display", given)
+        self.assertPaymentKept(self.put(self.sub, submission_payload(self.type_a, payment=given)))
+
+    def test_derived_fields_are_ignored_when_comparing(self):
+        payload = submission_payload(
+            self.type_a, payment=dict(STALE_ACCOUNT, display={"anything": "else"})
+        )
+        self.assertPaymentKept(self.put(self.sub, payload))
+
+    def test_changed_payment_is_validated(self):
+        resp = self.put(self.sub, submission_payload(
+            self.type_a, payment={"payment_type": "DaFIS", "payment_info": "still-bad"}
+        ))
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("payment_info", resp.data["payment"])
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.payment, STALE_ACCOUNT)
+
+    def test_changed_payment_is_stored_when_valid(self):
+        resp = self.put(self.sub, submission_payload(self.type_a, payment=CREDIT_CARD))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.payment["payment_type"], "Credit Card")
+
+    def test_unpaid_submission_still_needs_payment(self):
+        # Nothing to keep: a paying type's submission without payment must supply it.
+        resp = self.put(self.sub_a, submission_payload(self.type_a))
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("payment", resp.data)
 
 
 class PluginValidatorTests(PaymentRequiredFixture):

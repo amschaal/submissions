@@ -11,6 +11,8 @@ from dnaorder import validators
 from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
+from rest_framework.fields import SkipField
+import copy
 import profile
 from openpyxl.cell import read_only
 from random import sample
@@ -179,6 +181,20 @@ class NoPaymentField(serializers.Field):
     def to_representation(self, value):
         return {}
 
+class KeepPaymentField(serializers.Field):
+    """Stand-in for the payment serializer when a submission's stored payment is
+    being left as it is: nothing is validated (the rules may have changed since
+    it was captured, and PPMS lookups would run again), nothing is written, and
+    reads still go through the real payment serializer."""
+    def __init__(self, payment_serializer, **kwargs):
+        kwargs.setdefault('required', False)
+        super().__init__(**kwargs)
+        self._payment_serializer = payment_serializer
+    def to_internal_value(self, data):
+        raise SkipField()
+    def to_representation(self, value):
+        return self._payment_serializer.to_representation(value)
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,instance=None,**kwargs):
         # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
@@ -261,6 +277,29 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
                 self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
+        if existing and existing.has_payment and not self.payment_changed(existing.payment, data):
+            # Payment was validated when it was captured; validating it again on
+            # an unrelated edit only adds ways to fail (rules change, PPMS
+            # lookups run again).  Leave it exactly as stored.
+            self.fields['payment'] = KeepPaymentField(self.fields['payment'])
+    def payment_changed(self, stored, data):
+        """Whether the posted payment differs from the stored one in any writable field.
+
+        Compared against what the client was given (the stored payment as the
+        payment serializer represents it), so round-tripping the form untouched
+        counts as unchanged; derived fields (display, PPMS group/user info) are
+        ignored.  An omitted or emptied payment is never a request to change it.
+        """
+        posted = data.get('payment') if data and hasattr(data, 'get') else None
+        if not posted:
+            return False
+        if not isinstance(posted, dict):
+            return True # let the payment serializer report it
+        serializer = self.fields['payment']
+        current = serializer.to_representation(copy.deepcopy(stored))
+        def normalize(value):
+            return value.strip() if isinstance(value, str) else ('' if value is None else value)
+        return any(normalize(posted.get(name)) != normalize(current.get(name)) for name, field in serializer.fields.items() if not field.read_only)
     def to_representation(self, instance):
         data = super().to_representation(instance)
         # A submission without payment data (its type did not require any, or
