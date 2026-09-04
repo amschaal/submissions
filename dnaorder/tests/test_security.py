@@ -40,9 +40,11 @@ class InjectionTests(ApiTestCase):
 class DownloadHardeningTests(ApiTestCase):
     def test_path_traversal_in_data_param_does_not_read_files(self):
         # `data` indexes a schema dict; traversal strings must not read the FS
-        # or crash with a stack trace.
+        # or crash with a stack trace.  (`export_format`, not `format`: DRF
+        # content negotiation claims `?format=` on this @api_view and 404s
+        # before the view runs.)
         resp = self.as_anon().get(
-            "/api/submissions/{}/download/?data=../../../../etc/passwd&format=csv".format(self.sub_a.id)
+            "/api/submissions/{}/download/?data=../../../../etc/passwd&export_format=csv".format(self.sub_a.id)
         )
         self.assertNotEqual(resp.status_code, 500, resp.content)
         body = resp.getvalue() if hasattr(resp, "getvalue") else resp.content
@@ -50,9 +52,10 @@ class DownloadHardeningTests(ApiTestCase):
 
     def test_format_param_is_whitelisted(self):
         resp = self.as_anon().get(
-            "/api/submissions/{}/download/?data=submission&format=../evil".format(self.sub_a.id)
+            "/api/submissions/{}/download/?data=submission&export_format=../evil".format(self.sub_a.id)
         )
         self.assertEqual(resp.status_code, 200, resp.content)  # falls back to xlsx
+        self.assertIn("spreadsheetml", resp.get("Content-Type", ""))
 
 
 class LockedSubmissionWriteBoundaryTests(ApiTestCase):

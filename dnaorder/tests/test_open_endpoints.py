@@ -35,7 +35,10 @@ class PublicSubmissionAccessTests(ApiTestCase):
             resolve(path).url_name, "download",
             "download path resolved to {!r}".format(resolve(path).url_name),
         )
-        resp = self.as_anon().get(path + "?data=submission&format=csv")
+        # The export format travels as `export_format`: download is a DRF
+        # @api_view, so a `?format=` query param is claimed by content
+        # negotiation and 404s before the view runs.
+        resp = self.as_anon().get(path + "?data=submission&export_format=csv")
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertIn("attachment", resp.get("Content-Disposition", ""))
 
