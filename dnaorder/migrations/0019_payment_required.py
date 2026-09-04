@@ -1,4 +1,5 @@
-# Payment requirement per submission type, snapshotted onto each submission.
+# Per-type payment requirement.  Submissions that already carry payment data
+# keep it regardless (see Submission.payment_required).
 
 from django.db import migrations, models
 
@@ -13,11 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='submissiontype',
             name='payment_required',
-            field=models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  The requirement is snapshotted onto each submission when it is created.'),
-        ),
-        migrations.AddField(
-            model_name='submission',
-            name='payment_required',
-            field=models.BooleanField(default=True, help_text="Snapshot of the type's payment requirement when the submission was created.  Governs whether payment is shown and validated for the life of the submission."),
+            field=models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  Submissions that already have payment information keep it regardless.'),
         ),
     ]

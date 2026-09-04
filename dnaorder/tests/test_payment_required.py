@@ -1,10 +1,11 @@
-"""SubmissionType.payment_required and the per-submission snapshot of it.
+"""SubmissionType.payment_required and how it applies to submissions.
 
-Payment is only displayed and validated when required.  The requirement is
-copied onto the submission when it is created (``Submission.payment_required``),
-so a submission keeps the arrangement it was submitted with, payment plugin or
-none at all, even if its type changes later.  Moving a submission to a
-different type is the one case where the new type's requirement applies.
+Payment is only displayed and validated when required, and the rule is data
+driven: payment already captured on a submission is never thrown away (it
+stays shown, validated and editable with its stored payment plugin), and
+otherwise the submission's current type decides whether payment is collected
+at all.  Moving a submission to a different type simply applies that type's
+requirement to a submission that has no payment yet.
 
 The fixture labs have no payment plugin configured, so the default UC Davis
 payment serializer applies whenever payment is required.
@@ -51,11 +52,13 @@ class PaymentRequiredFixture(ApiTestCase):
     def url(submission):
         return "/api/submissions/{}/".format(submission.id)
 
+    def put(self, submission, payload):
+        return self.as_user(self.lab_a_admin).put(self.url(submission), payload, format="json")
+
 
 class SubmissionTypePaymentRequiredTests(PaymentRequiredFixture):
     def test_defaults_to_required(self):
         self.assertTrue(self.type_a.payment_required)
-        self.assertTrue(self.sub_a.payment_required)
 
     def test_flag_is_exposed_wherever_types_are_served(self):
         detail = self.as_anon().get("/api/submission_types/{}/".format(self.type_free.id))
@@ -82,25 +85,28 @@ class SubmissionTypePaymentRequiredTests(PaymentRequiredFixture):
         self.type_a.refresh_from_db()
         self.assertFalse(self.type_a.payment_required)
 
-    def test_toggling_type_leaves_existing_submissions_alone(self):
+
+class EffectiveRequirementTests(PaymentRequiredFixture):
+    """Submission.payment_required: payment on record wins, else the type decides."""
+
+    def test_unpaid_submission_follows_its_type(self):
+        self.assertTrue(make_submission(self.type_a).payment_required)
+        self.assertFalse(make_submission(self.type_free).payment_required)
+
+    def test_paid_submission_requires_payment_whatever_its_type_says(self):
+        sub = make_submission(self.type_free, payment=dict(CREDIT_CARD))
+        self.assertTrue(sub.has_payment)
+        self.assertTrue(sub.payment_required)
+
+    def test_toggling_the_type_changes_unpaid_submissions_only(self):
+        unpaid = make_submission(self.type_a)
+        paid = make_submission(self.type_a, payment=dict(CREDIT_CARD))
         self.type_a.payment_required = False
         self.type_a.save()
-        self.sub_a.refresh_from_db()
-        self.assertTrue(self.sub_a.payment_required)
-
-
-class SnapshotModelTests(PaymentRequiredFixture):
-    def test_snapshot_is_taken_from_the_type_on_create(self):
-        self.assertFalse(make_submission(self.type_free).payment_required)
-        self.assertTrue(make_submission(self.type_a).payment_required)
-
-    def test_snapshot_is_not_retaken_on_later_saves(self):
-        sub = make_submission(self.type_free)
-        self.type_free.payment_required = True
-        self.type_free.save()
-        sub.save()
-        sub.refresh_from_db()
-        self.assertFalse(sub.payment_required)
+        unpaid.refresh_from_db()
+        paid.refresh_from_db()
+        self.assertFalse(unpaid.payment_required)
+        self.assertTrue(paid.payment_required)
 
 
 class CreateSubmissionPaymentTests(PaymentRequiredFixture):
@@ -114,14 +120,13 @@ class CreateSubmissionPaymentTests(PaymentRequiredFixture):
         resp = self.as_anon().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         sub = Submission.objects.get(pk=resp.data["id"])
-        self.assertTrue(sub.payment_required)
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
+        self.assertIs(resp.data["payment_required"], True)
 
     def test_no_payment_needed_when_type_does_not_require_it(self):
         resp = self.as_anon().post("/api/submissions/", submission_payload(self.type_free), format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         sub = Submission.objects.get(pk=resp.data["id"])
-        self.assertFalse(sub.payment_required)
         self.assertEqual(sub.payment, {})
         self.assertIs(resp.data["payment_required"], False)
         self.assertEqual(resp.data["payment"], {})
@@ -135,16 +140,16 @@ class CreateSubmissionPaymentTests(PaymentRequiredFixture):
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertEqual(Submission.objects.get(pk=resp.data["id"]).payment, {})
 
-    def test_snapshot_cannot_be_set_by_the_client(self):
+    def test_payment_required_in_response_is_derived_not_posted(self):
         payload = submission_payload(self.type_a, payment=CREDIT_CARD, payment_required=False)
         resp = self.as_anon().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
-        self.assertTrue(Submission.objects.get(pk=resp.data["id"]).payment_required)
+        self.assertIs(resp.data["payment_required"], True)
 
         payload = submission_payload(self.type_free, payment_required=True)
         resp = self.as_anon().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
-        self.assertFalse(Submission.objects.get(pk=resp.data["id"]).payment_required)
+        self.assertIs(resp.data["payment_required"], False)
 
 
 class ReadSubmissionPaymentTests(PaymentRequiredFixture):
@@ -162,74 +167,86 @@ class ReadSubmissionPaymentTests(PaymentRequiredFixture):
         self.assertEqual(listing.status_code, 200, listing.content)
         self.assertEqual(listing.data["results"][0]["payment"], {})
 
-    def test_paid_submission_still_returns_display(self):
-        sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
+    def test_paid_submission_returns_display_and_stays_required(self):
+        sub = make_submission(self.type_free, payment=dict(CREDIT_CARD))
         detail = self.as_user(self.lab_a_member).get(self.url(sub))
         self.assertEqual(detail.status_code, 200, detail.content)
         self.assertIs(detail.data["payment_required"], True)
         self.assertEqual(detail.data["payment"]["display"]["Payment Type"], "Credit Card")
 
+    def test_unpaid_submission_of_a_paying_type_is_required_but_empty(self):
+        # e.g. a submission that predates payment tracking.
+        detail = self.as_user(self.lab_a_member).get(self.url(self.sub_a))
+        self.assertEqual(detail.status_code, 200, detail.content)
+        self.assertIs(detail.data["payment_required"], True)
+        self.assertEqual(detail.data["payment"], {})
+
 
 class UpdateSubmissionPaymentTests(PaymentRequiredFixture):
-    def test_no_payment_submission_stays_that_way_when_type_starts_requiring_payment(self):
-        sub = make_submission(self.type_free)
-        self.type_free.payment_required = True
-        self.type_free.save()
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_free), format="json"
-        )
-        self.assertEqual(resp.status_code, 200, resp.content)
-        sub.refresh_from_db()
-        self.assertFalse(sub.payment_required)
-        self.assertEqual(sub.payment, {})
-
     def test_paid_submission_keeps_requiring_payment_when_type_stops(self):
         sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
         self.type_a.payment_required = False
         self.type_a.save()
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_a), format="json"
-        )
+        resp = self.put(sub, submission_payload(self.type_a))
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn("payment", resp.data)
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_a, payment=CREDIT_CARD), format="json"
-        )
+        resp = self.put(sub, submission_payload(self.type_a, payment=CREDIT_CARD))
         self.assertEqual(resp.status_code, 200, resp.content)
         sub.refresh_from_db()
-        self.assertTrue(sub.payment_required)
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
 
-    def test_moving_to_a_type_that_requires_payment_demands_it(self):
+    def test_unpaid_submission_needs_nothing_while_type_does_not_require_payment(self):
         sub = make_submission(self.type_free)
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_a), format="json"
-        )
+        resp = self.put(sub, submission_payload(self.type_free, payment=CREDIT_CARD))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        sub.refresh_from_db()
+        self.assertEqual(sub.payment, {})
+
+    def test_unpaid_submission_follows_type_when_it_starts_requiring_payment(self):
+        sub = make_submission(self.type_free)
+        self.type_free.payment_required = True
+        self.type_free.save()
+        resp = self.put(sub, submission_payload(self.type_free))
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn("payment", resp.data)
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_a, payment=CREDIT_CARD), format="json"
-        )
+        resp = self.put(sub, submission_payload(self.type_free, payment=CREDIT_CARD))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        sub.refresh_from_db()
+        self.assertEqual(sub.payment["payment_type"], "Credit Card")
+
+    def test_moving_unpaid_submission_to_a_type_that_requires_payment_demands_it(self):
+        sub = make_submission(self.type_free)
+        resp = self.put(sub, submission_payload(self.type_a))
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("payment", resp.data)
+        resp = self.put(sub, submission_payload(self.type_a, payment=CREDIT_CARD))
         self.assertEqual(resp.status_code, 200, resp.content)
         sub.refresh_from_db()
         self.assertEqual(sub.type_id, self.type_a.id)
-        self.assertTrue(sub.payment_required)
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
 
-    def test_moving_to_a_no_payment_type_drops_payment(self):
-        sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
-        resp = self.as_user(self.lab_a_admin).put(
-            self.url(sub), submission_payload(self.type_free, payment=CREDIT_CARD), format="json"
-        )
+    def test_moving_unpaid_submission_to_a_no_payment_type_needs_nothing(self):
+        sub = make_submission(self.type_a)
+        resp = self.put(sub, submission_payload(self.type_free))
         self.assertEqual(resp.status_code, 200, resp.content)
         sub.refresh_from_db()
         self.assertEqual(sub.type_id, self.type_free.id)
-        self.assertFalse(sub.payment_required)
         self.assertEqual(sub.payment, {})
+
+    def test_moving_paid_submission_to_a_no_payment_type_keeps_its_payment(self):
+        sub = make_submission(self.type_a, payment=dict(CREDIT_CARD))
+        resp = self.put(sub, submission_payload(self.type_free))
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("payment", resp.data)
+        resp = self.put(sub, submission_payload(self.type_free, payment=CREDIT_CARD))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        sub.refresh_from_db()
+        self.assertEqual(sub.type_id, self.type_free.id)
+        self.assertEqual(sub.payment["payment_type"], "Credit Card")
 
 
 class PluginValidatorTests(PaymentRequiredFixture):
-    def test_validators_see_the_snapshotted_payment_arrangement(self):
+    def test_validators_see_the_effective_payment_arrangement(self):
         seen = []
 
         def validator(attrs, serializer):

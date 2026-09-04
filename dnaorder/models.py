@@ -185,7 +185,7 @@ class SubmissionType(models.Model):
     updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
     internal = models.BooleanField(default=False, help_text='Internal types may only be used by lab members to create/update submissions.')
-    payment_required = models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  The requirement is snapshotted onto each submission when it is created.')
+    payment_required = models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  Submissions that already have payment information keep it regardless.')
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
@@ -310,7 +310,6 @@ class Submission(models.Model):
     received_by = models.ForeignKey(User, null=True, related_name='+', on_delete=models.PROTECT)
     data = JSONField(default=dict)
     payment = JSONField(default=dict)
-    payment_required = models.BooleanField(default=True, help_text="Snapshot of the type's payment requirement when the submission was created.  Governs whether payment is shown and validated for the life of the submission.")
     comments = models.TextField(null=True, blank=True)
     import_internal_id = models.CharField(max_length=25, null=True)
     import_data = JSONField(null=True, blank=True)
@@ -360,11 +359,6 @@ class Submission(models.Model):
         return queryset.select_related('lab').distinct() #distinct makes some queries SUPER SLOW!!
     def save(self, *args, **kwargs):
         self.lab = self.type.lab
-        if self._state.adding:
-            # Snapshot the payment requirement (like the schemas below) so the
-            # submission keeps the arrangement it was submitted with, even if
-            # its type changes later.
-            self.payment_required = self.type.payment_required
         if not self.cancelled and not self.internal_id and self.type.default_id:
             self.internal_id = self.type.default_id.generate_id(True, True)
         if not self.sample_schema:
@@ -460,6 +454,14 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
+    @property
+    def has_payment(self):
+        return bool(self.payment)
+    @property
+    def payment_required(self):
+        # Payment already captured is never thrown away: it stays shown, validated
+        # and editable.  Otherwise the type decides whether payment is collected.
+        return self.has_payment or self.type.payment_required
     def editable(self,user=None):
         # Submissions of an internal type may only be modified by lab members.
         if not self.type.can_submit(user):
