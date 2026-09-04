@@ -143,14 +143,14 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
                 return instance
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix','lab','active', 'internal', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
+        fields = ['id', 'prefix','lab','active', 'internal', 'payment_required', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
         read_only_fields = ('updated',)
 
 class SimpleSubmissionTypeSerializer(SubmissionTypeSerializer):
     pass
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix', 'name', 'statuses', 'internal']
+        fields = ['id', 'prefix', 'name', 'statuses', 'internal', 'payment_required']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -166,6 +166,19 @@ class ParticipantSerializer(UserSerializer):
         model = Participant
         fields = ['id', 'user', 'roles']
 
+class NoPaymentField(serializers.Field):
+    """Stand-in for the payment serializer when a submission does not require
+    payment: whatever the client sends is accepted and discarded, and an empty
+    object is stored and returned."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('required', False)
+        kwargs.setdefault('default', dict)
+        super().__init__(**kwargs)
+    def to_internal_value(self, data):
+        return {}
+    def to_representation(self, value):
+        return {}
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,instance=None,**kwargs):
         # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
@@ -173,6 +186,13 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if instance and hasattr(instance, 'type'):
             self._type = instance.type
             self._lab = instance.lab
+            posted_type = self.get_posted_type(data)
+            if posted_type and posted_type.id != instance.type_id:
+                # Moving the submission to a different type: it takes on that
+                # type's payment arrangement (see configure_payment_serializer).
+                self._type = posted_type
+                self._lab = posted_type.lab
+                self._retyped = True
         elif data:
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
@@ -195,19 +215,62 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             validator(attrs, self)  # Pass attrs and serializer instance
         return validated_data
     def configure_plugins(self, instance, data, lab=None):
+        # Payment first: the validators collected below may consult the payment
+        # arrangement resolved here (see PluginManager.get_submission_validators).
+        self.configure_payment_serializer(instance, data, lab)
         # Get validators from plugins
         self.plugin_validators = PluginManager().get_submission_validators(self, instance, data)
-        self.configure_payment_serializer(instance, data, lab)
+    @staticmethod
+    def get_posted_type(data):
+        # The posted type may be an id or a nested object, depending on the client.
+        type_id = data.get('type') if data and hasattr(data, 'get') else None
+        if isinstance(type_id, dict):
+            type_id = type_id.get('id')
+        if not type_id:
+            return None
+        try:
+            return SubmissionType.objects.select_related('lab').filter(id=type_id).first()
+        except (ValueError, TypeError): # e.g. a non numeric id, let the serializer report it
+            return None
     def configure_payment_serializer(self, instance, data, lab=None):
-        payment_type_id = None
-        if instance and hasattr(instance, 'type'):
-            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
-        elif lab:
+        """Pick the serializer used for the ``payment`` field.
+
+        The payment requirement is snapshotted onto the submission when it is
+        created (Submission.save), so an existing submission keeps whatever
+        arrangement it was submitted with, payment plugin or no payment at all,
+        regardless of later changes to its type.  The one exception is a
+        submission being moved to a different type (see __init__), which takes
+        on the new type's requirement.
+        """
+        existing = instance if instance and hasattr(instance, 'type') else None
+        type = getattr(self, '_type', None)
+        if existing and not getattr(self, '_retyped', False):
+            self.payment_required = existing.payment_required
+        elif type:
+            self.payment_required = type.payment_required
+        else:
+            self.payment_required = True
+        payment_type_id = (existing.payment or {}).get('plugin_id') if existing else None # get payment_type_id from submission
+        if not payment_type_id and lab:
             payment_type_id = lab.payment_type_id # get payment_type_id from lab
+        # Exposed, along with payment_required, for plugin validators.
+        self.payment_type_id = payment_type_id if self.payment_required and payment_type_id else None
+        if not self.payment_required:
+            self.fields['payment'] = NoPaymentField()
+            return
         if payment_type_id:
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
                 self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Submissions created without a payment requirement carry no payment
+        # data.  List views share one serializer across rows (so the field
+        # above is not swapped per row); make sure they return an empty object
+        # rather than dressing it up with blank display fields.
+        if 'payment' in data and not getattr(instance, 'payment_required', True):
+            data['payment'] = {}
+        return data
     def get_table_count(self,instance):
         schema = Schema(instance.submission_schema)
         tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
@@ -279,6 +342,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                         field.set(value)
                     else:
                         setattr(instance, attr, value)
+                # Snapshot semantics: unchanged unless the type changed (see __init__).
+                instance.payment_required = self.payment_required
                 instance.save()
                     
                 Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
@@ -313,7 +378,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','status','internal_id','users','sample_data', 'sample_schema']
-        read_only_fields= ['lab','data', 'participants', 'pi']
+        read_only_fields= ['lab','data', 'participants', 'pi', 'payment_required']
 
 class ImportSubmissionSerializer(WritableSubmissionSerializer):
     def __init__(self, data, *args, **kwargs):
@@ -332,7 +397,7 @@ class ImportSubmissionSerializer(WritableSubmissionSerializer):
     class Meta:
         model = Submission
         exclude = ['submitted','status','internal_id','participants']
-        read_only_fields= ['lab','data']
+        read_only_fields= ['lab','data', 'payment_required']
 
 class LabSerializer(serializers.ModelSerializer):
     submission_types = serializers.SerializerMethodField(read_only=True)

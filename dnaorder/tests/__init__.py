@@ -10,3 +10,4 @@
 #   test_security.py         - active vulnerability probes
 #   test_throttling.py       - DRF throttling is enforced (429)
 #   test_endpoint_behavior.py - endpoints behave correctly for happy paths
+#   test_payment_required.py - SubmissionType.payment_required and its per-submission snapshot
