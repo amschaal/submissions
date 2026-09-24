@@ -1,4 +1,7 @@
 from django.shortcuts import redirect
+from django.http import HttpResponse
+from django.middleware.csrf import get_token
+from django.utils.html import format_html
 from dnaorder.models import SubmissionType, Submission, UserEmail
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from dnaorder.api.serializers import UserSerializer
@@ -25,7 +28,22 @@ from urllib.parse import urlencode
 
 def login(request):
     if hasattr(settings, "SOCIAL_LOGIN_URL"):
-        return redirect(settings.SOCIAL_LOGIN_URL)
+        # social-auth-app-django >= 6 only accepts POST on its login view, so
+        # hand the browser an auto-submitting form instead of a redirect.
+        next_url = request.GET.get("next")
+        return HttpResponse(format_html(
+            '<!DOCTYPE html><html><body>'
+            '<form id="login" method="post" action="{}">'
+            '<input type="hidden" name="csrfmiddlewaretoken" value="{}">{}'
+            '<noscript><button type="submit">Log in</button></noscript>'
+            '</form>'
+            '<script>document.getElementById("login").submit();</script>'
+            '</body></html>',
+            settings.SOCIAL_LOGIN_URL,
+            get_token(request),
+            format_html('<input type="hidden" name="next" value="{}">', next_url)
+            if next_url else "",
+        ))
     print("process request", request.META)
     print("login", request.user)
     if request.user.is_authenticated:
