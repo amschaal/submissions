@@ -1,5 +1,5 @@
 from django.shortcuts import redirect
-from dnaorder.models import SubmissionType, Submission, UserEmail
+from dnaorder.models import SubmissionType, Submission
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
@@ -18,38 +18,17 @@ from dnaorder.spreadsheets import (
 )
 import tablib
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 from urllib.parse import urlencode
 
 
+# The SPA's Login button POSTs its CSRF-protected form here.  social-auth only
+# starts a login on POST, so pass it on with a 307, which has the browser
+# re-send the same POST; SOCIAL_LOGIN_URL keeps deciding where that goes.
+# Anything else (a stale SPA tab, a bookmark) just goes home.
 def login(request):
-    if hasattr(settings, "SOCIAL_LOGIN_URL"):
-        return redirect(settings.SOCIAL_LOGIN_URL)
-    print("process request", request.META)
-    print("login", request.user)
-    if request.user.is_authenticated:
-        print("is authenticated")
-        return redirect("/submissions/")
-    else:
-        print("authenticate?", request.META)
-        # Should probably be relying on REMOTE USER using the following config in apache
-        # OIDCRemoteUserClaim preferred_username
-        remote_user = request.META.get(
-            "OIDC_CLAIM_preferred_username", request.META.get("OIDC_CLAIM_email")
-        )
-        print("remote_user", remote_user)
-        if remote_user:
-            user, created = User.objects.get_or_create(username=remote_user)
-            if created:
-                print("user created")
-                user.email = request.META.get("OIDC_CLAIM_email")
-                user.last_name = request.META.get("OIDC_CLAIM_family_name")
-                user.first_name = request.META.get("OIDC_CLAIM_given_name")
-                user.save()
-                UserEmail.objects.create(user=user, email=user.email)
-            auth_login(request, user)
-            return redirect("/")
+    if request.method == "POST":
+        return redirect(settings.SOCIAL_LOGIN_URL, preserve_request=True)
     return redirect("/")
 
 
