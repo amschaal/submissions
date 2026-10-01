@@ -11,6 +11,8 @@ from dnaorder import validators
 from dnaorder.payment.ucd import UCDPaymentSerializer
 from dnaorder.payment.ppms.serializers import PPMSPaymentSerializer
 from rest_framework.exceptions import ValidationError
+from rest_framework.fields import SkipField
+import copy
 import profile
 from openpyxl.cell import read_only
 from random import sample
@@ -143,14 +145,14 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
                 return instance
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix','lab','active', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
+        fields = ['id', 'prefix','lab','active', 'internal', 'payment_required', 'default_id','name','description','statuses','sort_order','submission_schema','submission_help','updated','submission_count','confirmation_text', 'default_participants']
         read_only_fields = ('updated',)
 
 class SimpleSubmissionTypeSerializer(SubmissionTypeSerializer):
     pass
     class Meta:
         model = SubmissionType
-        fields = ['id', 'prefix', 'name', 'statuses']
+        fields = ['id', 'prefix', 'name', 'statuses', 'internal', 'payment_required']
         read_only_fields = ('updated',)
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -166,6 +168,33 @@ class ParticipantSerializer(UserSerializer):
         model = Participant
         fields = ['id', 'user', 'roles']
 
+class NoPaymentField(serializers.Field):
+    """Stand-in for the payment serializer when a submission does not require
+    payment: whatever the client sends is accepted and discarded, and an empty
+    object is stored and returned."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('required', False)
+        kwargs.setdefault('default', dict)
+        super().__init__(**kwargs)
+    def to_internal_value(self, data):
+        return {}
+    def to_representation(self, value):
+        return {}
+
+class KeepPaymentField(serializers.Field):
+    """Stand-in for the payment serializer when a submission's stored payment is
+    being left as it is: nothing is validated (the rules may have changed since
+    it was captured, and PPMS lookups would run again), nothing is written, and
+    reads still go through the real payment serializer."""
+    def __init__(self, payment_serializer, **kwargs):
+        kwargs.setdefault('required', False)
+        super().__init__(**kwargs)
+        self._payment_serializer = payment_serializer
+    def to_internal_value(self, data):
+        raise SkipField()
+    def to_representation(self, value):
+        return self._payment_serializer.to_representation(value)
+
 class WritableSubmissionSerializer(serializers.ModelSerializer):
     def __init__(self,instance=None,**kwargs):
         # @todo: Hacky, need to clean up for cases where writing submission vs instance, vs queryset
@@ -173,6 +202,12 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         if instance and hasattr(instance, 'type'):
             self._type = instance.type
             self._lab = instance.lab
+            posted_type = self.get_posted_type(data)
+            if posted_type and posted_type.id != instance.type_id:
+                # Moving the submission to a different type: that type decides
+                # whether payment is collected (see configure_payment_serializer).
+                self._type = posted_type
+                self._lab = posted_type.lab
         elif data:
             if data.get('type'):
                 self._type = SubmissionType.objects.select_related('lab').get(id=data.get('type'))
@@ -182,6 +217,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     editable = serializers.SerializerMethodField()
     payment = UCDPaymentSerializer() #PPMSPaymentSerializer()# UCDPaymentSerializer()
+    payment_required = serializers.SerializerMethodField() # the effective rule, see Submission.payment_required
     participants = ParticipantSerializer(source="participant_set", many=True, read_only=True)
     plugin_validators = []
     #temporarily disable the following serializer
@@ -195,19 +231,86 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             validator(attrs, self)  # Pass attrs and serializer instance
         return validated_data
     def configure_plugins(self, instance, data, lab=None):
+        # Payment first: the validators collected below may consult the payment
+        # arrangement resolved here (see PluginManager.get_submission_validators).
+        self.configure_payment_serializer(instance, data, lab)
         # Get validators from plugins
         self.plugin_validators = PluginManager().get_submission_validators(self, instance, data)
-        self.configure_payment_serializer(instance, data, lab)
+    @staticmethod
+    def get_posted_type(data):
+        # The posted type may be an id or a nested object, depending on the client.
+        type_id = data.get('type') if data and hasattr(data, 'get') else None
+        if isinstance(type_id, dict):
+            type_id = type_id.get('id')
+        if not type_id:
+            return None
+        try:
+            return SubmissionType.objects.select_related('lab').filter(id=type_id).first()
+        except (ValueError, TypeError): # e.g. a non numeric id, let the serializer report it
+            return None
     def configure_payment_serializer(self, instance, data, lab=None):
-        payment_type_id = None
-        if instance and hasattr(instance, 'type'):
-            payment_type_id = instance.payment.get('plugin_id') # get payment_type_id from submission
-        elif lab:
+        """Pick the serializer used for the ``payment`` field.
+
+        Payment already captured on a submission is never thrown away: it keeps
+        being shown, validated and editable with its stored payment plugin no
+        matter what its type says now.  Otherwise the type (the posted one when
+        a submission is being moved, see __init__) decides whether payment is
+        collected at all.
+        """
+        existing = instance if instance and hasattr(instance, 'type') else None
+        type = getattr(self, '_type', None)
+        if existing and existing.has_payment:
+            self.payment_required = True
+        elif type:
+            self.payment_required = type.payment_required
+        else:
+            self.payment_required = True
+        payment_type_id = (existing.payment or {}).get('plugin_id') if existing else None # get payment_type_id from submission
+        if not payment_type_id and lab:
             payment_type_id = lab.payment_type_id # get payment_type_id from lab
+        # Exposed, along with payment_required, for plugin validators.
+        self.payment_type_id = payment_type_id if self.payment_required and payment_type_id else None
+        if not self.payment_required:
+            self.fields['payment'] = NoPaymentField()
+            return
         if payment_type_id:
             payment_type_plugin = PluginManager().get_payment_type(payment_type_id)
             if payment_type_plugin and payment_type_plugin.serializer:
                 self.fields['payment'] = payment_type_plugin.serializer(plugin_id=payment_type_id, lab=self._lab, submission_data=data)
+        if existing and existing.has_payment and not self.payment_changed(existing.payment, data):
+            # Payment was validated when it was captured; validating it again on
+            # an unrelated edit only adds ways to fail (rules change, PPMS
+            # lookups run again).  Leave it exactly as stored.
+            self.fields['payment'] = KeepPaymentField(self.fields['payment'])
+    def payment_changed(self, stored, data):
+        """Whether the posted payment differs from the stored one in any writable field.
+
+        Compared against what the client was given (the stored payment as the
+        payment serializer represents it), so round-tripping the form untouched
+        counts as unchanged; derived fields (display, PPMS group/user info) are
+        ignored.  An omitted or emptied payment is never a request to change it.
+        """
+        posted = data.get('payment') if data and hasattr(data, 'get') else None
+        if not posted:
+            return False
+        if not isinstance(posted, dict):
+            return True # let the payment serializer report it
+        serializer = self.fields['payment']
+        current = serializer.to_representation(copy.deepcopy(stored))
+        def normalize(value):
+            return value.strip() if isinstance(value, str) else ('' if value is None else value)
+        return any(normalize(posted.get(name)) != normalize(current.get(name)) for name, field in serializer.fields.items() if not field.read_only)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # A submission without payment data (its type did not require any, or
+        # it predates payment tracking) returns an empty object rather than the
+        # payment serializer's blank display fields.  This also covers list
+        # views, which share one serializer across rows.
+        if 'payment' in data and not getattr(instance, 'payment', None):
+            data['payment'] = {}
+        return data
+    def get_payment_required(self, instance):
+        return instance.payment_required
     def get_table_count(self,instance):
         schema = Schema(instance.submission_schema)
         tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
@@ -362,11 +465,11 @@ class LabSerializer(serializers.ModelSerializer):
         else:
             return obj.permissions.filter(user=self._context['request'].user).values_list('permission', flat=True)
     def get_submission_types(self, obj):
-        # Only return inactive types for lab members
+        # Only return inactive or internal types for lab members
         if 'request' in self._context and obj.is_lab_member(self._context['request'].user):
             types = obj.submission_types.all()
         else:
-            types = obj.submission_types.filter(active=True)
+            types = obj.submission_types.filter(active=True, internal=False)
         return SubmissionTypeSerializer(types, many=True, read_only=True).data
     def get_plugins(self, instance):
         return instance.get_plugin_settings(private=False)
@@ -488,6 +591,30 @@ class ProjectIDSerializer(serializers.ModelSerializer):
         exclude = []
 #         read_only_fields = ('lab',)
         
+def note_flag(data, field):
+    # Checkbox values arrive as JSON booleans from the SPA, but form encoded posts
+    # send them as strings, where the naive truthiness check treats "false" as True.
+    value = data.get(field)
+    try:
+        return value in serializers.BooleanField.TRUE_VALUES
+    except TypeError:
+        return bool(value)
+
+def clean_emails(emails):
+    # Drop the blanks that get_submitter_emails() can return (email/pi_email are
+    # nullable) and de-duplicate case insensitively, keeping the first spelling.
+    cleaned = []
+    seen = set()
+    for email in emails:
+        if not email or not email.strip():
+            continue
+        email = email.strip()
+        if email.lower() in seen:
+            continue
+        seen.add(email.lower())
+        cleaned.append(email)
+    return cleaned
+
 class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         data = kwargs.get('data')
@@ -495,14 +622,21 @@ class NoteSerializer(serializers.ModelSerializer):
             submission = Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
-            data['emails'] = []
+            emails = []
+            # Never mail the submitter/PI/contacts about a private (lab only) note.
+            public = note_flag(data, 'public')
             if request.user.is_authenticated and request.user.is_staff:
-                if data.get('send_email'):
-                    data['emails'] += submission.get_submitter_emails() # submission.participant_emails
-                if data.get('email_participants'):
-                    data['emails'] += submission.get_participant_emails()
+                if note_flag(data, 'send_email') and public:
+                    emails += submission.get_submitter_emails() # submission.participant_emails
+                if note_flag(data, 'email_participants'):
+                    emails += submission.get_participant_emails()
             else:
-                data['emails'] += submission.get_participant_emails()
+                # Clients always notify the lab.  Authenticated clients may also copy
+                # the collaborators (submitter/PI/contacts) on the submission.
+                emails += submission.get_participant_emails()
+                if request.user.is_authenticated and note_flag(data, 'send_email') and public:
+                    emails += submission.get_submitter_emails()
+            data['emails'] = clean_emails(emails)
         return super(NoteSerializer, self).__init__(*args,**kwargs)
     user = serializers.SerializerMethodField()
     can_modify = serializers.SerializerMethodField()

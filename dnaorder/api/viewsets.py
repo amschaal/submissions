@@ -29,6 +29,7 @@ from dnaorder.validators import VALIDATORS_DICT,\
     VALIDATORS, SubmissionValidator
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework.response import Response
 from dnaorder.utils import get_site_institution
@@ -76,7 +77,7 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
         return super().get_throttles()
     def get_queryset(self):
         if self.detail:
-            return Submission.objects.all().select_related('lab')
+            return Submission.objects.all().select_related('lab', 'type')
         institution = get_site_institution(self.request)
         lab_id = self.request.query_params.get('lab', None)
         return Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
@@ -270,6 +271,20 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
     #     except KeyError: 
     #         # action is not set return default permission_classes
     #         return [permission() for permission in self.permission_classes]
+    def get_queryset(self):
+        # Internal types are only visible to members of the lab they belong to.
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated and user.is_superuser:
+            return queryset
+        if not user.is_authenticated:
+            return queryset.filter(internal=False)
+        membership = LabPermission.objects.filter(
+            permission_object=OuterRef('lab'),
+            user=user,
+            permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]
+        )
+        return queryset.annotate(is_lab_member=Exists(membership)).filter(Q(internal=False) | Q(is_lab_member=True))
     @action(detail=False, methods=['get'])
     def get_submission_schema(self, request):
         url = request.query_params.get('url')

@@ -1,10 +1,21 @@
 from rest_framework import permissions
+from rest_framework.exceptions import PermissionDenied
 from dnaorder.models import LabPermission, InstitutionPermission
 import sys
 
 from dnaorder.utils import get_site_institution
 
+INTERNAL_TYPE_MESSAGE = 'Only lab members may create or update submissions of an internal submission type.'
+
 class SubmissionFilePermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if view.action == 'create':
+            from dnaorder.models import Submission
+            # Files may only be attached to an internal submission by lab members.
+            submission = Submission.objects.select_related('type__lab').filter(pk=request.data.get('submission')).first()
+            if submission and not submission.type.can_submit(request.user):
+                raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
+        return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -43,13 +54,33 @@ class NotePermissions(permissions.BasePermission):
         return obj.can_modify(request.user)
     
 class SubmissionPermissions(permissions.BasePermission):
+    def get_submission_type(self, type):
+        from dnaorder.models import SubmissionType
+        # The submitted type may be an id or a nested object, depending on the serializer.
+        if isinstance(type, dict):
+            type = type.get('id')
+        if not type:
+            return None
+        try:
+            return SubmissionType.objects.select_related('lab').filter(pk=type).first()
+        except (ValueError, TypeError): # e.g. a non numeric id, let the serializer report it
+            return None
     def has_permission(self, request, view):
         if view.action == 'list' and not request.user.is_authenticated:
             return False
+        if request.method not in permissions.SAFE_METHODS:
+            # Block non lab members from submitting against an internal type.
+            data = request.data if hasattr(request.data, 'get') else {}
+            type = self.get_submission_type(data.get('type'))
+            if type and not type.can_submit(request.user):
+                raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
         return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
+        # Submissions of an internal type may only be modified by lab members.
+        if not obj.type.can_submit(request.user):
+            raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
         # May not modify file unless submission is "editable".
         return obj.editable(request.user)
 

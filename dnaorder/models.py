@@ -184,6 +184,8 @@ class SubmissionType(models.Model):
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
+    internal = models.BooleanField(default=False, help_text='Internal types may only be used by lab members to create/update submissions.')
+    payment_required = models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  Submissions that already have payment information keep it regardless.')
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
@@ -211,6 +213,11 @@ class SubmissionType(models.Model):
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
+    def can_submit(self, user):
+        # Internal types are restricted to lab members (ADMIN/MEMBER) and superusers.
+        if not self.internal:
+            return True
+        return bool(user) and self.lab.is_lab_member(user)
 
 def submission_file_path(instance, filename):
     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
@@ -447,7 +454,18 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
+    @property
+    def has_payment(self):
+        return bool(self.payment)
+    @property
+    def payment_required(self):
+        # Payment already captured is never thrown away: it stays shown, validated
+        # and editable.  Otherwise the type decides whether payment is collected.
+        return self.has_payment or self.type.payment_required
     def editable(self,user=None):
+        # Submissions of an internal type may only be modified by lab members.
+        if not self.type.can_submit(user):
+            return False
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
