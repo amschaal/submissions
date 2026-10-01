@@ -3,7 +3,7 @@
 # To refresh after an upgrade: `pip freeze > requirements.txt`, then restore these comments.
 
 # ---- Direct dependencies ----
-Django==5.2.15               # LTS, supported to Apr 2028; requires Python >=3.10 and PostgreSQL >=14
+Django==5.2.17               # LTS, supported to Apr 2028; requires Python >=3.10 and PostgreSQL >=14
 djangorestframework==3.17.2
 django-cors-headers==4.9.0
 django-filter==25.1
