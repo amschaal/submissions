@@ -113,7 +113,7 @@ def get_lab_filters(lab):
             'institute': { "type": "string", "title": "Institute", "filters": [{"label": "contains", "filter": "institute__icontains"}]},
             'comments': { "type": "string", "title": "Comments", "filters": [{"label": "contains", "filter": "comments__icontains"}]},
             'locked': { "type": "boolean", "title": "Locked", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "locked"}]},
-            'submitted__date': { "type": "date", "title": "Submission Date", "filters": [{"label": "=", "filter": "submitted__date"}, {"label": ">=", "filter": "submitted__date__gte"}, {"label": "<=", "filter": "submitted__date__lte"}]},
+            'submitted__date': { "type": "date", "title": "Submission Created", "filters": [{"label": "=", "filter": "submitted__date"}, {"label": ">=", "filter": "submitted__date__gte"}, {"label": "<=", "filter": "submitted__date__lte"}]},
             'samples_received__date': { "type": "date", "title": "Samples received date", "filters": [{"label": "=", "filter": "samples_received"}, {"label": ">=", "filter": "samples_received__gte"}, {"label": "<=", "filter": "samples_received__lte"}]},
             'samples_received': { "type": "boolean", "title": "Samples not received", "enum": ['True', 'False'], "filters": [{"label": "=", "filter": "samples_received__isnull"}]},
             'participants': { "type": "string", "title": "Is participant", "enum": [{"label": '{}, {}'.format(u.last_name, u.first_name), "value": u.pk} for u in lab.members], "filters": [{"label": "=", "filter": "participants"}]},
