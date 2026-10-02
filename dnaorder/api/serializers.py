@@ -17,7 +17,7 @@ import profile
 from openpyxl.cell import read_only
 from random import sample
 from django.db import transaction
-from schema.utils import Schema
+from schema.utils import Schema, SchemaException, normalize_layout
 from _collections import OrderedDict
 from dnaorder.utils import assign_submission
 from django.conf import settings
@@ -50,6 +50,12 @@ def translate_schema(schema):
     for v, s in schema['properties'].items():
         if not  'validators' in s :
             s['validators'] = []
+
+def validate_schema_layout(schema):
+    try:
+        return normalize_layout(schema)
+    except SchemaException as e:
+        raise ValidationError(str(e))
 
 #Allows Creation/Updating of related model fields with OBJECT instead of just id
 # Example: User = ModelRelatedField(model=User,serializer=UserSerializer,required=False,allow_null=True)
@@ -125,6 +131,8 @@ class WritableUserSerializer(serializers.ModelSerializer):
 
 class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
+    def validate_submission_schema(self, schema):
+        return validate_schema_layout(schema)
     def create(self, validated_data):
         with transaction.atomic():
             with reversion.create_revision():
@@ -315,6 +323,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
         schema = Schema(instance.submission_schema)
         tables = OrderedDict([(v,instance.submission_data.get(v)) for v in schema.table_variables])
         return {schema.variable_title(v):len(d) if isinstance(d, list) else 0 for v,d in tables.items()}
+    def validate_submission_schema(self, schema):
+        return validate_schema_layout(schema)
     def validate_submission_data(self, data={}):
         type = self.initial_data.get('type')
         schema = None
