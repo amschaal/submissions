@@ -105,3 +105,12 @@ media/
 /node_modules/
 /submissions/
 /bioshare/*
+
+*config.py
+*.env.*
+.env.dev
+.playwright-mcp
+*.csv
+*.tsv
+
+metabolomics

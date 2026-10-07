@@ -18,6 +18,7 @@ services:
     networks:
       - shared-network
       - coreomics-network
+      - coreomics-db-network
     depends_on:
       - db
   db:
@@ -27,8 +28,9 @@ services:
     environment:
       - "POSTGRES_HOST_AUTH_METHOD=trust"
     networks:
-      - coreomics-network
+      - coreomics-db-network
   spa:
+    user: "1000:1000" #changed to match dev container node user
     build:
         context: ./spa
         dockerfile: dev.Dockerfile
@@ -52,3 +54,5 @@ networks:
     external: true
   shared-network: #for communicating with other docker application APIs used by plugins.  First run: docker network create shared-network
     external: true
+  coreomics-db-network:
+    external: false

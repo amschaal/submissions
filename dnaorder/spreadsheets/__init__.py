@@ -6,7 +6,7 @@ HEADER_TITLES = [
     "ID",
     "Internal ID",
     "Type",
-    "Submitted",
+    "Created",
     "First Name",
     "Last Name",
     "Submitter Email",
