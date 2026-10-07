@@ -38,6 +38,7 @@ from dnaorder.api.filters import JSONFilter, ParticipatingFilter, ExcludeStatusF
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
+from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
 # from django.core.exceptions import ValidationError
@@ -52,6 +53,11 @@ import sys
 from dnaorder.reports import reports
 
 from schema.utils import all_submission_type_filters
+
+#: Submission viewset actions that notify the lab's webhook when they succeed.
+WEBHOOK_EVENTS = {'create': 'submission.created', **dict.fromkeys([
+    'update', 'partial_update', 'update_status', 'update_id', 'lock', 'unlock', 'cancel', 'uncancel',
+    'confirm', 'samples_received', 'revert_to_version'], 'submission.updated')}
 
 class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
     queryset = Submission.objects.select_related('type', 'pi', 'pi__institute').all()
@@ -195,6 +201,13 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
             return dataset_response(dataset, 'submissions_export', 'xlsx')
         dataset = get_submissions_dataset(submissions)
         return dataset_response(dataset, 'submissions_export', format)
+    def finalize_response(self, request, response, *args, **kwargs):
+        event = WEBHOOK_EVENTS.get(getattr(self, 'action', None))
+        if event and status.is_success(response.status_code):
+            submission = Submission.objects.select_related('lab__institution__site', 'type').filter(pk=self.kwargs.get('pk') or response.data.get('id')).first()
+            if submission:
+                notify(submission, event, self.action, request.user)
+        return super().finalize_response(request, response, *args, **kwargs)
     def perform_create(self, serializer):
         instance = serializer.save()
         emails.order_confirmed(instance, self.request)

@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 #     'material',
     'dnaorder',
     'billing',
+    'webhooks',
     'corsheaders',
     'social_django',
     'reversion'
@@ -236,6 +237,15 @@ PAYMENT_TYPES = [] # ['dnaorder.payment.ppms.serializers.PPMSPaymentType']
 
 PLUGINS = os.environ.get("PLUGINS", default="").split()
 PLUGIN_APPS = os.environ.get("PLUGIN_APPS", default="").split()
+
+# Webhooks. Space-separated Fernet keys that encrypt webhook secrets at rest: the first encrypts and
+# all decrypt, so rotate by prepending a new key. Generate one with
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+WEBHOOK_ENCRYPTION_KEYS = os.environ.get("WEBHOOK_ENCRYPTION_KEYS", default="").split()
+# Development only: allow http:// webhook URLs and private/internal hosts (e.g. sibling containers).
+WEBHOOK_ALLOW_INSECURE = int(os.environ.get("WEBHOOK_ALLOW_INSECURE", default=0))
+WEBHOOK_TIMEOUT = 5  # seconds
+WEBHOOK_ASYNC = True  # deliver from a background thread; tests turn this off
 
 
 from corsheaders.defaults import default_headers
