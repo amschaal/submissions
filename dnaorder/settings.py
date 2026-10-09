@@ -247,6 +247,16 @@ WEBHOOK_ALLOW_INSECURE = int(os.environ.get("WEBHOOK_ALLOW_INSECURE", default=0)
 WEBHOOK_TIMEOUT = 5  # seconds
 WEBHOOK_ASYNC = True  # deliver from a background thread; tests turn this off
 
+# Aggie Enterprise GraphQL API, used by the ucd_payment plugin to validate chartstrings. The OAuth client
+# credentials are issued per application by the Aggie Enterprise integration team; until all of these are
+# set, chartstrings are only checked for format.
+AGGIE_ENTERPRISE_GRAPHQL_URL = os.environ.get("AGGIE_ENTERPRISE_GRAPHQL_URL", default="")
+AGGIE_ENTERPRISE_TOKEN_URL = os.environ.get("AGGIE_ENTERPRISE_TOKEN_URL", default="")
+AGGIE_ENTERPRISE_CONSUMER_KEY = os.environ.get("AGGIE_ENTERPRISE_CONSUMER_KEY", default="")
+AGGIE_ENTERPRISE_CONSUMER_SECRET = os.environ.get("AGGIE_ENTERPRISE_CONSUMER_SECRET", default="")
+AGGIE_ENTERPRISE_SCOPE = os.environ.get("AGGIE_ENTERPRISE_SCOPE", default="")
+AGGIE_ENTERPRISE_TIMEOUT = 10  # seconds
+
 
 from corsheaders.defaults import default_headers
 CORS_ALLOW_CREDENTIALS = True
