@@ -19,7 +19,7 @@ from random import sample
 from django.db import transaction
 from schema.utils import Schema, SchemaException, normalize_layout
 from _collections import OrderedDict
-from dnaorder.utils import assign_submission
+from dnaorder.utils import assign_submission, absolute_url
 from django.conf import settings
 from plugins import PluginManager
 from dnaorder.utils import get_site_institution
@@ -564,7 +564,13 @@ class ListSubmissionSerializer(SubmissionSerializer):
         model = Submission
         exclude = ['sample_data', 'sample_schema', 'import_data']#, 'submission_schema'
         
+class SubmissionFileField(serializers.FileField):
+    # Uploads like a FileField, but reads back as the download endpoint; nginx no longer serves /media/submissions/.
+    def to_representation(self, value):
+        return absolute_url('submissionfile-download', args=[value.instance.pk]) if value else None
+
 class SubmissionFileSerializer(serializers.ModelSerializer):
+    file = SubmissionFileField()
     filename = serializers.SerializerMethodField()
     size = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()

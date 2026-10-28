@@ -38,6 +38,7 @@ from dnaorder.api.filters import JSONFilter, ParticipatingFilter, ExcludeStatusF
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
+from django.http import FileResponse, Http404
 from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
@@ -326,6 +327,8 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
+        if self.action == 'download': # the file id is enough, as a submission id is for reading the submission
+            return queryset
         submission = self.request.query_params.get('submission',None)
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
@@ -335,6 +338,14 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         if not instance.submission.editable(request.user):
             raise PermissionDenied('Only authenticated users may delete files once a submission is final.')
         return super(SubmissionFileViewSet, self).destroy(request,*args,**kwargs)
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        # Submission files are only served through here; nginx doesn't serve /media/submissions/.
+        submission_file = self.get_object()
+        try:
+            return FileResponse(submission_file.file.open('rb'), as_attachment=True, filename=submission_file.get_filename())
+        except FileNotFoundError:
+            raise Http404
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()

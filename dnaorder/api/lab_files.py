@@ -3,12 +3,11 @@ from django.db import transaction
 from django.http import FileResponse, Http404
 from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
-from rest_framework.reverse import reverse
 
 from dnaorder.api.filters import LabFilter
 from dnaorder.models import Lab, LabFile
 from dnaorder.storage import protected_storage
-from dnaorder.utils import get_site_institution
+from dnaorder.utils import absolute_url, get_site_institution
 
 
 class LabFileSerializer(serializers.ModelSerializer):
@@ -30,7 +29,7 @@ class LabFileSerializer(serializers.ModelSerializer):
             return None
 
     def get_url(self, lab_file):
-        return reverse('lab_files-download', args=[lab_file.pk], request=self.context.get('request'))
+        return absolute_url('lab_files-download', args=[lab_file.pk])
 
     def validate_lab(self, lab):
         request = self.context.get('request')
