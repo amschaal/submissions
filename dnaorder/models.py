@@ -221,6 +221,8 @@ class SubmissionType(models.Model):
         return bool(user) and self.lab.is_lab_member(user)
 
 def submission_file_path(instance, filename):
+    if not instance.submission_id: # a form file field upload, before its submission is saved; it stays here once attached
+        return 'submissions/uploads/{}/{}'.format(uuid.uuid4().hex[:12], filename)
     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
 
 def generate_id():
@@ -548,9 +550,11 @@ class Contact(models.Model):
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
-    submission = models.ForeignKey(Submission,related_name="files", on_delete=models.CASCADE)
+    submission = models.ForeignKey(Submission,related_name="files", on_delete=models.CASCADE, null=True, blank=True) # null until a form field upload's submission is saved
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    file = models.FileField(upload_to=submission_file_path)
+    file = models.FileField(upload_to=submission_file_path, max_length=255)
+    variable = models.CharField(max_length=100, null=True, blank=True) # the schema file field this was uploaded for, None for attachments
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     def get_filename(self):
         return os.path.basename(self.file.name)
     def get_size(self):

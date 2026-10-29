@@ -39,6 +39,9 @@ from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
 from django.http import FileResponse, Http404
+from django.core.files.uploadedfile import UploadedFile
+from dnaorder.file_fields import is_file_field, upload_error
+from dnaorder.api.permissions import INTERNAL_TYPE_MESSAGE
 from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
@@ -315,6 +318,8 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
 #             return response.Response({'errors':errors},status=500)
     
 
+FORM_FILE_MESSAGE = 'Files uploaded through a form field can only be replaced by editing the submission.'
+
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
     serializer_class = SubmissionFileSerializer
@@ -322,22 +327,63 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     permission_classes = [SubmissionFilePermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_throttles(self):
-        if self.action == 'create':
+        if self.action in ('create', 'field_upload'):
             return scoped(SubmissionWriteAnonThrottle)
         return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
-        if self.action == 'download': # the file id is enough, as a submission id is for reading the submission
-            return queryset
         submission = self.request.query_params.get('submission',None)
+        # The file id is enough, as a submission id is for reading the submission. Unattached form uploads
+        # can be looked up (e.g. a file field showing its file name) but not downloaded.
+        if self.action == 'download':
+            return queryset.filter(submission__isnull=False)
+        if self.action == 'retrieve' and not submission:
+            return queryset
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
         return queryset.filter(submission=submission)
+    def perform_update(self, serializer):
+        if serializer.instance.variable:
+            raise PermissionDenied(FORM_FILE_MESSAGE)
+        serializer.save()
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        if instance.variable:
+            raise PermissionDenied(FORM_FILE_MESSAGE)
         if not instance.submission.editable(request.user):
             raise PermissionDenied('Only authenticated users may delete files once a submission is final.')
         return super(SubmissionFileViewSet, self).destroy(request,*args,**kwargs)
+    @action(detail=False, methods=['post'])
+    def field_upload(self, request):
+        """Upload a file for a form's file field. Post `file`, `variable` (the field) and either `type` for a
+        new submission or `submission` for one being edited, then put the returned id in submission_data."""
+        submission_id, type_id = request.data.get('submission'), request.data.get('type')
+        if submission_id:
+            submission = Submission.objects.select_related('type__lab').filter(id=submission_id).first()
+            if not submission:
+                raise ValidationError({'submission': ['Submission not found.']})
+            if not submission.editable(request.user):
+                raise PermissionDenied('This submission can no longer be edited.')
+            schema = submission.submission_schema
+        else:
+            submission_type = SubmissionType.objects.select_related('lab').filter(id=type_id).first() if str(type_id).isdigit() else None
+            if not submission_type:
+                raise ValidationError({'type': ['A submission or submission type is required.']})
+            if not submission_type.can_submit(request.user):
+                raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
+            schema = submission_type.submission_schema
+        variable = request.data.get('variable')
+        definition = (schema or {}).get('properties', {}).get(variable) if isinstance(variable, str) else None
+        if not definition or not is_file_field(definition):
+            raise ValidationError({'variable': ['Not a file field.']})
+        upload = request.data.get('file')
+        if not isinstance(upload, UploadedFile):
+            raise ValidationError({'file': ['No file was uploaded.']})
+        error = upload_error(definition, upload.name, upload.size)
+        if error:
+            raise ValidationError({'file': [error]})
+        submission_file = SubmissionFile.objects.create(file=upload, variable=variable, uploaded_by=request.user if request.user.is_authenticated else None)
+        return Response(self.get_serializer(submission_file).data, status=status.HTTP_201_CREATED)
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
         # Submission files are only served through here; nginx doesn't serve /media/submissions/.

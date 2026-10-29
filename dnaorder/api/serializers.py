@@ -20,6 +20,7 @@ from django.db import transaction
 from schema.utils import Schema, SchemaException, normalize_layout
 from _collections import OrderedDict
 from dnaorder.utils import assign_submission, absolute_url
+from dnaorder.file_fields import attach_uploads, template_errors, validate_file_fields
 from django.conf import settings
 from plugins import PluginManager
 from dnaorder.utils import get_site_institution
@@ -133,6 +134,13 @@ class SubmissionTypeSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True)
     def validate_submission_schema(self, schema):
         return validate_schema_layout(schema)
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        lab = attrs.get('lab') or getattr(self.instance, 'lab', None)
+        errors = template_errors(attrs['submission_schema'], lab) if 'submission_schema' in attrs else []
+        if errors:
+            raise serializers.ValidationError({'submission_schema': errors})
+        return attrs
     def create(self, validated_data):
         with transaction.atomic():
             with reversion.create_revision():
@@ -338,7 +346,11 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             self._submission_errors, self._submission_warnings = validator.validate()
             if len(self._submission_errors):
                 raise serializers.ValidationError(self._submission_errors)
-            return validator.cleaned()
+            cleaned = validator.cleaned()
+            file_errors, self._pending_uploads = validate_file_fields(schema, cleaned, self.instance)
+            if file_errors:
+                raise serializers.ValidationError(file_errors)
+            return cleaned
         return data
     def validate_import_data(self, data=None):
         if data:
@@ -368,6 +380,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     validated_data['import_request'] = import_request
                 validated_data['lab'] = self._type.lab
                 submission = Submission.objects.create(**validated_data)
+                attach_uploads(submission, getattr(self, '_pending_uploads', []))
                 for contact in contacts:
                     Contact.objects.create(submission=submission, **contact)
                 assign_submission(submission)
@@ -393,6 +406,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                     else:
                         setattr(instance, attr, value)
                 instance.save()
+                attach_uploads(instance, getattr(self, '_pending_uploads', []))
                     
                 Contact.objects.filter(submission=instance).exclude(id__in=[c.get('id') for c in contacts if c.get('id', False)]).delete()
                 for c in contacts:
@@ -567,7 +581,9 @@ class ListSubmissionSerializer(SubmissionSerializer):
 class SubmissionFileField(serializers.FileField):
     # Uploads like a FileField, but reads back as the download endpoint; nginx no longer serves /media/submissions/.
     def to_representation(self, value):
-        return absolute_url('submissionfile-download', args=[value.instance.pk]) if value else None
+        if not value or not value.instance.submission_id: # unattached form uploads aren't downloadable
+            return None
+        return absolute_url('submissionfile-download', args=[value.instance.pk])
 
 class SubmissionFileSerializer(serializers.ModelSerializer):
     file = SubmissionFileField()
@@ -582,7 +598,9 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         return instance.formatted_date()
     class Meta:
         model = SubmissionFile
-        exclude = []
+        exclude = ['uploaded_by']
+        read_only_fields = ['variable'] # set by field_upload; attachments have none
+        extra_kwargs = {'submission': {'required': True, 'allow_null': False}} # only form field uploads start unattached
 
 class ImportSerializer(serializers.ModelSerializer):
     submissions = serializers.SerializerMethodField()
