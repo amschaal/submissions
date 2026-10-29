@@ -30,7 +30,6 @@ urlpatterns = [
     re_path(r'^admin/', admin.site.urls),
     re_path(r'^api/submissions/(?P<id>[0-9a-f-]+)/download/$', views.download, name='download'),
     re_path(r'^api/', include(api_urlpatterns)),
-    re_path(r'^api2/', include(api_urlpatterns)), #delete this, just testing CI/CD
     re_path(r'^api/billing/', include(billing_urlpatterns)),
     re_path(r'^api/validate/$', views.validate_data, name='validate'),
     re_path(r'^api/login/$', views.login_view, name='api_login'),

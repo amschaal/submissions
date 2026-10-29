@@ -5,6 +5,7 @@ from dnaorder.api.viewsets import PIInstitutionViewSet, PIViewSet, SubmissionVie
     TermViewSet, ImportViewSet, InstitutionViewSet, UserEmailViewSet,\
     PluginViewSet
 from webhooks.api import WebhookViewSet
+from dnaorder.api.lab_files import LabFileViewSet
 
 router = routers.SimpleRouter()
 router.register(r'submissions', SubmissionViewSet)
@@ -25,6 +26,7 @@ router.register(r'plugins', PluginViewSet, basename='plugins')
 router.register(r'groups', PIViewSet, basename='pis')
 router.register(r'group_institutions', PIInstitutionViewSet, basename='group_institutions')
 router.register(r'webhooks', WebhookViewSet, basename='webhooks')
+router.register(r'lab_files', LabFileViewSet, basename='lab_files')
 
 
 urlpatterns = router.urls
