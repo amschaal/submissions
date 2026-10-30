@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 import uuid
 from django.utils import timezone
 import re
@@ -14,6 +14,7 @@ from django.contrib.sites.models import Site
 from django.conf import settings
 from django.db.models.query_utils import Q
 from dnaorder.utils import get_lab_uri
+from dnaorder.storage import protected_storage
 from plugins import PluginManager
 from django.utils.module_loading import import_string
 
@@ -184,6 +185,8 @@ class SubmissionType(models.Model):
     updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User,null=True,blank=True, on_delete=models.PROTECT)
     active = models.BooleanField(default=True)
+    internal = models.BooleanField(default=False, help_text='Internal types may only be used by lab members to create/update submissions.')
+    payment_required = models.BooleanField(default=True, help_text='Require payment information on submissions of this type.  Submissions that already have payment information keep it regardless.')
     name = models.CharField(max_length=100)
     description = models.TextField(null=True,blank=True)
     sort_order = models.PositiveIntegerField(default=1)
@@ -211,8 +214,15 @@ class SubmissionType(models.Model):
     @property
     def excluded_fields(self):
         return [field.strip() for field in self.exclude_fields.split(',')] if self.exclude_fields else []
+    def can_submit(self, user):
+        # Internal types are restricted to lab members (ADMIN/MEMBER) and superusers.
+        if not self.internal:
+            return True
+        return bool(user) and self.lab.is_lab_member(user)
 
 def submission_file_path(instance, filename):
+    if not instance.submission_id: # a form file field upload, before its submission is saved; it stays here once attached
+        return 'submissions/uploads/{}/{}'.format(uuid.uuid4().hex[:12], filename)
     return 'submissions/{date:%Y}/{date:%m}/{submission_id}/{filename}'.format(date=instance.submission.submitted,submission_id=instance.submission.id,filename=filename)
 
 def generate_id():
@@ -447,7 +457,18 @@ class Submission(models.Model):
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
+    @property
+    def has_payment(self):
+        return bool(self.payment)
+    @property
+    def payment_required(self):
+        # Payment already captured is never thrown away: it stays shown, validated
+        # and editable.  Otherwise the type decides whether payment is collected.
+        return self.has_payment or self.type.payment_required
     def editable(self,user=None):
+        # Submissions of an internal type may only be modified by lab members.
+        if not self.type.can_submit(user):
+            return False
         if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
             return True
         return not self.locked
@@ -529,9 +550,11 @@ class Contact(models.Model):
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)
-    submission = models.ForeignKey(Submission,related_name="files", on_delete=models.CASCADE)
+    submission = models.ForeignKey(Submission,related_name="files", on_delete=models.CASCADE, null=True, blank=True) # null until a form field upload's submission is saved
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    file = models.FileField(upload_to=submission_file_path)
+    file = models.FileField(upload_to=submission_file_path, max_length=255)
+    variable = models.CharField(max_length=100, null=True, blank=True) # the schema file field this was uploaded for, None for attachments
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     def get_filename(self):
         return os.path.basename(self.file.name)
     def get_size(self):
@@ -545,6 +568,51 @@ class SubmissionFile(models.Model):
         return self.uploaded_at.strftime('%x %X')
     class Meta:
         ordering = ['id']
+
+def lab_file_path(instance, filename):
+    # The random directory keeps paths unguessable and lets two files share a name.
+    return 'lab_files/{}/{}/{}'.format(instance.lab_id, uuid.uuid4().hex, filename)
+
+class LabFileQuerySet(models.QuerySet):
+    def for_lab_staff(self, user, institution):
+        """All files (internal or not) of labs where the user holds any lab permission;
+        every lab's files for institution admins/managers and superusers."""
+        if not user.is_authenticated:
+            return self.none()
+        queryset = self.filter(lab__institution=institution)
+        if user.is_superuser or institution.permissions.filter(user=user).exists():
+            return queryset
+        return queryset.filter(lab__in=Lab.objects.filter(permissions__user=user))
+    def visible_to(self, user, institution):
+        """Files the user may fetch by id: any public file, plus for_lab_staff()."""
+        return self.filter(lab__institution=institution, internal=False) | self.for_lab_staff(user, institution)
+
+class LabFile(models.Model):
+    """A file a lab offers for download, e.g. a template for a submission form field.
+    Public files are fetched by id only; just lab staff can list them."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='files')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    file = models.FileField(storage=protected_storage, upload_to=lab_file_path, max_length=255)
+    internal = models.BooleanField(default=False) # only downloadable by users with a lab permission
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    objects = LabFileQuerySet.as_manager()
+    class Meta:
+        ordering = ['lab', 'name']
+    def __str__(self):
+        return '{} / {}'.format(self.lab, self.name)
+    @property
+    def filename(self):
+        return os.path.basename(self.file.name)
+
+@receiver(signals.post_delete, sender=LabFile)
+def delete_lab_file(sender, instance, **kwargs):
+    name = instance.file.name
+    if name:
+        transaction.on_commit(lambda: protected_storage.delete(name))
 
 # class Validator(models.Model):
 #     field_id = models.CharField(max_length=30)

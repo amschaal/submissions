@@ -128,6 +128,11 @@ class PluginManager():
         return list(itertools.chain.from_iterable([plugin.FILTER_CLASSES for plugin in self.__instance.plugins.values()]))
     def get_submission_validators(self, serializer, instance, data):
         # TODO: filter validators by lab or submission type by using serializer
+        # Validators are called as validator(attrs, serializer).  The serializer
+        # exposes the submission's effective payment arrangement (payment already
+        # captured, else its type's requirement) as serializer.payment_required
+        # and serializer.payment_type_id, so billing related checks can be
+        # skipped when no payment is required.
         validators = self.__instance.submission_validators.values()
         return self.__instance.submission_validators.values()
 

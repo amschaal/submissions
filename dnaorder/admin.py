@@ -1,6 +1,6 @@
 from django.contrib import admin
 from dnaorder.models import SubmissionType, Submission, ProjectID,\
-    Lab, Vocabulary, Term, Institution, PI, PIInstitution
+    Lab, Vocabulary, Term, Institution, PI, PIInstitution, LabFile
 from reversion.admin import VersionAdmin
 # from dnaorder.forms import ValidatorForm
 
@@ -25,3 +25,7 @@ class SubmissionAdmin(VersionAdmin):
 @admin.register(SubmissionType)
 class SubmissionTypeAdmin(VersionAdmin):
     pass
+@admin.register(LabFile)
+class LabFileAdmin(admin.ModelAdmin):
+    list_display = ('name', 'lab', 'internal', 'modified', 'uploaded_by')
+    list_filter = ('internal', 'lab')

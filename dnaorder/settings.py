@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 #     'material',
     'dnaorder',
     'billing',
+    'webhooks',
     'corsheaders',
     'social_django',
     'reversion'
@@ -229,6 +230,8 @@ MEDIA_URL = BASE_URI + '/media/'
 FILES_ROOT = os.environ.get("FILES_ROOT", default=BASE_DIR) #let another path outside app folder be used, such as "/data" so you can mount a network filesystem
 STATIC_ROOT = os.path.join(FILES_ROOT,'static')
 MEDIA_ROOT = os.path.join(FILES_ROOT,'media')
+PROTECTED_MEDIA_ROOT = os.path.join(FILES_ROOT,'protected') # not served by nginx; downloaded through permission checked views
+LAB_FILE_MAX_UPLOAD_MB = int(os.environ.get("LAB_FILE_MAX_UPLOAD_MB", default=50)) # keep <= nginx client_max_body_size
 
 LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 
@@ -236,6 +239,25 @@ PAYMENT_TYPES = [] # ['dnaorder.payment.ppms.serializers.PPMSPaymentType']
 
 PLUGINS = os.environ.get("PLUGINS", default="").split()
 PLUGIN_APPS = os.environ.get("PLUGIN_APPS", default="").split()
+
+# Webhooks. Space-separated Fernet keys that encrypt webhook secrets at rest: the first encrypts and
+# all decrypt, so rotate by prepending a new key. Generate one with
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+WEBHOOK_ENCRYPTION_KEYS = os.environ.get("WEBHOOK_ENCRYPTION_KEYS", default="").split()
+# Development only: allow http:// webhook URLs and private/internal hosts (e.g. sibling containers).
+WEBHOOK_ALLOW_INSECURE = int(os.environ.get("WEBHOOK_ALLOW_INSECURE", default=0))
+WEBHOOK_TIMEOUT = 5  # seconds
+WEBHOOK_ASYNC = True  # deliver from a background thread; tests turn this off
+
+# Aggie Enterprise GraphQL API, used by the ucd_payment plugin to validate chartstrings. The OAuth client
+# credentials are issued per application by the Aggie Enterprise integration team; until all of these are
+# set, chartstrings are only checked for format.
+AGGIE_ENTERPRISE_GRAPHQL_URL = os.environ.get("AGGIE_ENTERPRISE_GRAPHQL_URL", default="")
+AGGIE_ENTERPRISE_TOKEN_URL = os.environ.get("AGGIE_ENTERPRISE_TOKEN_URL", default="")
+AGGIE_ENTERPRISE_CONSUMER_KEY = os.environ.get("AGGIE_ENTERPRISE_CONSUMER_KEY", default="")
+AGGIE_ENTERPRISE_CONSUMER_SECRET = os.environ.get("AGGIE_ENTERPRISE_CONSUMER_SECRET", default="")
+AGGIE_ENTERPRISE_SCOPE = os.environ.get("AGGIE_ENTERPRISE_SCOPE", default="")
+AGGIE_ENTERPRISE_TIMEOUT = 10  # seconds
 
 
 from corsheaders.defaults import default_headers
@@ -263,6 +285,13 @@ SOCIAL_AUTH_JSONFIELD_ENABLED = True
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+# Absolute URL Keycloak returns the browser to after ending the SSO session; it
+# must be registered as a valid post logout redirect URI on the Keycloak client.
+# When unset we use the requesting origin, which is right in dev but not behind
+# the TLS proxy (nginx does not forward X-Forwarded-Proto, so Django would build
+# an http:// URL there) -- set this in the environment for those deployments.
+POST_LOGOUT_REDIRECT_URL = os.environ.get("POST_LOGOUT_REDIRECT_URL", default=None)
 
 SOCIAL_AUTH_KEYCLOAK_KEY = os.environ.get("SOCIAL_AUTH_KEYCLOAK_KEY", default='client_id')
 SOCIAL_AUTH_KEYCLOAK_SECRET = os.environ.get("SOCIAL_AUTH_KEYCLOAK_SECRET", default='')
@@ -324,6 +353,15 @@ try:
     from dnaorder.config import *
 except:
     print('no config file')
+
+# Keycloak's RP-initiated logout ("end session") endpoint.
+if not globals().get("SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL"):
+    _keycloak_auth_url = SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL.rstrip("/")
+    SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL = os.environ.get(
+        "SOCIAL_AUTH_KEYCLOAK_END_SESSION_URL",
+        # .../protocol/openid-connect/auth -> .../protocol/openid-connect/logout
+        default=(_keycloak_auth_url.removesuffix("/auth") + "/logout") if _keycloak_auth_url else "",
+    )
 
 BIOSHARE_FILESYSTEM = os.environ.get("BIOSHARE_FILESYSTEM", default=None)
 
