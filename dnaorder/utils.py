@@ -21,3 +21,8 @@ def assign_submission(submission):
 
 def get_lab_uri(lab):
     return 'https://{}'.format(lab.institution.site.domain)
+
+def absolute_url(view_name, args=None):
+    # Based on BASE_URI like MEDIA_URL: URLs built from the request come out as http:// behind the TLS terminating proxy.
+    from django.urls import reverse
+    return settings.BASE_URI.rstrip('/') + reverse(view_name, args=args)

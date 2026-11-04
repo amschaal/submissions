@@ -30,12 +30,16 @@ def schema_to_filters(schema):
             table, table_definition = v, definition
             for v, definition in table_definition['schema']['properties'].items():
                 v = '{}__{}'.format(table, v)
+                if definition.get('format') == 'file': # values are upload ids, nothing to search on
+                    continue
                 if definition['type'] == 'string':
                     filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': [{'label':'=', 'filter': 'submission_data__{}__contains'.format(v)}]}
                     if definition.get('enum'):
                         filters[v]['enum'] = definition.get('enum')
                 elif definition['type'] == 'number':
                     filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': [{'label':'=', 'filter': 'submission_data__{}__contains'.format(v)}]}
+        elif definition.get('format') == 'file': # values are upload ids, nothing to search on
+            continue
         elif definition['type'] == 'string':
             filters[v] = {'variable': v, 'type': definition['type'], 'title': definition.get('title',v), 'filters': [{'label':'=', 'filter': 'submission_data__{}'.format(v)}, {'label': 'contains', 'filter': 'submission_data__{}__icontains'.format(v)}]}
             if definition.get('enum'):

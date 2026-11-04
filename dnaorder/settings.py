@@ -230,6 +230,8 @@ MEDIA_URL = BASE_URI + '/media/'
 FILES_ROOT = os.environ.get("FILES_ROOT", default=BASE_DIR) #let another path outside app folder be used, such as "/data" so you can mount a network filesystem
 STATIC_ROOT = os.path.join(FILES_ROOT,'static')
 MEDIA_ROOT = os.path.join(FILES_ROOT,'media')
+PROTECTED_MEDIA_ROOT = os.path.join(FILES_ROOT,'protected') # not served by nginx; downloaded through permission checked views
+LAB_FILE_MAX_UPLOAD_MB = int(os.environ.get("LAB_FILE_MAX_UPLOAD_MB", default=50)) # keep <= nginx client_max_body_size
 
 LAB_EMAIL = os.environ.get("LAB_EMAIL", default='example@coreomics.com')
 

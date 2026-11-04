@@ -26,7 +26,10 @@ from dnaorder import emails
 from dnaorder.spreadsheets import dataset_response, get_submissions_dataset, get_submissions_dataset_full_xlsx
 # from dnaorder.views import submission
 from dnaorder.validators import VALIDATORS_DICT,\
-    VALIDATORS, SubmissionValidator
+    VALIDATORS, SubmissionValidator, SamplesheetValidator
+from dnaorder.spreadsheets.tables import build_table, parse_table, TABLE_FORMATS
+from django.http import HttpResponse
+import json
 from django.contrib.auth.models import User
 from django.db.models.aggregates import Count
 from django.db.models import Exists, OuterRef, Q
@@ -38,6 +41,10 @@ from dnaorder.api.filters import JSONFilter, ParticipatingFilter, ExcludeStatusF
 from dnaorder.import_utils import import_submission_url, export_submission,\
     get_submission_schema
 from django.conf import settings
+from django.http import FileResponse, Http404
+from django.core.files.uploadedfile import UploadedFile
+from dnaorder.file_fields import is_file_field, upload_error
+from dnaorder.api.permissions import INTERNAL_TYPE_MESSAGE
 from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
@@ -314,6 +321,8 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
 #             return response.Response({'errors':errors},status=500)
     
 
+FORM_FILE_MESSAGE = 'Files uploaded through a form field can only be replaced by editing the submission.'
+
 class SubmissionFileViewSet(viewsets.ModelViewSet):
     queryset = SubmissionFile.objects.all()
     serializer_class = SubmissionFileSerializer
@@ -321,20 +330,71 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     permission_classes = [SubmissionFilePermissions]
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_throttles(self):
-        if self.action == 'create':
+        if self.action in ('create', 'field_upload'):
             return scoped(SubmissionWriteAnonThrottle)
         return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
+        # The file id is enough, as a submission id is for reading the submission. Unattached form uploads
+        # can be looked up (e.g. a file field showing its file name) but not downloaded.
+        if self.action == 'download':
+            return queryset.filter(submission__isnull=False)
+        if self.action == 'retrieve' and not submission:
+            return queryset
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
         return queryset.filter(submission=submission)
+    def perform_update(self, serializer):
+        if serializer.instance.variable:
+            raise PermissionDenied(FORM_FILE_MESSAGE)
+        serializer.save()
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        if instance.variable:
+            raise PermissionDenied(FORM_FILE_MESSAGE)
         if not instance.submission.editable(request.user):
             raise PermissionDenied('Only authenticated users may delete files once a submission is final.')
         return super(SubmissionFileViewSet, self).destroy(request,*args,**kwargs)
+    @action(detail=False, methods=['post'])
+    def field_upload(self, request):
+        """Upload a file for a form's file field. Post `file`, `variable` (the field) and either `type` for a
+        new submission or `submission` for one being edited, then put the returned id in submission_data."""
+        submission_id, type_id = request.data.get('submission'), request.data.get('type')
+        if submission_id:
+            submission = Submission.objects.select_related('type__lab').filter(id=submission_id).first()
+            if not submission:
+                raise ValidationError({'submission': ['Submission not found.']})
+            if not submission.editable(request.user):
+                raise PermissionDenied('This submission can no longer be edited.')
+            schema = submission.submission_schema
+        else:
+            submission_type = SubmissionType.objects.select_related('lab').filter(id=type_id).first() if str(type_id).isdigit() else None
+            if not submission_type:
+                raise ValidationError({'type': ['A submission or submission type is required.']})
+            if not submission_type.can_submit(request.user):
+                raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
+            schema = submission_type.submission_schema
+        variable = request.data.get('variable')
+        definition = (schema or {}).get('properties', {}).get(variable) if isinstance(variable, str) else None
+        if not definition or not is_file_field(definition):
+            raise ValidationError({'variable': ['Not a file field.']})
+        upload = request.data.get('file')
+        if not isinstance(upload, UploadedFile):
+            raise ValidationError({'file': ['No file was uploaded.']})
+        error = upload_error(definition, upload.name, upload.size)
+        if error:
+            raise ValidationError({'file': [error]})
+        submission_file = SubmissionFile.objects.create(file=upload, variable=variable, uploaded_by=request.user if request.user.is_authenticated else None)
+        return Response(self.get_serializer(submission_file).data, status=status.HTTP_201_CREATED)
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        # Submission files are only served through here; nginx doesn't serve /media/submissions/.
+        submission_file = self.get_object()
+        try:
+            return FileResponse(submission_file.file.open('rb'), as_attachment=True, filename=submission_file.get_filename())
+        except FileNotFoundError:
+            raise Http404
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
@@ -467,6 +527,102 @@ class ValidatorViewSet(viewsets.ViewSet):
         VALIDATORS_DICT.get(pk)
     def list(self, request):
         return response.Response([v.serialize() for v in VALIDATORS])
+
+class TableImportViewSet(viewsets.ViewSet):
+    """XLSX round-trip for the table (list-of-objects) grid.
+
+    Two ways to supply the table, in priority order:
+
+    * ``schema`` (+ ``data`` for the template) in the request body -- the
+      stateless path used by the grid, which has the live (possibly unsaved)
+      schema and in-progress rows on hand.
+    * ``submission`` id + ``table`` variable -- lets a caller that only has a
+      submission (a direct download link, an external script) omit the schema
+      and rows; the server uses that submission's snapshotted table schema and
+      saved rows. Body ``schema``/``data`` still win when both are provided.
+
+    Submission entry is open by design, so these mirror that with ``AllowAny``.
+    """
+    permission_classes = (AllowAny,)
+
+    def _get_schema(self, request):
+        schema = request.data.get('schema') or request.data.get('sample_schema')
+        if isinstance(schema, str):
+            schema = json.loads(schema)
+        return schema
+
+    def _submission_context(self, request):
+        """Resolve ``(schema, saved_rows)`` from an optional submission+table.
+
+        Returns ``(None, None)`` when no ``submission``/``table`` is supplied (or
+        it can't be resolved), so the stateless schema-in-body path still runs.
+        """
+        submission_id = request.data.get('submission')
+        table = request.data.get('table')
+        if not (submission_id and table):
+            return None, None
+        try:
+            submission = Submission.objects.get(id=submission_id)
+        except Submission.DoesNotExist:
+            return None, None
+        table_def = (submission.submission_schema or {}).get('properties', {}).get(table) or {}
+        return table_def.get('schema'), (submission.submission_data or {}).get(table) or []
+
+    def _get_format(self, request, upload=None, default='xlsx'):
+        """Resolve the file format from an explicit ``format`` param, falling
+        back to the uploaded file's extension, then to ``default``."""
+        fmt = (request.data.get('format') or '').lower()
+        if not fmt and upload is not None:
+            name = getattr(upload, 'name', '') or ''
+            ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+            if ext in TABLE_FORMATS:
+                fmt = ext
+        return fmt or default
+
+    @action(detail=False, methods=['post'])
+    def template(self, request):
+        schema, saved_rows = self._submission_context(request)
+        schema = self._get_schema(request) or schema
+        if not schema or 'properties' not in schema:
+            return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        fmt = self._get_format(request)
+        if fmt not in TABLE_FORMATS:
+            return response.Response({'detail': 'Unsupported format "{}".'.format(fmt)}, status=status.HTTP_400_BAD_REQUEST)
+        # Prefer live rows from the body (unsaved edits); fall back to the
+        # submission's saved rows when only a submission id was given.
+        data = request.data.get('data')
+        if data is None:
+            data = saved_rows or []
+        if isinstance(data, str):
+            data = json.loads(data)
+        content = build_table(schema, data, fmt)
+        http_response = HttpResponse(content, content_type=TABLE_FORMATS[fmt]['content_type'])
+        http_response['Content-Disposition'] = 'attachment; filename=table_template.{}'.format(TABLE_FORMATS[fmt]['extension'])
+        return http_response
+
+    @action(detail=False, methods=['post'])
+    def parse(self, request):
+        submission_schema, _saved_rows = self._submission_context(request)
+        schema = self._get_schema(request) or submission_schema
+        upload = request.FILES.get('file')
+        if not schema or 'properties' not in schema:
+            return response.Response({'detail': 'A valid table schema is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not upload:
+            return response.Response({'detail': 'No file was uploaded (expected multipart field "file").'}, status=status.HTTP_400_BAD_REQUEST)
+        fmt = self._get_format(request, upload)
+        if fmt not in TABLE_FORMATS:
+            return response.Response({'detail': 'Unsupported format "{}".'.format(fmt)}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = parse_table(schema, upload, fmt)
+        except Exception as e:
+            return response.Response({'detail': 'Could not parse the file: {}'.format(e)}, status=status.HTTP_400_BAD_REQUEST)
+        result = {'data': data}
+        validate = request.data.get('validate', True)
+        if validate not in (False, 'false', '0', 0):
+            errors, warnings = SamplesheetValidator(schema, data).validate()
+            result['errors'] = errors
+            result['warnings'] = warnings
+        return response.Response(result)
 
 class DraftViewSet(viewsets.ModelViewSet):
     queryset = Draft.objects.all().order_by('-updated')

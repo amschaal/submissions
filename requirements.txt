@@ -14,6 +14,7 @@ psycopg2==2.9.12             # >=2.9.9 required by Django 5.2
 gunicorn==23.0.0             # >=23 fixes request-smuggling CVE-2024-1135 / CVE-2024-6827
 openpyxl==3.1.5
 tablib==3.10.0
+xlsxwriter==3.2.9            # table xlsx export (dnaorder/spreadsheets/tables.py)
 cryptography==50.0.0         # webhook secrets (Fernet)
 requests==2.34.2             # webhook delivery
 
