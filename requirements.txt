@@ -32,6 +32,6 @@ pycparser==2.23
 PyJWT==2.15.0
 python3-openid==3.2.0
 requests-oauthlib==2.0.0
-social-auth-core==5.0.2
+social-auth-core==6.2.0
 sqlparse==0.6.0
 urllib3==2.8.0
