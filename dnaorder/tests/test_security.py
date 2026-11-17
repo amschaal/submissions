@@ -8,8 +8,6 @@ A handful of tests are marked ``SECURITY REVIEW`` in their docstring: they
 assert the *current* behavior (so the suite stays green) while documenting a
 posture that the team may want to tighten.  These are the items to look at.
 """
-from django.test import override_settings
-
 from dnaorder.tests.base import ApiTestCase, make_project_id
 
 
@@ -143,6 +141,19 @@ class InfoDisclosureTests(ApiTestCase):
         self.assertNotIn(self.sub_a.id.encode(), body)
         self.assertNotIn(self.sub_b.id.encode(), body)
 
+    def test_drafts_cannot_be_listed(self):
+        # Drafts hold whole form submissions (contacts, file field upload ids) and have no owner, so they
+        # are only reachable by id. Listing them would expose everyone's drafts.
+        resp = self.as_anon().post("/api/drafts/", {"data": {"x": 1}}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        draft_id = resp.data["id"]
+        self.assertEqual(self.as_user(self.outsider).get("/api/drafts/").status_code, 405)
+        self.assertEqual(self.as_user(self.superuser).get("/api/drafts/").status_code, 405)
+        resp = self.as_anon().get("/api/drafts/{}/".format(draft_id))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["data"], {"x": 1})
+        self.assertEqual(self.as_user(self.superuser).delete("/api/drafts/{}/".format(draft_id)).status_code, 405)
+
 
 class DocumentedBehaviorTests(ApiTestCase):
     """SECURITY REVIEW: currently-permissive behaviors worth a deliberate decision."""
@@ -154,11 +165,3 @@ class DocumentedBehaviorTests(ApiTestCase):
             "/api/drafts/", {"data": {"x": 1}}, format="json"
         )
         self.assertIn(resp.status_code, (200, 201), resp.content)
-
-    @override_settings(DEBUG=False)
-    def test_duplicate_api2_mount_is_exposed(self):
-        # SECURITY REVIEW: urls.py mounts the whole API a second time under
-        # /api2/ ("delete this, just testing CI/CD"). It should be removed so the
-        # attack surface / throttle rules aren't duplicated.
-        resp = self.as_anon().get("/api2/submissions/{}/".format(self.sub_a.id))
-        self.assertEqual(resp.status_code, 200, resp.content)
