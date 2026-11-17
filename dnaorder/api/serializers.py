@@ -347,7 +347,8 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
             if len(self._submission_errors):
                 raise serializers.ValidationError(self._submission_errors)
             cleaned = validator.cleaned()
-            file_errors, self._pending_uploads = validate_file_fields(schema, cleaned, self.instance)
+            request = self.context.get('request')
+            file_errors, self._pending_uploads = validate_file_fields(schema, cleaned, self.instance, request.user if request else None)
             if file_errors:
                 raise serializers.ValidationError(file_errors)
             return cleaned

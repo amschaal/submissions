@@ -345,6 +345,13 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
         return queryset.filter(submission=submission)
+    def retrieve(self, request, *args, **kwargs):
+        resp = super().retrieve(request, *args, **kwargs)
+        # Looked up by file id alone (a form's file field): don't hand out the submission id, which
+        # would give access to the whole submission.
+        if not request.query_params.get('submission'):
+            resp.data.pop('submission', None)
+        return resp
     def perform_update(self, serializer):
         if serializer.instance.variable:
             raise PermissionDenied(FORM_FILE_MESSAGE)

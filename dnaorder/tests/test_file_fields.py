@@ -126,6 +126,28 @@ class AttachOnSaveTests(FileFieldFixture):
             self.assertEqual(resp.status_code, 400, file_id)
             self.assertIn('plate', resp.data['submission_data'], file_id)
 
+    def test_upload_by_a_logged_in_user_can_only_be_used_by_them(self):
+        file_id = self.upload_id(client=self.as_user(self.outsider))
+        payload = submission_payload(self.type_files, submission_data={'plate': file_id})
+        for client in [self.as_anon(), self.as_user(self.lab_b_member)]:
+            resp = client.post('/api/submissions/', payload, format='json')
+            self.assertEqual(resp.status_code, 400, resp.content)
+            self.assertIn('plate', resp.data['submission_data'])
+        self.assertIsNone(SubmissionFile.objects.get(id=file_id).submission)
+        resp = self.as_user(self.outsider).post('/api/submissions/', payload, format='json')
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(SubmissionFile.objects.get(id=file_id).submission_id, resp.data['id'])
+
+    def test_lookup_by_file_id_does_not_reveal_the_submission(self):
+        file_id = self.upload_id()
+        submission = self.submitted(plate=file_id)
+        resp = self.as_anon().get(f'/api/submission_files/{file_id}/')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data['filename'], 'plate.csv')
+        self.assertNotIn('submission', resp.data)
+        resp = self.as_anon().get(f'/api/submission_files/{file_id}/?submission={submission.id}')
+        self.assertEqual(resp.data['submission'], submission.id)
+
     def test_upload_checked_against_the_field_it_is_used_for(self):
         # Uploaded for another type's field with the same name, but this field only accepts .csv.
         other = make_submission_type(self.lab_a, name='Any file', payment_required=False, submission_schema=file_schema(accept=''))

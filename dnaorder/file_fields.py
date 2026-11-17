@@ -34,9 +34,18 @@ def pending_cutoff():
     return timezone.now() - timedelta(hours=PENDING_HOURS)
 
 
-def validate_file_fields(schema, data, submission=None):
-    """Each file field must hold the id of an upload for that field which is either unattached and
-    unexpired, or already attached to this submission. Returns (errors, ids of uploads to attach)."""
+def uploaded_by(upload, user):
+    """An upload made by a logged-in user may only be used by that user. Anonymous uploads have no
+    uploader to check, so for them the id is the only secret."""
+    if upload.uploaded_by_id is None:
+        return True
+    return bool(user and user.is_authenticated and user.pk == upload.uploaded_by_id)
+
+
+def validate_file_fields(schema, data, submission=None, user=None):
+    """Each file field must hold the id of an upload for that field which is either already attached to
+    this submission, or unattached, unexpired and uploaded by `user` (or anonymously).
+    Returns (errors, ids of uploads to attach)."""
     from dnaorder.models import SubmissionFile
     errors, pending = {}, []
     for variable in file_variables(schema):
@@ -46,7 +55,8 @@ def validate_file_fields(schema, data, submission=None):
         upload = SubmissionFile.objects.filter(id=str(file_id), variable=variable).first()
         if upload and submission and upload.submission_id == submission.id:
             continue
-        if not upload or upload.submission_id is not None or upload.uploaded_at < pending_cutoff():
+        # Someone else's upload gets the same error as a missing one, so ids can't be probed.
+        if not upload or upload.submission_id is not None or upload.uploaded_at < pending_cutoff() or not uploaded_by(upload, user):
             errors[variable] = ['The uploaded file was not found or has expired. Please upload it again.']
             continue
         error = upload_error(schema['properties'][variable], upload.get_filename(), upload.file.size)
