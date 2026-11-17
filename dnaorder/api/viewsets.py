@@ -624,11 +624,12 @@ class TableImportViewSet(viewsets.ViewSet):
             result['warnings'] = warnings
         return response.Response(result)
 
-class DraftViewSet(viewsets.ModelViewSet):
-    queryset = Draft.objects.all().order_by('-updated')
+class DraftViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    # No list: drafts have no owner, so a draft is only reachable by the id returned when it was saved.
+    # Update stays for re-saving a draft (staff only, see DraftPermissions).
+    queryset = Draft.objects.all()
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
-    # @todo: should probably limit queryset to drafts for lab, or by user
 
 class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
