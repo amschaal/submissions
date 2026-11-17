@@ -316,6 +316,8 @@
       "Edit(./**)",
       "Write(./**)",
       "TodoWrite(./**)",
+      "Read(//workspace/.playwright-mcp/**)",
+      "Write(//workspace/.playwright-mcp/**)",
       
       "Bash(git status)",
       "Bash(git diff *)",

@@ -345,6 +345,13 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
         return queryset.filter(submission=submission)
+    def retrieve(self, request, *args, **kwargs):
+        resp = super().retrieve(request, *args, **kwargs)
+        # Looked up by file id alone (a form's file field): don't hand out the submission id, which
+        # would give access to the whole submission.
+        if not request.query_params.get('submission'):
+            resp.data.pop('submission', None)
+        return resp
     def perform_update(self, serializer):
         if serializer.instance.variable:
             raise PermissionDenied(FORM_FILE_MESSAGE)
@@ -624,11 +631,12 @@ class TableImportViewSet(viewsets.ViewSet):
             result['warnings'] = warnings
         return response.Response(result)
 
-class DraftViewSet(viewsets.ModelViewSet):
-    queryset = Draft.objects.all().order_by('-updated')
+class DraftViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    # No list: drafts have no owner, so a draft is only reachable by the id returned when it was saved.
+    # Update stays for re-saving a draft (staff only, see DraftPermissions).
+    queryset = Draft.objects.all()
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
-    # @todo: should probably limit queryset to drafts for lab, or by user
 
 class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()

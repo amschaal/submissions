@@ -17,7 +17,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "anthropic.claude-code",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "eamodio.gitlens",

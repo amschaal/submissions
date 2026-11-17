@@ -201,6 +201,7 @@ REST_FRAMEWORK = {
     # Number of proxies in front of the app, so anon throttling keys on the real client IP
     # from X-Forwarded-For (1 = nginx only; set to 2 if behind ALB+nginx).
     'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '2')),
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer']
 }
 
 # Cache backing DRF throttle counters. Defaults to the database cache (no extra service);
