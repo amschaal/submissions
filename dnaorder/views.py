@@ -2,6 +2,7 @@ from django.shortcuts import redirect
 from dnaorder.models import SubmissionType, Submission
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from dnaorder.api.serializers import UserSerializer
+from dnaorder.api.access_log import log_unlisted_access
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from dnaorder.validators import SamplesheetValidator
@@ -147,6 +148,7 @@ def validate_data(request, type_id=None):
 @throttle_classes([SubmissionReadAnonThrottle, *USER_TIERS])
 def download(request, id):
     submission = Submission.objects.get(id=id)
+    log_unlisted_access(request, submission)
     data = request.GET.get("data", "combined")  # samples or submission
     # Read the export format from `export_format`, not `format`: this is a DRF
     # @api_view, and DRF content negotiation claims a `?format=` query param

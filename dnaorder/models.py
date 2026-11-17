@@ -13,7 +13,9 @@ from django.contrib.sites.models import Site
 # from dnaorder.payment import PaymentTypeManager
 from django.conf import settings
 from django.db.models.query_utils import Q
-from dnaorder.utils import get_lab_uri
+from django.db.models import Exists, OuterRef
+from django.db.models.functions import Lower
+from dnaorder.utils import get_lab_uri, verified_emails
 from dnaorder.storage import protected_storage
 from plugins import PluginManager
 from django.utils.module_loading import import_string
@@ -264,7 +266,41 @@ class PI(models.Model):
     def __str__(self):
         return f"{self.last_name}, {self.first_name} ({self.email})"
 
+class SubmissionQuerySet(models.QuerySet):
+    def _named_condition(self, emails):
+        contact = Contact.objects.alias(lower_email=Lower('email')).filter(submission=OuterRef('pk'), lower_email__in=emails)
+        queryset = self.alias(lower_email=Lower('email'), lower_pi_email=Lower('pi_email'))
+        return queryset, Q(lower_email__in=emails) | Q(lower_pi_email__in=emails) | Q(Exists(contact))
+    def named(self, user):
+        """Submissions that name the user: one of their verified email addresses
+        (dnaorder.utils.verified_emails) is the submitter, PI or a contact email."""
+        emails = verified_emails(user)
+        if not emails:
+            return self.none()
+        queryset, named = self._named_condition(emails)
+        return queryset.filter(named)
+    def visible_to(self, user):
+        """Submissions the user may open by id: all of them for superusers; otherwise the ones
+        naming them, the ones in a lab or institution where they hold a permission, and the
+        ones they participate in.  Knowing a submission's id grants nothing."""
+        if not user or not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        condition = (
+            Q(lab__in=LabPermission.objects.filter(user=user).values('permission_object'))
+            | Q(lab__institution__in=InstitutionPermission.objects.filter(user=user).values('permission_object'))
+            | Q(Exists(Participant.objects.filter(submission=OuterRef('pk'), user=user)))
+        )
+        queryset = self
+        emails = verified_emails(user)
+        if emails:
+            queryset, named = self._named_condition(emails)
+            condition |= named
+        return queryset.filter(condition)
+
 class Submission(models.Model):
+    objects = SubmissionQuerySet.as_manager()
     PERMISSION_ADMIN = 'ADMIN'
     PERMISSION_STAFF = 'STAFF'
     PERMISSION_MODIFY = 'MODIFY'
@@ -329,6 +365,10 @@ class Submission(models.Model):
             return [Submission.PERMISSION_VIEW] if self.locked else [Submission.PERMISSION_MODIFY, Submission.PERMISSION_VIEW]
         else:
             return []
+    def is_named(self, user):
+        return Submission.objects.named(user).filter(pk=self.pk).exists()
+    def is_visible_to(self, user):
+        return Submission.objects.visible_to(user).filter(pk=self.pk).exists()
     def has_permission(self, user, permissions=[], all=True):
         if not permissions:
             return True

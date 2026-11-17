@@ -45,6 +45,7 @@ from django.http import FileResponse, Http404
 from django.core.files.uploadedfile import UploadedFile
 from dnaorder.file_fields import is_file_field, upload_error
 from dnaorder.api.permissions import INTERNAL_TYPE_MESSAGE
+from dnaorder.api.access_log import log_unlisted_access
 from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
@@ -94,6 +95,10 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
         institution = get_site_institution(self.request)
         lab_id = self.request.query_params.get('lab', None)
         return Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
+    def get_object(self):
+        submission = super().get_object()
+        log_unlisted_access(self.request, submission)
+        return submission
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
@@ -344,6 +349,7 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
             return queryset
         if not submission:
             raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
+        log_unlisted_access(self.request, Submission.objects.filter(id=submission).first())
         return queryset.filter(submission=submission)
     def retrieve(self, request, *args, **kwargs):
         resp = super().retrieve(request, *args, **kwargs)
@@ -420,6 +426,7 @@ class NoteViewSet(viewsets.ModelViewSet):
             submission = Submission.objects.filter(id=submission).first()
         if not submission:
             raise PermissionDenied('Must provide a submission id in the request.')
+        log_unlisted_access(self.request, submission)
         queryset = queryset.filter(submission=submission)
         if not submission.lab.is_lab_member(self.request.user):
             queryset = queryset.filter(public=True)
