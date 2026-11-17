@@ -53,8 +53,14 @@ INSTALLED_APPS = [
     'webhooks',
     'corsheaders',
     'social_django',
-    'reversion'
+    'reversion',
 #     'django_mailbox'
+    # Emailed one-time-code login (dnaorder/code_login). Listed after 'dnaorder' so its
+    # email templates win. 'allauth.socialaccount' is deliberately not installed: Keycloak
+    # login stays on social_django.
+    'allauth',
+    'allauth.account',
+    'allauth.headless',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +76,7 @@ MIDDLEWARE = [
 #     'dnaorder.middleware.OIDCMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 
@@ -214,6 +221,9 @@ CACHES = {
     } if REDIS_URL else {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "throttle_cache",
+        # The table also holds the code-login rate limits; Django's default of 300
+        # entries would cull counters early.
+        "OPTIONS": {"MAX_ENTRIES": 100000},
     }
 }
 
@@ -349,6 +359,33 @@ SOCIAL_AUTH_PIPELINE = (
 )
 
 SOCIAL_LOGIN_URL = os.environ.get("SOCIAL_LOGIN_URL", default='/server/social/login/keycloak/')
+
+# ---- Emailed one-time-code login (django-allauth; see dnaorder/code_login) ----
+# For users without lab or institution permissions; staff keep using Keycloak.
+# allauth's own authentication backend is deliberately NOT added to
+# AUTHENTICATION_BACKENDS: it would enable email + password login.
+ACCOUNT_ADAPTER = 'dnaorder.code_login.adapter.AccountAdapter'
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*']      # only satisfies allauth's checks; sign-up is closed
+ACCOUNT_SIGNUP_ENABLED = False          # accounts are created when a code is confirmed
+ACCOUNT_EMAIL_VERIFICATION = 'none'     # the code itself proves the address
+ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False  # code_login.views decides what is mailed
+ACCOUNT_LOGIN_BY_CODE_ENABLED = True
+ACCOUNT_LOGIN_BY_CODE_FORMAT = {
+    'numeric': True,
+    'length': int(os.environ.get('LOGIN_CODE_LENGTH', 6)),
+    'dashed': False,
+}
+# Seconds a code stays valid. Must stay below allauth's ACCOUNT_LOGIN_TIMEOUT (900).
+ACCOUNT_LOGIN_BY_CODE_TIMEOUT = int(os.environ.get('LOGIN_CODE_TIMEOUT', 600))
+ACCOUNT_LOGIN_BY_CODE_MAX_ATTEMPTS = 3
+ACCOUNT_LOGIN_BY_CODE_SUPPORTS_RESEND = False  # a new code is simply a new request
+ACCOUNT_RATE_LIMITS = {
+    # "key" is the email address the code is requested for.
+    'request_login_code': '5/m/ip,30/h/ip,3/5m/key,10/h/key,30/d/key',
+}
+HEADLESS_ONLY = True                    # no allauth HTML pages
+HEADLESS_CLIENTS = ('browser',)         # session cookie + CSRF, like the rest of the API
 
 try:
     from dnaorder.config import *

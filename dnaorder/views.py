@@ -5,7 +5,7 @@ from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from dnaorder.validators import SamplesheetValidator
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import BACKEND_SESSION_KEY, authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
 from dnaorder.api.throttling import (
     LoginAnonThrottle, ValidateAnonThrottle, SubmissionReadAnonThrottle, USER_TIERS,
@@ -79,6 +79,9 @@ def get_user(request):
         return Response({"message": "Not authenticated."}, status=403)
 
 
+KEYCLOAK_BACKEND = "social_core.backends.keycloak.KeycloakOAuth2"
+
+
 def keycloak_logout_url(request):
     """URL that ends the Keycloak SSO session and returns the browser to us.
 
@@ -106,11 +109,13 @@ def keycloak_logout_url(request):
 def logout_view(request):
     # Django's session is only half of it: a user who signed in through
     # Keycloak keeps their SSO session there and would be signed straight back
-    # in, so hand the SPA a URL to finish the job.  Both reads have to happen
-    # before auth_logout flushes the session.
+    # in, so hand the SPA a URL to finish the job.  A session started any other
+    # way (an emailed code, a password) has no SSO session to end.  Both reads
+    # have to happen before auth_logout flushes the session.
     keycloak_url = (
         keycloak_logout_url(request)
-        if request.user.is_authenticated and request.user.social_auth.exists()
+        if request.user.is_authenticated
+        and request.session.get(BACKEND_SESSION_KEY) == KEYCLOAK_BACKEND
         else None
     )
     auth_logout(request)

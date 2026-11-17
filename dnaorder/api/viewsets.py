@@ -506,6 +506,10 @@ class UserEmailViewSet(viewsets.ViewSet):
                 return response.Response({'status':'error', 'message': 'You have already claimed email "{}".'.format(email)}, status=403)
             else:
                 return response.Response({'status':'error', 'message': 'Email "{}" has already been claimed.'.format(email)}, status=403)
+        # An address that is already another account's sign-in address can't be shared.
+        from dnaorder.code_login.policy import users_for_email
+        if any(user.pk != request.user.pk for user in users_for_email(email)):
+            return response.Response({'status':'error', 'message': 'Email "{}" has already been claimed.'.format(email)}, status=403)
         email_token = str(uuid.uuid4())[-12:]
         request_id = str(uuid.uuid4())[-12:]
         request.session['email_request'] = {'email': email, 'token': email_token, 'request_id': request_id, 'requested': str(timezone.now())}
