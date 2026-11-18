@@ -263,7 +263,7 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 attrs.pop(field, None)
         # A submission belongs to the people it names, so someone who is not working on
         # it for the lab has to be one of them, and stays one when they edit it.
-        if lab and (lab.permissions.filter(user=user).exists() or lab.institution.permissions.filter(user=user).exists()):
+        if lab and (lab.permissions.filter(user=user).exists() or (lab.institution and lab.institution.permissions.filter(user=user).exists())):
             return
         if instance and instance.participants.filter(pk=user.pk).exists():
             return
