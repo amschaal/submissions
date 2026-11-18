@@ -14,9 +14,9 @@ from rest_framework.decorators import permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from dnaorder.api.throttling import (
-    SubmissionReadAnonThrottle, SubmissionWriteAnonThrottle, EmailUserThrottle, scoped,
+    SubmissionReadThrottle, SubmissionWriteThrottle, EmailUserThrottle, scoped,
 )
-from dnaorder.api.permissions import SubmissionFilePermissions,\
+from dnaorder.api.permissions import AuthenticatedPermission, visible_submission, SubmissionFilePermissions,\
     ReadOnlyPermissions, SubmissionPermissions, DraftPermissions,\
     IsStaffPermission, IsSuperuserPermission, NotePermissions,\
     SubmissionTypePermissions, ProjectIDPermissions, IsLabMember,\
@@ -45,7 +45,6 @@ from django.http import FileResponse, Http404
 from django.core.files.uploadedfile import UploadedFile
 from dnaorder.file_fields import is_file_field, upload_error
 from dnaorder.api.permissions import INTERNAL_TYPE_MESSAGE
-from dnaorder.api.access_log import log_unlisted_access
 from webhooks.delivery import notify
 import uuid
 from django.core.validators import validate_email
@@ -81,24 +80,22 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
     permission_classes_by_action = {'versions': [SubmissionVersionPermission], 'revert_to_version': [SubmissionVersionPermission], 'view_version': [SubmissionVersionPermission]}
     def get_throttles(self):
         scope = {
-            'retrieve': SubmissionReadAnonThrottle,
-            'create': SubmissionWriteAnonThrottle,
-            'cancel': SubmissionWriteAnonThrottle,
-            'confirm': SubmissionWriteAnonThrottle,
+            'retrieve': SubmissionReadThrottle,
+            'create': SubmissionWriteThrottle,
+            'cancel': SubmissionWriteThrottle,
+            'confirm': SubmissionWriteThrottle,
         }.get(self.action)
         if scope:
             return scoped(scope)
         return super().get_throttles()
     def get_queryset(self):
         if self.detail:
-            return Submission.objects.all().select_related('lab', 'type')
+            # A submission id is not a credential: anything the user is not entitled
+            # to open is a 404, the same as an id that does not exist.
+            return Submission.objects.visible_to(self.request.user).select_related('lab', 'type')
         institution = get_site_institution(self.request)
         lab_id = self.request.query_params.get('lab', None)
         return Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
-    def get_object(self):
-        submission = super().get_object()
-        log_unlisted_access(self.request, submission)
-        return submission
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
@@ -168,11 +165,14 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
         submission.locked = False
         submission.save()
         return response.Response({'status':'success','locked':False,'message':'Submission unlocked.'})
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny], authentication_classes=[SessionAuthentication])
+    @action(detail=True, methods=['post'], permission_classes=[AuthenticatedPermission], authentication_classes=[SessionAuthentication])
     def cancel(self, request, pk):
         submission = self.get_object()
-        if submission.locked and not submission.lab.is_lab_member(request.user):
-            return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
+        if not submission.lab.is_lab_member(request.user):
+            if submission.locked:
+                return response.Response({'status':'error', 'message': 'Only staff may cancel a locked submission.'},status=403)
+            if submission.type.internal:
+                return response.Response({'status':'error', 'message': INTERNAL_TYPE_MESSAGE},status=403)
         if not submission.cancelled:
             submission.cancel()
         return response.Response({'status':'success','cancelled':True,'message':'Submission cancelled.'})
@@ -184,7 +184,7 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
         submission.cancelled = None
         submission.save()
         return response.Response({'status':'success','cancelled':True,'message':'Submission "uncancelled".'})
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[AuthenticatedPermission])
     def confirm(self, request, pk):
         submission = self.get_object()
         if not submission.confirmed:
@@ -259,25 +259,27 @@ class ImportViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = {'submissions__id': ['isnull']}
     search_fields = ('submissions__id', 'submissions__internal_id', 'external_id', 'id', 'url')
     ordering_fields = ['created']
-    permission_classes = (AllowAny,)
+    # Imports are a lab staff tool.  get_submission (used to copy a submission
+    # into a new form) is open to any signed-in user, for submissions they can open.
+    permission_classes = (IsStaffPermission,)
     def get_throttles(self):
         if self.action in ('import_submission', 'get_submission'):
-            return scoped(SubmissionReadAnonThrottle)
+            return scoped(SubmissionReadThrottle)
         return super().get_throttles()
     @action(detail=False, methods=['post'])
     def import_submission(self, request):
         url = request.data.get('url')
-        data = import_submission_url(url)
+        data = import_submission_url(url, user=request.user)
         id = data['id']
         instance = Import.objects.filter(id=id).first()
         if not instance:
             instance = Import.objects.create(id=id, url=data['url'], external_id=data['internal_id'], api_url=url,data=data)
         serializer = ImportSerializer(instance)
         return Response({'data':data, 'import': serializer.data})
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[AuthenticatedPermission])
     def get_submission(self, request):
         url = request.query_params.get('url')
-        data = import_submission_url(url)
+        data = import_submission_url(url, user=request.user)
         return Response({'data':data})
 
 class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewSet):
@@ -285,7 +287,7 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
     filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
     serializer_class = SubmissionTypeSerializer
     permission_classes = [SubmissionTypePermissions]
-    permission_classes_by_action = {'validate_data': [AllowAny],'versions': [SubmissionTypeVersionPermission], 'revert_to_version': [SubmissionTypeVersionPermission], 'view_version': [SubmissionTypeVersionPermission]}
+    permission_classes_by_action = {'get_submission_schema': [IsStaffPermission], 'versions': [SubmissionTypeVersionPermission], 'revert_to_version': [SubmissionTypeVersionPermission], 'view_version': [SubmissionTypeVersionPermission]}
     search_fields = ('name', 'description')
     filterset_fields = {'active':['exact']}
     lab_filter = 'lab__lab_id'
@@ -312,8 +314,9 @@ class SubmissionTypeViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelV
         return queryset.annotate(is_lab_member=Exists(membership)).filter(Q(internal=False) | Q(is_lab_member=True))
     @action(detail=False, methods=['get'])
     def get_submission_schema(self, request):
+        # Copy a schema from a submission or submission type the user can open.
         url = request.query_params.get('url')
-        schema = get_submission_schema(url)
+        schema = get_submission_schema(url, user=request.user, submission_types=self.get_queryset())
         return Response(schema)
 #     @detail_route(methods=['post'])
 #     def validate_data(self,request, pk):
@@ -336,28 +339,25 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_throttles(self):
         if self.action in ('create', 'field_upload'):
-            return scoped(SubmissionWriteAnonThrottle)
+            return scoped(SubmissionWriteThrottle)
         return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
-        submission = self.request.query_params.get('submission',None)
-        # The file id is enough, as a submission id is for reading the submission. Unattached form uploads
-        # can be looked up (e.g. a file field showing its file name) but not downloaded.
+        user = self.request.user
+        # Files follow their submission: only those of submissions the user can open.
+        attached = Q(submission__in=Submission.objects.visible_to(user))
         if self.action == 'download':
-            return queryset.filter(submission__isnull=False)
-        if self.action == 'retrieve' and not submission:
-            return queryset
+            return queryset.filter(attached)
+        if self.detail:
+            # A form's file field also looks up the user's own upload before it is attached.
+            return queryset.filter(attached | Q(submission__isnull=True, uploaded_by=user))
+        submission = self.request.query_params.get('submission',None)
         if not submission:
-            raise PermissionDenied('Unauthenticated users must provide a submission id in the request.')
-        log_unlisted_access(self.request, Submission.objects.filter(id=submission).first())
+            raise PermissionDenied('A submission id must be provided in the request.')
+        visible_submission(self.request, submission)
         return queryset.filter(submission=submission)
-    def retrieve(self, request, *args, **kwargs):
-        resp = super().retrieve(request, *args, **kwargs)
-        # Looked up by file id alone (a form's file field): don't hand out the submission id, which
-        # would give access to the whole submission.
-        if not request.query_params.get('submission'):
-            resp.data.pop('submission', None)
-        return resp
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
     def perform_update(self, serializer):
         if serializer.instance.variable:
             raise PermissionDenied(FORM_FILE_MESSAGE)
@@ -375,7 +375,7 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         new submission or `submission` for one being edited, then put the returned id in submission_data."""
         submission_id, type_id = request.data.get('submission'), request.data.get('type')
         if submission_id:
-            submission = Submission.objects.select_related('type__lab').filter(id=submission_id).first()
+            submission = Submission.objects.visible_to(request.user).select_related('type__lab').filter(id=submission_id).first()
             if not submission:
                 raise ValidationError({'submission': ['Submission not found.']})
             if not submission.editable(request.user):
@@ -398,7 +398,7 @@ class SubmissionFileViewSet(viewsets.ModelViewSet):
         error = upload_error(definition, upload.name, upload.size)
         if error:
             raise ValidationError({'file': [error]})
-        submission_file = SubmissionFile.objects.create(file=upload, variable=variable, uploaded_by=request.user if request.user.is_authenticated else None)
+        submission_file = SubmissionFile.objects.create(file=upload, variable=variable, uploaded_by=request.user)
         return Response(self.get_serializer(submission_file).data, status=status.HTTP_201_CREATED)
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
@@ -417,16 +417,14 @@ class NoteViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     def get_throttles(self):
         if self.action == 'create':
-            return scoped(SubmissionWriteAnonThrottle)
+            return scoped(SubmissionWriteThrottle)
         return super().get_throttles()
     def get_queryset(self):
         queryset = viewsets.ModelViewSet.get_queryset(self)
         submission = self.request.query_params.get('submission',None)
-        if submission:
-            submission = Submission.objects.filter(id=submission).first()
         if not submission:
             raise PermissionDenied('Must provide a submission id in the request.')
-        log_unlisted_access(self.request, submission)
+        submission = visible_submission(self.request, submission)
         queryset = queryset.filter(submission=submission)
         if not submission.lab.is_lab_member(self.request.user):
             queryset = queryset.filter(public=True)
@@ -559,9 +557,11 @@ class TableImportViewSet(viewsets.ViewSet):
       and rows; the server uses that submission's snapshotted table schema and
       saved rows. Body ``schema``/``data`` still win when both are provided.
 
-    Submission entry is open by design, so these mirror that with ``AllowAny``.
+    Any signed-in user may use these; a ``submission`` id only resolves for a
+    submission the user can open.
     """
-    permission_classes = (AllowAny,)
+    permission_classes = (AuthenticatedPermission,)
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
 
     def _get_schema(self, request):
         schema = request.data.get('schema') or request.data.get('sample_schema')
@@ -579,9 +579,8 @@ class TableImportViewSet(viewsets.ViewSet):
         table = request.data.get('table')
         if not (submission_id and table):
             return None, None
-        try:
-            submission = Submission.objects.get(id=submission_id)
-        except Submission.DoesNotExist:
+        submission = Submission.objects.visible_to(request.user).filter(id=submission_id).first()
+        if not submission:
             return None, None
         table_def = (submission.submission_schema or {}).get('properties', {}).get(table) or {}
         return table_def.get('schema'), (submission.submission_data or {}).get(table) or []
@@ -643,11 +642,13 @@ class TableImportViewSet(viewsets.ViewSet):
         return response.Response(result)
 
 class DraftViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    # No list: drafts have no owner, so a draft is only reachable by the id returned when it was saved.
-    # Update stays for re-saving a draft (staff only, see DraftPermissions).
+    # No list: a draft is reached by the id returned when it was saved, by its owner,
+    # the people it names, or staff (see DraftPermissions).
     queryset = Draft.objects.all()
     serializer_class = DraftSerializer
     permission_classes = (DraftPermissions,)
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Lab.objects.all()
@@ -838,6 +839,12 @@ class ProjectIDViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectIDSerializer
     permission_classes = (ProjectIDPermissions,)
     filterset_fields = {'lab_id':['exact']}
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_superuser:
+            return queryset
+        return queryset.filter(lab__in=LabPermission.objects.filter(user=user).values('permission_object'))
     
 class VocabularyViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Vocabulary.objects.distinct()
@@ -876,6 +883,7 @@ class PIViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['email', 'first_name', 'last_name', 'department', 'institution__name']
     ordering_fields = ['first_name', 'last_name', 'email', 'department', 'institution__name']
     serializer_class = PISerializer
+    permission_classes = (IsStaffPermission,)
     queryset = PI.objects.distinct().select_related('institution')
     # lookup_field = 'email'
     # lookup_value_regex = '[^/]+'  # allows dots and @
@@ -885,4 +893,5 @@ class PIInstitutionViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name']
     serializer_class = PIInstitutionSerializer
+    permission_classes = (IsStaffPermission,)
     queryset = PIInstitution.objects.distinct()

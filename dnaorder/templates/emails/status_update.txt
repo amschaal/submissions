@@ -3,6 +3,8 @@ Dear {{submission.first_name}},
 The status for your submission placed on {{submission.submitted|date}} has been updated to "{{submission.status.name}}".  You may view your submission details and the status details at the following URL:
 {{BASE_URI}}{{submission.get_absolute_url}}
 
+You will be asked to sign in. Use the email address this message was sent to and we will email you a one-time sign-in code. Only the submitter, the PI and the contacts listed on the submission can open it.
+
 Thank you,
 
 {{submission.lab.name}}

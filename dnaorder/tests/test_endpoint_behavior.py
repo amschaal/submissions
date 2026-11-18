@@ -89,9 +89,9 @@ class ReferenceEndpointBehaviorTests(ApiTestCase):
         self.assertEqual(resp.data["id"], self.institution.id)
 
     def test_submission_types_listable_and_retrievable(self):
-        listing = self.as_anon().get("/api/submission_types/")
+        listing = self.as_submitter().get("/api/submission_types/")
         self.assertEqual(listing.status_code, 200, listing.content)
-        detail = self.as_anon().get("/api/submission_types/{}/".format(self.type_a.id))
+        detail = self.as_submitter().get("/api/submission_types/{}/".format(self.type_a.id))
         self.assertEqual(detail.status_code, 200, detail.content)
 
     def test_staff_can_search_users_by_email(self):

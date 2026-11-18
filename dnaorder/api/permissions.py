@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied
 from dnaorder.models import LabPermission, InstitutionPermission
@@ -7,13 +8,41 @@ from dnaorder.utils import get_site_institution
 
 INTERNAL_TYPE_MESSAGE = 'Only lab members may create or update submissions of an internal submission type.'
 
-class SubmissionFilePermissions(permissions.BasePermission):
+LAB_STAFF_ROLES = [LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER]
+
+class AuthenticatedPermission(permissions.BasePermission):
+    """Base for every permission class here: nothing is available without signing in.
+    Subclasses that add their own has_permission() must call super() first."""
     def has_permission(self, request, view):
-        if view.action == 'create':
-            from dnaorder.models import Submission
+        return bool(request.user and request.user.is_authenticated)
+
+def visible_submission(request, submission_id):
+    """The submission, if the user may open it (Submission.objects.visible_to); otherwise
+    404, the same as for an id that does not exist."""
+    from dnaorder.models import Submission
+    submission = Submission.objects.visible_to(request.user).select_related('type__lab', 'lab').filter(pk=submission_id).first() if submission_id else None
+    if not submission:
+        raise Http404
+    return submission
+
+def is_lab_staff(user, lab_id):
+    """Lab ADMIN/MEMBER of the lab with this primary key, or a superuser."""
+    if user.is_superuser:
+        return True
+    try:
+        return LabPermission.objects.filter(user=user, permission_object_id=lab_id, permission__in=LAB_STAFF_ROLES).exists()
+    except (ValueError, TypeError): # e.g. a non numeric id, let the serializer report it
+        return False
+
+class SubmissionFilePermissions(AuthenticatedPermission):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if view.action == 'create' and request.data.get('submission'):
+            # (With no submission id the serializer reports the missing field.)
+            submission = visible_submission(request, request.data.get('submission'))
             # Files may only be attached to an internal submission by lab members.
-            submission = Submission.objects.select_related('type__lab').filter(pk=request.data.get('submission')).first()
-            if submission and not submission.type.can_submit(request.user):
+            if not submission.type.can_submit(request.user):
                 raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
         return True
     def has_object_permission(self, request, view, obj):
@@ -22,38 +51,62 @@ class SubmissionFilePermissions(permissions.BasePermission):
         # May not modify file unless submission is "editable".
         return obj.submission.editable(request.user)
 
-class ReadOnlyPermissions(permissions.BasePermission):
+class ReadOnlyPermissions(AuthenticatedPermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
         return False #request.user.is_staff
 
-class SubmissionTypePermissions(permissions.BasePermission):
+class SubmissionTypePermissions(AuthenticatedPermission):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if view.action == 'create':
+            # Only staff of the lab the new type is created in.
+            return is_lab_staff(request.user, request.data.get('lab') if hasattr(request.data, 'get') else None)
+        return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS or request.user and request.user.is_superuser:
             return True
         # May not modify file unless submission is "editable".
-        return obj.lab.permissions.filter(permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER], user=request.user).exists()
+        return obj.lab.permissions.filter(permission__in=LAB_STAFF_ROLES, user=request.user).exists()
 #         return obj.lab.is_lab_member(request.user)
 
-class ProjectIDPermissions(permissions.BasePermission):
+class ProjectIDPermissions(AuthenticatedPermission):
+    """Project id prefixes are a lab staff tool: any lab permission to read them (the
+    queryset limits which), lab ADMIN/MEMBER to change them."""
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        user = request.user
+        if user.is_superuser:
+            return True
+        if view.action == 'create':
+            return is_lab_staff(user, request.data.get('lab') if hasattr(request.data, 'get') else None)
+        return LabPermission.objects.filter(user=user).exists()
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS or request.user and request.user.is_superuser:
             return True
         # May not modify file unless submission is "editable".
 #         return obj.lab.is_lab_member(request.user)
-        return obj.lab.permissions.filter(permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER], user=request.user).exists()
+        return obj.lab.permissions.filter(permission__in=LAB_STAFF_ROLES, user=request.user).exists()
 
 
-class NotePermissions(permissions.BasePermission):
+class NotePermissions(AuthenticatedPermission):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if view.action == 'create':
+            visible_submission(request, request.data.get('submission') if hasattr(request.data, 'get') else None)
+        return True
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
         # May not modify file unless submission is "editable".
         return obj.can_modify(request.user)
     
-class SubmissionPermissions(permissions.BasePermission):
+class SubmissionPermissions(AuthenticatedPermission):
     def get_submission_type(self, type):
         from dnaorder.models import SubmissionType
         # The submitted type may be an id or a nested object, depending on the serializer.
@@ -66,7 +119,7 @@ class SubmissionPermissions(permissions.BasePermission):
         except (ValueError, TypeError): # e.g. a non numeric id, let the serializer report it
             return None
     def has_permission(self, request, view):
-        if view.action == 'list' and not request.user.is_authenticated:
+        if not super().has_permission(request, view):
             return False
         if request.method not in permissions.SAFE_METHODS:
             # Block non lab members from submitting against an internal type.
@@ -76,15 +129,20 @@ class SubmissionPermissions(permissions.BasePermission):
                 raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
         return True
     def has_object_permission(self, request, view, obj):
+        # Which submissions a user can reach at all is decided by the viewset's
+        # queryset (Submission.objects.visible_to); this is about changing one.
         if request.method in permissions.SAFE_METHODS:
             return True
+        if view.action == 'destroy':
+            # Deleting is for the lab's administrators; everyone else cancels.
+            return request.user.is_superuser or obj.lab.has_permission(request.user, LabPermission.PERMISSION_ADMIN)
         # Submissions of an internal type may only be modified by lab members.
         if not obj.type.can_submit(request.user):
             raise PermissionDenied(INTERNAL_TYPE_MESSAGE)
         # May not modify file unless submission is "editable".
         return obj.editable(request.user)
 
-class IsLabMember(permissions.BasePermission):
+class IsLabMember(AuthenticatedPermission):
     def has_object_permission(self, request, view, obj):
         from dnaorder.models import Lab
         # if request.method in permissions.SAFE_METHODS:
@@ -102,13 +160,15 @@ class IsLabMember(permissions.BasePermission):
         return False
             
 
-class DraftPermissions(SubmissionPermissions):
+class DraftPermissions(AuthenticatedPermission):
+    """A draft belongs to whoever saved it.  Its link also works for the people it
+    names (submitter, PI, contacts), so a draft can be handed to a colleague, and
+    for staff helping with it."""
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
+        user = request.user
+        if user.is_staff or user.is_superuser or obj.owner_id == user.pk or obj.names(user):
             return True
-        if request.user.is_staff or request.user.is_superuser:
-            return True
-        return False
+        raise Http404 # the same as a draft that does not exist
 
 class IsStaffPermission(permissions.BasePermission):
     """
@@ -134,7 +194,7 @@ class IsSuperuserPermission(permissions.BasePermission):
             request.user.is_superuser
         )
 
-class ObjectPermission(permissions.BasePermission):
+class ObjectPermission(AuthenticatedPermission):
     @classmethod
     def create(cls, permission, use_superuser=True):
         return type(cls.__name__, (cls,), {'permission': permission, 'use_superuser': use_superuser})
@@ -179,15 +239,15 @@ class InstitutionObjectPermission(ObjectPermission):
             return get_site_institution(self.request)
 
 # Merely used for testing at this point
-class DenyPermission(permissions.BasePermission):
+class DenyPermission(AuthenticatedPermission):
     def has_object_permission(self, request, view, obj):
         return False
 
-class SubmissionVersionPermission(permissions.BasePermission):
+class SubmissionVersionPermission(AuthenticatedPermission):
     def has_object_permission(self, request, view, obj):
         return obj.participants.filter(username=request.user.username).exists() or request.user.is_superuser
     
-class SubmissionTypeVersionPermission(permissions.BasePermission):
+class SubmissionTypeVersionPermission(AuthenticatedPermission):
     def has_object_permission(self, request, view, obj):
         return request.user.is_authenticated and (obj.lab.permissions.filter(permission__in=[LabPermission.PERMISSION_ADMIN, LabPermission.PERMISSION_MEMBER], user=request.user).exists() or request.user.is_superuser)
 

@@ -15,7 +15,7 @@ from django.conf import settings
 from django.db.models.query_utils import Q
 from django.db.models import Exists, OuterRef
 from django.db.models.functions import Lower
-from dnaorder.utils import get_lab_uri, verified_emails
+from dnaorder.utils import get_lab_uri, normalize_emails, verified_emails
 from dnaorder.storage import protected_storage
 from plugins import PluginManager
 from django.utils.module_loading import import_string
@@ -380,16 +380,23 @@ class Submission(models.Model):
             return len(overlapping) > 0
     @staticmethod
     def get_queryset(institution=None, user=None, lab_id=None):
-        lab = Lab.objects.get(lab_id=lab_id) if lab_id else None
-        if not user:
+        """Submissions to list: a whole lab for someone holding a permission in it (when
+        asked for by lab), otherwise the ones naming the user or that they participate in."""
+        if not user or not user.is_authenticated:
             return Submission.objects.none()
         queryset = Submission.objects.filter(lab__institution=institution) if institution else Submission.objects.all()
-        if lab:
+        lab = None
+        if lab_id:
+            labs = Lab.objects.filter(lab_id=lab_id, institution=institution) if institution else Lab.objects.filter(lab_id=lab_id)
+            lab = labs.first()
+            if not lab:
+                return Submission.objects.none()
             queryset = queryset.filter(lab=lab)
         if not user.is_superuser: #@todo: fix efficiency related to count()!!
             if not lab or not LabPermission.objects.filter(user=user, permission_object=lab):
-                queryset = queryset.filter(Q(users__username=user.username)|Q(participants__username=user.username))
-                
+                participating = Q(Exists(Participant.objects.filter(submission=OuterRef('pk'), user=user)))
+                queryset = queryset.filter(Q(pk__in=Submission.objects.named(user).values('pk')) | participating)
+
 
 #             Was using, but was too slow with distinct()
 #             queryset = queryset.filter(Q(lab__permissions__user=user)|Q(users__username=user.username)|Q(participants__username=user.username))
@@ -494,6 +501,11 @@ class Submission(models.Model):
     class Meta:
         ordering = ['submitted']
         unique_together = (('internal_id','lab'))
+        # Submission.objects.named() matches these case-insensitively.
+        indexes = [
+            models.Index(Lower('email'), name='submission_email_lower'),
+            models.Index(Lower('pi_email'), name='submission_pi_email_lower'),
+        ]
     @property
     def sample_ids(self):
         return [s.get(self.type.sample_identifier) for s in self.sample_data]
@@ -506,12 +518,17 @@ class Submission(models.Model):
         # and editable.  Otherwise the type decides whether payment is collected.
         return self.has_payment or self.type.payment_required
     def editable(self,user=None):
+        # Nobody edits without signing in.
+        if not user or not user.is_authenticated:
+            return False
         # Submissions of an internal type may only be modified by lab members.
         if not self.type.can_submit(user):
             return False
-        if user and (user.is_superuser or self.participants.filter(username=user.username).exists()):
+        if user.is_superuser or self.participants.filter(username=user.username).exists():
             return True
-        return not self.locked
+        # Until it is locked, a submission can be edited by the people it names
+        # and by the staff who can see it (Submission.objects.visible_to).
+        return not self.locked and self.is_visible_to(user)
     def get_absolute_url(self, full_url=False):
 #         from django.urls import reverse
 #         return reverse('submission', args=[str(self.id)])
@@ -573,6 +590,15 @@ class Draft(models.Model):
     data = JSONField(null=False,blank=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='drafts') # whoever saved it; null for drafts saved before sign-in was required
+    def names(self, user):
+        """Whether the draft's form data lists one of the user's verified email
+        addresses as submitter, PI or contact (compare Submission.objects.named)."""
+        data = self.data if isinstance(self.data, dict) else {}
+        contacts = data.get('contacts') if isinstance(data.get('contacts'), list) else []
+        emails = [data.get('email'), data.get('pi_email')] + [c.get('email') for c in contacts if isinstance(c, dict)]
+        named = normalize_emails([e for e in emails if isinstance(e, str)])
+        return bool(set(named) & set(verified_emails(user)))
     
 class Import(models.Model):
     id = models.CharField(max_length=50, primary_key=True, default=generate_id, editable=False)
@@ -587,6 +613,8 @@ class Contact(models.Model):
     first_name = models.CharField(max_length=25)
     last_name = models.CharField(max_length=30)
     email = models.EmailField(max_length=100)
+    class Meta:
+        indexes = [models.Index(Lower('email'), name='contact_email_lower')]
     
 class SubmissionFile(models.Model):
     id = models.CharField(max_length=15, primary_key=True, default=generate_file_id, editable=False)

@@ -23,6 +23,7 @@ from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from dnaorder.models import (
+    Contact,
     Institution,
     InstitutionPermission,
     Lab,
@@ -153,12 +154,19 @@ class ApiTestCase(APITestCase):
       * ``lab_a_member``     - Lab A member       (is_staff, lab member)
       * ``lab_a_associate``  - Lab A associate    (is_staff, NOT a lab member)
       * ``lab_b_member``     - Lab B member (for cross-tenant / IDOR tests)
-      * ``outsider``         - authenticated user with no permissions anywhere
+      * ``outsider``         - authenticated user with no permissions anywhere,
+                               and not named on any submission
+      * ``submitter``        - no permissions; the submitter email of every fixture submission
+      * ``pi_user``          - no permissions; the PI email of every fixture submission
+      * ``contact_user``     - no permissions; a contact on ``sub_a`` only
 
     Submissions:
       * ``sub_a``      - open (unlocked) submission in Lab A
       * ``sub_a_locked`` - locked submission in Lab A
       * ``sub_b``      - submission in Lab B
+
+    Nothing is available without signing in.  A user without permissions can only
+    open the submissions that name them (submitter, PI or contact email).
     """
 
     def setUp(self):
@@ -204,6 +212,14 @@ class ApiTestCase(APITestCase):
         cls.sub_a_locked = make_submission(cls.type_a, first_name="Locked", locked=True)
         cls.sub_b = make_submission(cls.type_b, first_name="Bravo")
 
+        # People named on the submissions (make_submission's default emails).
+        cls.submitter = make_user("submitter", email="submitter@example.com")
+        cls.pi_user = make_user("pi_user", email="pi@example.com")
+        cls.contact_user = make_user("contact_user", email="contact@example.com")
+        Contact.objects.create(
+            submission=cls.sub_a, first_name="Con", last_name="Tact", email="contact@example.com"
+        )
+
     # -- helpers ---------------------------------------------------------------
     def as_user(self, user):
         self.client.force_authenticate(user=user)
@@ -213,10 +229,34 @@ class ApiTestCase(APITestCase):
         self.client.force_authenticate(user=None)
         return self.client
 
+    def as_submitter(self):
+        """A signed-in user without permissions who is named on the fixture submissions."""
+        return self.as_user(self.submitter)
+
+    def as_token(self, user):
+        """A client authenticating with a real API token (no session, no CSRF)."""
+        from rest_framework.authtoken.models import Token
+        from rest_framework.test import APIClient
+        token, _ = Token.objects.get_or_create(user=user)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION="Token {}".format(token.key))
+        return client
+
+    def assertNotFound(self, response, msg=None):
+        """What a signed-in user gets for a submission they may not open: the same
+        404 as for an id that does not exist."""
+        self.assertEqual(
+            response.status_code, 404,
+            msg or "expected 404, got {}: {}".format(
+                response.status_code, getattr(response, "data", b"")),
+        )
+
     def assertDenied(self, response, msg=None):
-        """Auth/permission denial is 401 or 403 depending on authenticator."""
+        """The request was refused: 401/403 (which one depends on the authenticator),
+        or 404 where the submission itself is hidden from the user (a submission a
+        signed-in user may not open looks the same as one that does not exist)."""
         self.assertIn(
-            response.status_code, (401, 403),
-            msg or "expected 401/403, got {}: {}".format(
+            response.status_code, (401, 403, 404),
+            msg or "expected 401/403/404, got {}: {}".format(
                 response.status_code, getattr(response, "data", b"")),
         )

@@ -41,7 +41,6 @@ urlpatterns = [
     re_path(r'^social/', include('social_django.urls', namespace='social')),
     # Emailed one-time-code login: request + confirm only (see dnaorder/code_login/urls.py).
     re_path(r'^_allauth/', include('dnaorder.code_login.urls')),
-    re_path(r'^test/$', views.test)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

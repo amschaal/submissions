@@ -139,13 +139,17 @@ class PluginManager():
 
 
 # This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.
+# The submission must be one the user can open (Submission.objects.visible_to); with no permissions listed that is all that is required.
 def plugin_submission_decorator(permissions=[], all=True):
+    from django.http import Http404
     from dnaorder.models import Submission
     from rest_framework.exceptions import PermissionDenied
     def wrapper(view_func):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
-            submission = Submission.objects.get(id=kwargs.pop('submission_id'))
+            submission = Submission.objects.visible_to(request.user).filter(id=kwargs.pop('submission_id')).first()
+            if not submission:
+                raise Http404
             if not submission.has_permission(request.user, permissions, all):
                 raise PermissionDenied('The current user does not have permission to perform this action.')
             plugin = SubmissionPlugin(kwargs.pop('plugin_id'), submission)

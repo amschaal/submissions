@@ -24,7 +24,7 @@ from rest_framework.test import APIClient
 
 from dnaorder.code_login.adapter import AccountAdapter
 from dnaorder.models import UserEmail
-from dnaorder.tests.base import ApiTestCase, grant_lab, make_user
+from dnaorder.tests.base import ApiTestCase, grant_lab, make_submission, make_user
 from dnaorder.views import KEYCLOAK_BACKEND
 
 REQUEST = "/_allauth/browser/v1/auth/code/request"
@@ -105,12 +105,16 @@ class NewAddressTests(CodeLoginTestCase):
         self.assertTrue(User.objects.filter(email=self.EMAIL).exists())
 
     def test_submissions_are_attached_only_once_the_code_is_confirmed(self):
-        email = self.sub_a.email  # submitter@example.com, no account yet
-        self.request_code(email)
-        self.assertEqual(self.sub_a.users.count(), 0)
+        submission = make_submission(self.type_a, email="Fresh@Example.com")  # no account yet
+        self.request_code("fresh@example.com")
+        self.assertEqual(submission.users.count(), 0)
         self.assertEqual(self.confirm(self.emailed_code()).status_code, 200)
-        user = User.objects.get(email=email)
-        self.assertIn(user, self.sub_a.users.all())
+        user = User.objects.get(email="fresh@example.com")
+        self.assertIn(user, submission.users.all())
+        mine = self.client.get("/api/submissions/")
+        self.assertEqual([row["id"] for row in mine.data["results"]], [submission.id])
+        self.assertEqual(self.client.get("/api/submissions/{}/".format(submission.id)).status_code, 200)
+        self.assertEqual(self.client.get("/api/submissions/{}/".format(self.sub_b.id)).status_code, 404)
 
     def test_keycloak_pipeline_finds_the_code_created_account(self):
         from social_django.models import DjangoStorage

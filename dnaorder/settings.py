@@ -196,13 +196,13 @@ REST_FRAMEWORK = {
         'dnaorder.api.throttling.StaffRateThrottle',           # authed, lab-permissioned (is_staff)
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '30/min',             # unauthenticated baseline
+        'anon': '30/min',             # unauthenticated baseline (sign-in endpoints; everything else needs a login)
         'user': '90/min',             # authenticated regular users (submitters/participants)
         'staff': '300/min',           # lab-permissioned users (is_staff) — generous
         'login': '10/min',             # credential stuffing / brute force
-        'submission_read': '60/min',  # open detail read + export + import lookups
-        'submission_write': '30/hour', # unauth create / cancel / confirm / note / file
-        'validate': '20/min',          # validator CPU
+        'submission_read': '60/min',  # per non-staff user: submission detail, download, copy lookups
+        'submission_write': '30/hour', # per non-staff user: create / cancel / confirm / note / file upload
+        'validate': '20/min',          # per non-staff user: validator CPU
         'email': '10/hour',            # endpoints that send email, per user
     },
     # Number of proxies in front of the app, so anon throttling keys on the real client IP
