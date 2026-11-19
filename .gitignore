@@ -114,3 +114,5 @@ media/
 *.tsv
 
 metabolomics
+
+.test-emails/
