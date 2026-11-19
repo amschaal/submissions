@@ -5,7 +5,10 @@ Three baseline tiers (wired as DEFAULT_THROTTLE_CLASSES in settings):
   - RegularUserRateThrottle -> 'user'  (authenticated, non lab-staff)
   - StaffRateThrottle       -> 'staff' (authenticated lab-permissioned users; generous)
 
-Plus scoped throttles applied to specific open/sensitive endpoints.
+Plus scoped throttles applied to specific sensitive endpoints.  Apart from login these
+count per signed-in user and only apply to users without lab permissions: every user
+now has to sign in, and anyone with a mailbox can, so the per-IP anonymous limits that
+used to guard submission entry would no longer bite.
 
 `is_staff` is the "has lab permissions" signal in this app: granting a lab permission sets
 ``user.is_staff = True`` (see ``LabViewSet.set_permissions``) and staff features gate on it
@@ -43,15 +46,25 @@ class LoginAnonThrottle(AnonRateThrottle):
     scope = 'login'
 
 
-class SubmissionReadAnonThrottle(AnonRateThrottle):
+class NonStaffScopedThrottle(UserRateThrottle):
+    """A scoped limit for signed-in users without lab permissions, counted per user
+    (per client IP for a request that somehow arrives unauthenticated)."""
+    def allow_request(self, request, view):
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated and user.is_staff:
+            return True  # lab-permissioned users only have the generous 'staff' tier
+        return super().allow_request(request, view)
+
+
+class SubmissionReadThrottle(NonStaffScopedThrottle):
     scope = 'submission_read'
 
 
-class SubmissionWriteAnonThrottle(AnonRateThrottle):
+class SubmissionWriteThrottle(NonStaffScopedThrottle):
     scope = 'submission_write'
 
 
-class ValidateAnonThrottle(AnonRateThrottle):
+class ValidateThrottle(NonStaffScopedThrottle):
     scope = 'validate'
 
 
@@ -60,11 +73,10 @@ class EmailUserThrottle(UserRateThrottle):
     scope = 'email'
 
 
-# Apply alongside a scoped-anon throttle so authenticated callers on open endpoints
-# still fall under their per-tier baseline rather than being left unthrottled.
+# Apply alongside a scoped throttle so callers still fall under their per-tier baseline.
 USER_TIERS = [RegularUserRateThrottle, StaffRateThrottle]
 
 
-def scoped(anon_throttle_class):
-    """Build instances for ``get_throttles()``: scoped-anon throttle + both authed tiers."""
-    return [anon_throttle_class()] + [tier() for tier in USER_TIERS]
+def scoped(throttle_class):
+    """Build instances for ``get_throttles()``: scoped throttle + both authed tiers."""
+    return [throttle_class()] + [tier() for tier in USER_TIERS]

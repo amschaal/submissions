@@ -93,7 +93,7 @@ class UCDPaymentFixture(ApiTestCase):
     def post(self, payment):
         """Submit `payment`, with a valid financial contact unless it gives its own."""
         payment = dict(CONTACT, **payment)
-        return self.as_anon().post("/api/submissions/", submission_payload(self.type_a, payment=payment), format="json")
+        return self.as_submitter().post("/api/submissions/", submission_payload(self.type_a, payment=payment), format="json")
 
 
 class UCDPaymentTests(UCDPaymentFixture):

@@ -35,16 +35,13 @@ def pending_cutoff():
 
 
 def uploaded_by(upload, user):
-    """An upload made by a logged-in user may only be used by that user. Anonymous uploads have no
-    uploader to check, so for them the id is the only secret."""
-    if upload.uploaded_by_id is None:
-        return True
-    return bool(user and user.is_authenticated and user.pk == upload.uploaded_by_id)
+    """An unattached upload may only be used by the user who uploaded it."""
+    return bool(user and user.is_authenticated and upload.uploaded_by_id is not None and user.pk == upload.uploaded_by_id)
 
 
 def validate_file_fields(schema, data, submission=None, user=None):
     """Each file field must hold the id of an upload for that field which is either already attached to
-    this submission, or unattached, unexpired and uploaded by `user` (or anonymously).
+    this submission, or unattached, unexpired and uploaded by `user`.
     Returns (errors, ids of uploads to attach)."""
     from dnaorder.models import SubmissionFile
     errors, pending = {}, []

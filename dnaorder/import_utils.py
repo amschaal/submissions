@@ -33,11 +33,19 @@ def parse_submission_id(URL):
     return re.findall(r'.*\/submissions\/([a-zA-Z0-9]+)\/?',URL)[0] #being lazy, just going to let error propagate.
 
 # Only dealing with locally hosted submissions for now for simplicity
-def import_submission_url(url, request=None):
-    submission_id = parse_submission_id(url)
+def import_submission_url(url, request=None, user=None):
+    """Serialize the submission a URL points at, for copying into a new one.
+    Only a submission `user` can open is returned; anything else is a 404."""
+    from django.http import Http404
     from dnaorder.api.serializers import SubmissionSerializer
     from dnaorder.models import Submission
-    submission = Submission.objects.get(id=submission_id)
+    try:
+        submission_id = parse_submission_id(url)
+    except (IndexError, TypeError):
+        raise Http404
+    submission = Submission.objects.visible_to(user).filter(id=submission_id).first()
+    if not submission:
+        raise Http404
     data = SubmissionSerializer(submission).data
     data.pop('lab', None)
     data.pop('pi', None)
@@ -64,15 +72,20 @@ def get_submission_api_url(url, request=None):
         return url.replace('/submissions/','/server/api/submissions/') 
 
 # Only dealing with locally hosted submission types and submissions for now for simplicity
-def get_submission_schema(url): #takes either submission or submission type URL
+def get_submission_schema(url, user=None, submission_types=None): #takes either submission or submission type URL
+    """`submission_types` is the queryset of types the caller may read (it defaults to none)."""
+    from django.http import Http404
+    url = url or ''
     if url[:-1] != '/':
         url += '/'
     if '/submissions/' in url:
-        return import_submission_url(url).get('submission_schema')
-    type_id = re.findall(r'.*\/submission_types?\/([0-9]+)\/?',url)[0]
+        return import_submission_url(url, user=user).get('submission_schema')
+    type_ids = re.findall(r'.*\/submission_types?\/([0-9]+)\/?',url)
     from dnaorder.api.serializers import SubmissionTypeSerializer
     from dnaorder.models import SubmissionType
-    submission_type = SubmissionType.objects.get(id=type_id)
+    submission_type = (submission_types if submission_types is not None else SubmissionType.objects.none()).filter(id=type_ids[0]).first() if type_ids else None
+    if not submission_type:
+        raise Http404
     data = SubmissionTypeSerializer(submission_type).data
     return data.get('submission_schema')
 

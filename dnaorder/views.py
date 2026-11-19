@@ -1,14 +1,16 @@
 from django.shortcuts import redirect
 from dnaorder.models import SubmissionType, Submission
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from django.http import Http404
 from dnaorder.api.serializers import UserSerializer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from dnaorder.validators import SamplesheetValidator
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import BACKEND_SESSION_KEY, authenticate, login as auth_login, logout as auth_logout
 from rest_framework.permissions import AllowAny
 from dnaorder.api.throttling import (
-    LoginAnonThrottle, ValidateAnonThrottle, SubmissionReadAnonThrottle, USER_TIERS,
+    LoginAnonThrottle, ValidateThrottle, SubmissionReadThrottle, USER_TIERS,
 )
 from dnaorder.spreadsheets import (
     dataset_response,
@@ -79,6 +81,9 @@ def get_user(request):
         return Response({"message": "Not authenticated."}, status=403)
 
 
+KEYCLOAK_BACKEND = "social_core.backends.keycloak.KeycloakOAuth2"
+
+
 def keycloak_logout_url(request):
     """URL that ends the Keycloak SSO session and returns the browser to us.
 
@@ -106,11 +111,13 @@ def keycloak_logout_url(request):
 def logout_view(request):
     # Django's session is only half of it: a user who signed in through
     # Keycloak keeps their SSO session there and would be signed straight back
-    # in, so hand the SPA a URL to finish the job.  Both reads have to happen
-    # before auth_logout flushes the session.
+    # in, so hand the SPA a URL to finish the job.  A session started any other
+    # way (an emailed code, a password) has no SSO session to end.  Both reads
+    # have to happen before auth_logout flushes the session.
     keycloak_url = (
         keycloak_logout_url(request)
-        if request.user.is_authenticated and request.user.social_auth.exists()
+        if request.user.is_authenticated
+        and request.session.get(BACKEND_SESSION_KEY) == KEYCLOAK_BACKEND
         else None
     )
     auth_logout(request)
@@ -118,8 +125,7 @@ def logout_view(request):
 
 
 @api_view(["POST"])
-@permission_classes((AllowAny,))
-@throttle_classes([ValidateAnonThrottle, *USER_TIERS])
+@throttle_classes([ValidateThrottle, *USER_TIERS])
 def validate_data(request, type_id=None):
     if type_id:
         schema = SubmissionType.objects.get(id=type).sample_schema
@@ -138,10 +144,13 @@ def validate_data(request, type_id=None):
 
 
 @api_view(["GET"])
-@permission_classes((AllowAny,))
-@throttle_classes([SubmissionReadAnonThrottle, *USER_TIERS])
+@authentication_classes([SessionAuthentication, TokenAuthentication])
+@throttle_classes([SubmissionReadThrottle, *USER_TIERS])
 def download(request, id):
-    submission = Submission.objects.get(id=id)
+    # Only for someone who can open the submission; otherwise the same 404 as an unknown id.
+    submission = Submission.objects.visible_to(request.user).filter(id=id).first()
+    if not submission:
+        raise Http404
     data = request.GET.get("data", "combined")  # samples or submission
     # Read the export format from `export_format`, not `format`: this is a DRF
     # @api_view, and DRF content negotiation claims a `?format=` query param
@@ -187,9 +196,3 @@ def download(request, id):
 
 #     return sendfile(request, file_path, attachment_filename=filename,attachment=True)
 
-
-@api_view(["GET"])
-@csrf_exempt
-@permission_classes((AllowAny,))
-def test(request):
-    return Response({"message": "Test message"})

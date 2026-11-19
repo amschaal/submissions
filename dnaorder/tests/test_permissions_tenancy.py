@@ -75,14 +75,19 @@ class NoteIsolationTests(ApiTestCase):
         self.pub = make_note(self.sub_a, "pub-a", public=True)
         self.priv = make_note(self.sub_a, "priv-a", public=False)
 
-    def test_other_lab_member_cannot_read_private_notes(self):
+    def test_other_lab_member_cannot_read_notes(self):
+        # Staff of another lab can't open the submission at all, so not its notes either.
         resp = self.as_user(self.lab_b_member).get(
             "/api/notes/?submission={}".format(self.sub_a.id)
         )
+        self.assertNotFound(resp)
+
+    def test_named_user_reads_public_notes_only(self):
+        resp = self.as_submitter().get("/api/notes/?submission={}".format(self.sub_a.id))
         self.assertEqual(resp.status_code, 200, resp.content)
         texts = {n["text"] for n in (resp.data["results"] if isinstance(resp.data, dict) else resp.data)}
         self.assertIn("pub-a", texts)
-        self.assertNotIn("priv-a", texts)  # private note must not leak cross-lab
+        self.assertNotIn("priv-a", texts)  # private notes are for the lab
 
 
 class SubmissionFileIsolationTests(ApiTestCase):

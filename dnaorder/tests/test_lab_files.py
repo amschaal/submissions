@@ -47,18 +47,18 @@ class LabFileFixture(ApiTestCase):
 class LabFileVisibilityTests(LabFileFixture):
     def test_public_file_is_fetchable_by_anyone_but_only_listed_for_lab_staff(self):
         lab_file = self.make_file()
-        for client in [self.as_anon(), self.as_user(self.outsider), self.as_user(self.lab_b_member)]:
+        for client in [self.as_submitter(), self.as_user(self.outsider), self.as_user(self.lab_b_member)]:
             self.assertNotIn(str(lab_file.pk), self.listed_ids(client))
             self.assertEqual(client.get(f'/api/lab_files/{lab_file.pk}/').status_code, 200)
         self.assertIn(str(lab_file.pk), self.listed_ids(self.as_user(self.lab_a_associate)))
-        resp = self.download(lab_file, self.as_anon())
+        resp = self.download(lab_file, self.as_submitter())
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.content_bytes, b'template contents')
         self.assertIn('attachment; filename="template.xlsx"', resp['Content-Disposition'])
 
     def test_internal_file_is_hidden_from_users_without_a_lab_permission(self):
         lab_file = self.make_file(internal=True)
-        for client in [self.as_anon(), self.as_user(self.outsider), self.as_user(self.lab_b_member)]:
+        for client in [self.as_submitter(), self.as_user(self.outsider), self.as_user(self.lab_b_member)]:
             self.assertNotIn(str(lab_file.pk), self.listed_ids(client))
             self.assertEqual(self.download(lab_file, client).status_code, 404)
             self.assertEqual(client.get(f'/api/lab_files/{lab_file.pk}/').status_code, 404)
@@ -82,13 +82,13 @@ class LabFileVisibilityTests(LabFileFixture):
     def test_stored_outside_media_root_and_path_not_exposed(self):
         lab_file = self.make_file()
         self.assertTrue(protected_storage.path(lab_file.file.name).startswith(PROTECTED_ROOT))
-        data = self.as_anon().get(f'/api/lab_files/{lab_file.pk}/').data
+        data = self.as_submitter().get(f'/api/lab_files/{lab_file.pk}/').data
         self.assertNotIn('file', data)
         self.assertEqual(data['filename'], 'template.xlsx')
         self.assertTrue(data['url'].endswith(f'/api/lab_files/{lab_file.pk}/download/'))
 
     def test_bad_id_is_404(self):
-        self.assertEqual(self.as_anon().get('/api/lab_files/not-a-uuid/download/').status_code, 404)
+        self.assertEqual(self.as_submitter().get('/api/lab_files/not-a-uuid/download/').status_code, 404)
 
 
 class LabFileManagementTests(LabFileFixture):
@@ -105,7 +105,7 @@ class LabFileManagementTests(LabFileFixture):
             self.assertTrue(lab_file.internal)
 
     def test_others_cannot_upload(self):
-        self.assertDenied(self.as_anon().post('/api/lab_files/', {'lab': self.lab_a.id, 'name': 'x', 'file': upload()}, format='multipart'))
+        self.assertDenied(self.as_submitter().post('/api/lab_files/', {'lab': self.lab_a.id, 'name': 'x', 'file': upload()}, format='multipart'))
         for user in [self.lab_a_associate, self.lab_b_member, self.outsider]:
             self.assertDenied(self.create(user), user.username)
         self.assertFalse(LabFile.objects.exists())

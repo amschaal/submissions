@@ -36,7 +36,7 @@ class ThrottlingTests(APITestCase):
         cls.institution = make_institution()
         cls.lab = make_lab(cls.institution)
         cls.type = make_submission_type(cls.lab)
-        cls.sub = make_submission(cls.type)
+        cls.sub = make_submission(cls.type, email="t@example.com")  # names cls.user
         cls.user = make_user("throttle_user", password="pw", email="t@example.com")
 
     def setUp(self):
@@ -54,7 +54,8 @@ class ThrottlingTests(APITestCase):
         self.assertEqual(second.status_code, 429, second.content)
         self.assertIn("Retry-After", second)
 
-    def test_open_submission_read_is_rate_limited_for_anonymous(self):
+    def test_submission_read_is_rate_limited_for_non_staff_users(self):
+        self.client.force_authenticate(user=self.user)
         url = "/api/submissions/{}/".format(self.sub.id)
         self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 429)
@@ -70,4 +71,5 @@ class ThrottlingTests(APITestCase):
         self.client.post("/api/login/", {"username": "x", "password": "y"}, format="json")
         self.client.post("/api/login/", {"username": "x", "password": "y"}, format="json")
         # submission_read scope is still fresh:
+        self.client.force_authenticate(user=self.user)
         self.assertEqual(self.client.get("/api/submissions/{}/".format(self.sub.id)).status_code, 200)

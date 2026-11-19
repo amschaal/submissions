@@ -15,6 +15,6 @@ class LineItemPermissions(permissions.BasePermission):
         perms = submission.permissions(request.user)
         return Submission.PERMISSION_ADMIN in perms or Submission.PERMISSION_STAFF in perms
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return obj.editable(request.user)
+        # Charges are managed, and seen, by the staff of the submission's lab.
+        perms = obj.submission.permissions(request.user)
+        return Submission.PERMISSION_ADMIN in perms or Submission.PERMISSION_STAFF in perms
