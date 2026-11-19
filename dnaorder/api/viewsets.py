@@ -688,7 +688,6 @@ class LabViewSet(PermissionMixin, mixins.RetrieveModelMixin, mixins.UpdateModelM
     @action(detail=True, methods=['post'], permission_classes=[LabAdmin])
     def set_permissions(self, request, **kwargs):
         import sys
-        sys.stderr.write('set_permissions!!!!')
         obj = self.get_object()
         removed = []
         for username, data in request.data.get('user_permissions').items():

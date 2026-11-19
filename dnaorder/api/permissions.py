@@ -204,8 +204,6 @@ class ObjectPermission(AuthenticatedPermission):
     #     return super().has_permission(request, view)
     def has_object_permission(self, request, view, obj):
         obj = self.get_obj(obj)
-        sys.stderr.write('has_object_permission\n')
-        # sys.stderr.writelines([str(obj.permissions.filter(user=request.user)),self.permission])
         if not obj:
             return False
         if not request.user.is_authenticated:
@@ -218,7 +216,6 @@ class ObjectPermission(AuthenticatedPermission):
 
 class LabObjectPermission(ObjectPermission):
     def get_obj(self, obj):
-        print('LabObjectPermission.get_obj', obj)
         from dnaorder.models import Lab
         if isinstance(obj, Lab):
             return obj
