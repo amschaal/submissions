@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models.functions import Lower
 
 #: The address belongs to an account that must use single sign-on.
 REASON_SSO = 'sso'
@@ -48,6 +49,21 @@ def is_privileged(user):
     )
 
 
+def _matching(queryset, email):
+    """Rows whose address is the same address as ``email``.
+
+    Compared with ``Lower()``, which folds the same characters as the
+    ``str.lower()`` in ``normalize_email``, so this comparison and the
+    normalized form agree.  ``__iexact`` is not interchangeable here: it
+    compares with ``UPPER()``, which folds a different set of characters.
+    ``Submission.objects.named`` and ``dnaorder.utils.assign_submission``
+    compare addresses the same way.
+
+    ``email`` must already be normalized.
+    """
+    return queryset.alias(lower_email=Lower('email')).filter(lower_email=email)
+
+
 def users_for_email(email):
     """Every account the address is tied to: as its primary email, as a
     confirmed secondary email, or as an address verified by a previous code login."""
@@ -56,9 +72,9 @@ def users_for_email(email):
     email = normalize_email(email)
     if not email:
         return []
-    ids = set(User.objects.filter(email__iexact=email).values_list('pk', flat=True))
-    ids.update(UserEmail.objects.filter(email__iexact=email).values_list('user_id', flat=True))
-    ids.update(EmailAddress.objects.filter(email__iexact=email, verified=True).values_list('user_id', flat=True))
+    ids = set(_matching(User.objects, email).values_list('pk', flat=True))
+    ids.update(_matching(UserEmail.objects, email).values_list('user_id', flat=True))
+    ids.update(_matching(EmailAddress.objects.filter(verified=True), email).values_list('user_id', flat=True))
     return list(User.objects.filter(pk__in=ids))
 
 
@@ -96,7 +112,7 @@ def _create_user(email):
 
 def _record_verified_email(user, email):
     from allauth.account.models import EmailAddress
-    address = EmailAddress.objects.filter(user=user, email__iexact=email).first()
+    address = _matching(EmailAddress.objects.filter(user=user), email).first()
     if address is None:
         is_primary = (
             normalize_email(user.email) == email
