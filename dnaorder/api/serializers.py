@@ -624,6 +624,10 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         return instance.formatted_size()
     def get_date(self,instance):
         return instance.formatted_date()
+    def validate_submission(self, submission):
+        if self.instance and self.instance.submission_id != submission.pk:
+            raise serializers.ValidationError('A file cannot be moved to another submission.')
+        return submission
     class Meta:
         model = SubmissionFile
         exclude = ['uploaded_by']
@@ -681,7 +685,10 @@ class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         data = kwargs.get('data')
         if data:
-            submission = Submission.objects.get(id=kwargs['data'].get('submission'))
+            instance = args[0] if args else kwargs.get('instance')
+            # An existing note stays on its submission (see validate_submission), so
+            # everything below is worked out from that one, not from what was posted.
+            submission = instance.submission if isinstance(instance, Note) else Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
             if not submission.lab.is_lab_member(request.user):
@@ -711,6 +718,10 @@ class NoteSerializer(serializers.ModelSerializer):
         request = self._context.get('request')
         if request:
             return instance.can_modify(request.user)
+    def validate_submission(self, submission):
+        if self.instance and self.instance.submission_id != submission.pk:
+            raise serializers.ValidationError('A note cannot be moved to another submission.')
+        return submission
     def validate(self, attrs):
         parent = attrs.get('parent')
         submission = attrs.get('submission') or getattr(self.instance, 'submission', None)

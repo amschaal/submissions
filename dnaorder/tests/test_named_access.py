@@ -259,6 +259,21 @@ class FileTests(NamedAccessFixture):
         self.assertNotFound(self.attach(self.contact_user, self.sub_b))
         self.assertEqual(SubmissionFile.objects.count(), before)
 
+    def test_file_stays_on_its_submission(self):
+        file_id = self.attach(self.contact_user, self.sub_a).data["id"]
+        url = "/api/submission_files/{}/".format(file_id)
+        for target in [self.sub_b, self.sub_a_locked]:
+            resp = self.as_user(self.contact_user).patch(url, {"submission": target.id}, format="json")
+            self.assertEqual(resp.status_code, 400, resp.content)
+            self.assertIn("submission", resp.data)
+        # Lab staff can't move one between their own submissions either.
+        resp = self.as_user(self.lab_a_admin).patch(url, {"submission": self.sub_a_locked.id}, format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertEqual(SubmissionFile.objects.get(pk=file_id).submission_id, self.sub_a.id)
+        # Sending the submission it already has is not a move.
+        resp = self.as_user(self.contact_user).patch(url, {"submission": self.sub_a.id}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+
     def test_only_staff_delete_files_of_a_locked_submission(self):
         locked_file = SubmissionFile.objects.create(submission=self.sub_a_locked, file=SimpleUploadedFile("l.csv", b"l"))
         url = "/api/submission_files/{}/".format(locked_file.id)
@@ -318,6 +333,28 @@ class NoteTests(NamedAccessFixture):
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn("parent", resp.data)
         self.assertEqual(self.post(self.submitter, parent=self.public.id).status_code, 201)
+
+    def test_author_can_edit_their_note(self):
+        note_id = self.post(self.contact_user, text="first draft").data["id"]
+        url = "/api/notes/{}/?submission={}".format(note_id, self.sub_a.id)
+        resp = self.as_user(self.contact_user).patch(url, {"text": "second draft"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        note = Note.objects.get(pk=note_id)
+        self.assertEqual((note.text, note.submission_id), ("second draft", self.sub_a.id))
+        self.assertDenied(self.as_submitter().patch(url, {"text": "not mine"}, format="json"))
+
+    def test_note_stays_on_its_submission(self):
+        note_id = self.post(self.contact_user, text="mine").data["id"]
+        url = "/api/notes/{}/?submission={}".format(note_id, self.sub_a.id)
+        for method in ("patch", "put"):
+            body = {"submission": self.sub_b.id, "text": "moved", "type": Note.TYPE_NOTE, "send_email": True}
+            resp = getattr(self.as_user(self.contact_user), method)(url, body, format="json")
+            self.assertEqual(resp.status_code, 400, resp.content)
+            self.assertIn("submission", resp.data)
+            self.assertNotIn("emails", resp.data)
+        note = Note.objects.get(pk=note_id)
+        self.assertEqual((note.text, note.submission_id), ("mine", self.sub_a.id))
+        self.assertFalse(Note.objects.filter(submission=self.sub_b).exists())
 
 
 class DraftTests(NamedAccessFixture):
