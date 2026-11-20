@@ -220,3 +220,39 @@ class TemplateTests(FileFieldFixture):
             resp = self.save_schema(lab_file)
             self.assertEqual(resp.status_code, 400, lab_file)
             self.assertIn('submission_schema', resp.data)
+
+
+class DraftHandoffTests(FileFieldFixture):
+    """A draft that carries a form upload, finished by someone other than its owner.
+
+    A draft's link works for the people it names (DraftPermissions), and an
+    upload belongs to whoever made it (AttachOnSaveTests above).  Where the two
+    meet, the colleague can open the draft but has to upload the file again.
+    That is how it works today; whether a named user should instead be able to
+    take over the draft's uploads, or the form should ask for the file again
+    up front, is an open decision.
+    """
+
+    def test_a_named_colleague_has_to_upload_the_file_again(self):
+        file_id = self.upload_id()  # uploaded by self.submitter
+        draft = self.as_submitter().post('/api/drafts/', {'data': {
+            'email': self.submitter.email, 'pi_email': self.pi_user.email, 'plate': file_id,
+        }}, format='json')
+        self.assertEqual(draft.status_code, 201, draft.content)
+        # The PI is named on the draft, so its link works for them...
+        self.assertEqual(self.as_user(self.pi_user).get('/api/drafts/{}/'.format(draft.data['id'])).status_code, 200)
+
+        def submit(plate):
+            payload = submission_payload(
+                self.type_files, submission_data={'plate': plate},
+                email=self.submitter.email, pi_email=self.pi_user.email,
+            )
+            return self.as_user(self.pi_user).post('/api/submissions/', payload, format='json')
+
+        # ...but the upload in it is the submitter's.
+        resp = submit(file_id)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('plate', resp.data['submission_data'])
+        # With a file of their own the same draft goes through.
+        own = self.upload_id(client=self.as_user(self.pi_user))
+        self.assertEqual(submit(own).status_code, 201)

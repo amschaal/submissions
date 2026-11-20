@@ -13,6 +13,8 @@ on none.
 import shutil
 import tempfile
 
+from allauth.account.models import EmailAddress
+from django.contrib.auth.models import User
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -23,6 +25,7 @@ from dnaorder.tests.base import (
     ApiTestCase, make_note, make_submission, make_submission_type,
 )
 from dnaorder.tests.test_payment_required import submission_payload
+from dnaorder.utils import assign_submissions
 
 MEDIA_ROOT = tempfile.mkdtemp()
 
@@ -471,3 +474,48 @@ class CsrfTests(NamedAccessFixture):
         self.assertEqual(client.get(self.url(self.sub_free)).status_code, 200)
         resp = client.put(self.url(self.sub_free), submission_payload(self.type_free, comments="x"), format="json")
         self.assertEqual(resp.status_code, 403, resp.content)
+
+
+class AccountEmailChangeTests(ApiTestCase):
+    """A named user's access when their account email changes.
+
+    Single sign-on rewrites ``User.email`` at every login, so an address
+    changed upstream arrives here with the old one recorded nowhere.  Being
+    named is decided by ``verified_emails(user)`` alone, and ``Submission.users``
+    is a cache rather than a grant (dnaorder/utils.py), so nothing then ties
+    the user to a submission that names their previous address.
+
+    These tests record how that works today.  Whether the last one is the
+    behaviour wanted is an open decision: the alternative is for the sign-in
+    pipeline to keep the previous address as a verified one when it changes,
+    which the second test shows is enough to keep access.
+    """
+
+    def detail(self, user):
+        return self.as_user(user).get("/api/submissions/{}/".format(self.sub_a.id))
+
+    def listed_ids(self, user):
+        return [row["id"] for row in rows(self.as_user(user).get("/api/submissions/"))]
+
+    def move_email(self, user, email):
+        User.objects.filter(pk=user.pk).update(email=email)
+        user.refresh_from_db()
+
+    def test_the_named_submitter_can_open_it_to_begin_with(self):
+        self.assertEqual(self.detail(self.submitter).status_code, 200)
+        self.assertIn(self.sub_a.id, self.listed_ids(self.submitter))
+
+    def test_keeping_the_old_address_as_a_verified_one_keeps_access(self):
+        old = self.submitter.email
+        self.move_email(self.submitter, "moved@example.com")
+        EmailAddress.objects.create(user=self.submitter, email=old, verified=True)
+        self.assertEqual(self.detail(self.submitter).status_code, 200)
+        self.assertIn(self.sub_a.id, self.listed_ids(self.submitter))
+
+    def test_access_ends_when_the_old_address_is_recorded_nowhere(self):
+        # The users cache still holds the row; it carries no weight.
+        assign_submissions(self.submitter)
+        self.assertTrue(self.sub_a.users.filter(pk=self.submitter.pk).exists())
+        self.move_email(self.submitter, "moved@example.com")
+        self.assertNotFound(self.detail(self.submitter))
+        self.assertNotIn(self.sub_a.id, self.listed_ids(self.submitter))
