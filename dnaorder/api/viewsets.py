@@ -95,7 +95,15 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
             return Submission.objects.visible_to(self.request.user).select_related('lab', 'type')
         institution = get_site_institution(self.request)
         lab_id = self.request.query_params.get('lab', None)
-        return Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
+        queryset = Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
+        # Everything ListSubmissionSerializer renders per row: the type, the lab
+        # (with the institution and site its url is built from), the PI, the
+        # receiver, the contacts and the participants.  Without these each row
+        # costs a query apiece, and a page runs to 10,000 rows -- see
+        # dnaorder/tests/test_query_counts.py.
+        return queryset.select_related(
+            'lab__institution__site', 'type', 'pi', 'received_by',
+        ).prefetch_related('contacts', 'participants', 'participant_set')
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer

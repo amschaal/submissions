@@ -585,7 +585,11 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     received_by_name = serializers.SerializerMethodField(read_only=True)
     pi = PISerializer(read_only=True)
     def get_participant_names(self,instance):
-        return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
+        # Sorted in python, not with order_by: ordering the related manager
+        # issues a fresh query for every row and so defeats
+        # prefetch_related('participants').
+        participants = sorted(instance.participants.all(), key=lambda p: (p.last_name, p.first_name))
+        return ['{0} {1}'.format(p.first_name, p.last_name) for p in participants]
     def get_received_by_name(self,instance):
         return str(instance.received_by) if instance.received_by else None
     def get_url(self, instance):
