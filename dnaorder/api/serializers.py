@@ -596,7 +596,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
         # Sorted in python, not with order_by: ordering the related manager
         # issues a fresh query for every row and so defeats
         # prefetch_related('participants').
-        participants = sorted(instance.participants.all(), key=lambda p: (p.last_name, p.first_name))
+        participants = sorted(instance.participants.all(), key=lambda p: (p.last_name.casefold(), p.first_name.casefold()))
         return ['{0} {1}'.format(p.first_name, p.last_name) for p in participants]
     def get_received_by_name(self,instance):
         return str(instance.received_by) if instance.received_by else None

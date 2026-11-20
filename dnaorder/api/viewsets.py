@@ -88,22 +88,34 @@ class SubmissionViewSet(ActionPermissionMixin, VersionMixin, viewsets.ModelViewS
         if scope:
             return scoped(scope)
         return super().get_throttles()
+    #: The single-valued relations the submission serializers render: the type,
+    #: the lab (with the institution and site the submission's url is built
+    #: from), the PI with its institution, and whoever received the samples.
+    SERIALIZED_RELATIONS = ('lab__institution__site', 'type', 'pi__institution', 'received_by')
     def get_queryset(self):
         if self.detail:
             # A submission id is not a credential: anything the user is not entitled
             # to open is a 404, the same as an id that does not exist.
-            return Submission.objects.visible_to(self.request.user).select_related('lab', 'type')
+            return Submission.objects.visible_to(self.request.user).select_related(*self.SERIALIZED_RELATIONS)
         institution = get_site_institution(self.request)
         lab_id = self.request.query_params.get('lab', None)
         queryset = Submission.get_queryset(institution=institution, user=self.request.user, lab_id=lab_id)
-        # Everything ListSubmissionSerializer renders per row: the type, the lab
-        # (with the institution and site its url is built from), the PI, the
-        # receiver, the contacts and the participants.  Without these each row
-        # costs a query apiece, and a page runs to 10,000 rows -- see
-        # dnaorder/tests/test_query_counts.py.
-        return queryset.select_related(
-            'lab__institution__site', 'type', 'pi', 'received_by',
-        ).prefetch_related('contacts', 'participants', 'participant_set')
+        return self.preload(queryset)
+    def preload(self, queryset):
+        """Fetch up front what the current action reads from every row, so the
+        number of queries does not grow with the number of rows (a page runs to
+        10,000 of them).  dnaorder/tests/test_query_counts.py measures it."""
+        if self.action == 'list':
+            # ListSubmissionSerializer also renders each row's contacts and its
+            # participants, both as names and as Participant rows with their user.
+            return queryset.select_related(*self.SERIALIZED_RELATIONS).prefetch_related(
+                'contacts', 'participants', 'participant_set__user',
+            )
+        if self.action == 'export':
+            # The spreadsheet builders read the type's name and the row's own columns.
+            return queryset.select_related('type')
+        # report aggregates in the database, so it loads no rows at all.
+        return queryset
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'POST', 'PUT']:
             return WritableSubmissionSerializer
