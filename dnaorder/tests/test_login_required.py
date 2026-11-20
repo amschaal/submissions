@@ -1,8 +1,9 @@
-"""Nothing is available without signing in.
+"""Next to nothing is available without signing in.
 
 The only endpoints an anonymous browser can use are the ones the app needs to
-show a sign-in page and to sign in.  Everything else must refuse an anonymous
-request (401/403), whatever ids it carries.
+show its landing pages (the institution, and each lab's name and welcome text)
+and to sign in.  Everything else must refuse an anonymous request (401/403),
+whatever ids it carries.
 
 ``AnonymousSweepTests`` walks every route the API routers register, so an
 endpoint added later is covered without anyone remembering to add it here.
@@ -13,15 +14,66 @@ from django.urls import Resolver404, resolve
 
 from billing.api.urls import router as billing_router
 from dnaorder.api.urls import router as api_router
-from dnaorder.tests.base import ApiTestCase, make_note
+from dnaorder.tests.base import ApiTestCase, make_lab, make_note
 
 #: Reachable while signed out.
 PUBLIC_PATHS = {
-    "/api/institutions/default/",  # branding for the sign-in page
+    "/api/institutions/default/",  # the site landing page, and branding for the sign-in page
+    "/api/public/labs/",  # the labs listed on the site landing page
+    "/api/public/labs/000000000000/",  # a lab's landing page
 }
 
 #: An id that matches every lookup pattern but no object.
 DUMMY_ID = "000000000000"
+
+
+class PublicLandingPageTests(ApiTestCase):
+    """dnaorder/api/public.py: a lab's name and welcome text, and nothing more."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.lab_a.home_page = "<p>Welcome to Lab A</p>"
+        cls.lab_a.save()
+        cls.lab_off = make_lab(cls.institution, lab_id="lab-off", name="Disabled Lab")
+        cls.lab_off.disabled = True
+        cls.lab_off.save()
+
+    def test_anyone_can_list_enabled_labs_by_name(self):
+        resp = self.as_anon().get("/api/public/labs/")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data, [
+            {"lab_id": "lab-a", "name": "Lab A"},
+            {"lab_id": "lab-b", "name": "Lab B"},
+        ])
+
+    def test_anyone_can_read_a_labs_landing_page(self):
+        resp = self.as_anon().get("/api/public/labs/lab-a/")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data, {"lab_id": "lab-a", "name": "Lab A", "home_page": "<p>Welcome to Lab A</p>"})
+
+    def test_signed_in_users_get_the_same_limited_view(self):
+        for user in [self.outsider, self.lab_a_admin, self.superuser]:
+            resp = self.as_user(user).get("/api/public/labs/lab-a/")
+            self.assertEqual(set(resp.data), {"lab_id", "name", "home_page"}, user.username)
+
+    def test_disabled_or_unknown_labs_are_not_found(self):
+        for client in (self.as_anon, lambda: self.as_user(self.superuser)):
+            self.assertEqual(client().get("/api/public/labs/lab-off/").status_code, 404)
+            self.assertEqual(client().get("/api/public/labs/no-such-lab/").status_code, 404)
+
+    def test_public_view_is_read_only(self):
+        for client in (self.as_anon, lambda: self.as_user(self.superuser)):
+            self.assertEqual(client().post("/api/public/labs/", {"name": "x", "lab_id": "x"}, format="json").status_code, 405)
+            for method in ("put", "patch", "delete"):
+                resp = getattr(client(), method)("/api/public/labs/lab-a/", {"name": "Renamed"}, format="json")
+                self.assertEqual(resp.status_code, 405, method)
+        self.lab_a.refresh_from_db()
+        self.assertEqual(self.lab_a.name, "Lab A")
+
+    def test_full_lab_endpoints_still_need_sign_in(self):
+        self.assertDenied(self.as_anon().get("/api/labs/"))
+        self.assertDenied(self.as_anon().get("/api/labs/lab-a/"))
 
 
 class PublicEndpointTests(ApiTestCase):
