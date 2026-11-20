@@ -450,6 +450,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 reversion.set_comment("Created on submission update")
                 return instance
     def get_editable(self,instance):
+        # Detail only: editable() spends several queries per submission, and a
+        # list page runs to 10,000 rows.  SubmissionSerializer.get_permissions
+        # is limited the same way, for the same reason.  Left computed when
+        # there is no view in the context, so a serializer used outside a
+        # viewset is unaffected.
+        view = self._context.get('view')
+        if view is not None and not getattr(view, 'detail', False):
+            return None
         request = self._context.get('request')
         if request:
             return instance.editable(request.user)
