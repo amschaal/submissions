@@ -17,9 +17,12 @@ from allauth.headless.account.inputs import RequestLoginCodeInput
 from allauth.headless.account.views import ConfirmLoginCodeView, RequestLoginCodeView
 from allauth.headless.base.response import AuthenticationResponse, ConflictResponse
 
+from django import forms
+
 from dnaorder.code_login.policy import (
     CodeLoginRefused,
     get_or_create_code_user,
+    is_supported_address,
     normalize_email,
     resolve_code_login,
 )
@@ -32,6 +35,12 @@ REFUSED_TEMPLATE = 'account/email/code_login_refused'
 class RequestCodeInput(RequestLoginCodeInput):
     def clean_email(self):
         email = normalize_email(self.cleaned_data['email'])
+        if not is_supported_address(email):
+            # A field error like any other malformed address: nothing is sent.
+            raise forms.ValidationError(
+                'Enter an email address without accented or other special characters.',
+                code='invalid',
+            )
         if not ratelimit.consume(context.request, action='request_login_code', key=email):
             raise get_adapter().validation_error('too_many_login_attempts')
         self.resolution = resolve_code_login(email)

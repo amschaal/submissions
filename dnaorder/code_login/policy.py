@@ -49,15 +49,15 @@ def is_privileged(user):
     )
 
 
-def _matching(queryset, email):
-    """Rows whose address is the same address as ``email``.
+def is_supported_address(email):
+    """Sign-in codes are only sent to plain ASCII addresses."""
+    return (email or '').isascii()
 
-    Compared with ``Lower()``, which folds the same characters as the
-    ``str.lower()`` in ``normalize_email``, so this comparison and the
-    normalized form agree.  ``__iexact`` is not interchangeable here: it
-    compares with ``UPPER()``, which folds a different set of characters.
-    ``Submission.objects.named`` and ``dnaorder.utils.assign_submission``
-    compare addresses the same way.
+
+def _matching(queryset, email):
+    """Rows whose address equals ``email``, ignoring case: both sides are
+    lower-cased, the way ``Submission.objects.named`` and
+    ``dnaorder.utils.assign_submission`` compare addresses.
 
     ``email`` must already be normalized.
     """
@@ -79,6 +79,8 @@ def users_for_email(email):
 
 
 def resolve_code_login(email):
+    if not is_supported_address(email):
+        return Resolution(allowed=False, reason=REASON_UNAVAILABLE)
     users = users_for_email(email)
     if not users:
         return Resolution(allowed=True)

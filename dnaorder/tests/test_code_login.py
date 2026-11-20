@@ -12,6 +12,7 @@ from io import StringIO
 from unittest import mock
 
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY
 from django.contrib.auth.models import User
 from django.core import mail
@@ -23,7 +24,9 @@ from rest_framework.settings import api_settings
 from rest_framework.test import APIClient
 
 from dnaorder.code_login.adapter import AccountAdapter
-from dnaorder.code_login.policy import normalize_email, resolve_code_login
+from dnaorder.code_login.policy import (
+    CodeLoginRefused, get_or_create_code_user, resolve_code_login,
+)
 from dnaorder.models import UserEmail
 from dnaorder.tests.base import ApiTestCase, grant_lab, make_submission, make_user
 from dnaorder.views import KEYCLOAK_BACKEND
@@ -31,11 +34,6 @@ from dnaorder.views import KEYCLOAK_BACKEND
 REQUEST = "/_allauth/browser/v1/auth/code/request"
 CONFIRM = "/_allauth/browser/v1/auth/code/confirm"
 MODEL_BACKEND = "django.contrib.auth.backends.ModelBackend"
-
-#: LATIN SMALL LETTER LONG S.  str.lower() leaves it alone, so it normalizes to
-#: an address of its own, while UPPER() folds it to "S" on a UTF-8 ctype: the two
-#: ways of comparing addresses disagree about it (see code_login.policy._matching).
-LONG_S = "ſ"
 
 
 class CodeLoginTestCase(ApiTestCase):
@@ -146,23 +144,6 @@ class ExistingAccountTests(CodeLoginTestCase):
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(self.client.get("/api/get_user/").data["user"]["id"], user.id)
         self.assertEqual(User.objects.filter(email__iexact="mixed.case@example.com").count(), 1)
-
-    def test_a_variant_spelling_is_an_address_of_its_own(self):
-        """Two addresses are the same address only where normalize_email makes
-        them equal, so a spelling that normalizes differently resolves on its own."""
-        make_user("smith", email="smith@example.com")
-        variant = normalize_email(LONG_S + "mith@example.com")
-        self.assertNotEqual(variant, "smith@example.com")
-        self.assertIsNone(resolve_code_login(variant).user)
-
-    def test_a_code_for_a_variant_spelling_opens_its_own_account(self):
-        user = make_user("smith2", email="smith2@example.com")
-        resp = self.sign_in(LONG_S + "mith2@example.com")
-        self.assertEqual(resp.status_code, 200, resp.content)
-        self.assertNotEqual(
-            self.client.get("/api/get_user/").data["user"]["id"], user.id
-        )
-        self.assertEqual(User.objects.filter(email="smith2@example.com").count(), 1)
 
     def test_confirmed_secondary_address_signs_into_its_owner(self):
         UserEmail.objects.create(user=self.outsider, email="second@example.com")
@@ -292,11 +273,29 @@ class CodeLifecycleTests(CodeLoginTestCase):
         self.assertEqual(self.error_codes(resp), ["too_many_login_attempts"])
         self.assertEqual(len(mail.outbox), 3)
 
+    def test_a_per_address_limit_ships_in_settings(self):
+        # The test above pins its own limit, so it says nothing about the one
+        # that is configured.
+        self.assertIn("/key", settings.ACCOUNT_RATE_LIMITS["request_login_code"])
+
     def test_invalid_email_is_a_field_error(self):
         resp = self.request_code("not-an-email")
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertEqual(resp.json()["errors"][0]["param"], "email")
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_address_must_be_plain_ascii(self):
+        users_before = User.objects.count()
+        for address in ["jos\u00e9@example.com", "user@ex\u00e4mple.com"]:
+            resp = self.request_code(address)
+            self.assertEqual(resp.status_code, 400, address)
+            self.assertEqual(resp.json()["errors"][0]["param"], "email", address)
+            # The policy refuses it too, whatever calls it.
+            self.assertFalse(resolve_code_login(address).allowed, address)
+            with self.assertRaises(CodeLoginRefused):
+                get_or_create_code_user(address)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(User.objects.count(), users_before)
 
     def test_csrf_is_enforced(self):
         client = APIClient(enforce_csrf_checks=True)
