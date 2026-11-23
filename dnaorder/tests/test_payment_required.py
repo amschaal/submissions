@@ -65,11 +65,11 @@ class SubmissionTypePaymentRequiredTests(PaymentRequiredFixture):
         self.assertTrue(self.type_a.payment_required)
 
     def test_flag_is_exposed_wherever_types_are_served(self):
-        detail = self.as_anon().get("/api/submission_types/{}/".format(self.type_free.id))
+        detail = self.as_submitter().get("/api/submission_types/{}/".format(self.type_free.id))
         self.assertEqual(detail.status_code, 200, detail.content)
         self.assertIs(detail.data["payment_required"], False)
 
-        lab = self.as_anon().get("/api/labs/lab-a/")
+        lab = self.as_submitter().get("/api/labs/lab-a/")
         self.assertEqual(lab.status_code, 200, lab.content)
         flags = {t["id"]: t["payment_required"] for t in lab.data["submission_types"]}
         self.assertIs(flags[self.type_a.id], True)
@@ -115,20 +115,20 @@ class EffectiveRequirementTests(PaymentRequiredFixture):
 
 class CreateSubmissionPaymentTests(PaymentRequiredFixture):
     def test_payment_is_required_by_default(self):
-        resp = self.as_anon().post("/api/submissions/", submission_payload(self.type_a), format="json")
+        resp = self.as_submitter().post("/api/submissions/", submission_payload(self.type_a), format="json")
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn("payment", resp.data)
 
     def test_payment_is_validated_and_stored_when_required(self):
         payload = submission_payload(self.type_a, payment=CREDIT_CARD)
-        resp = self.as_anon().post("/api/submissions/", payload, format="json")
+        resp = self.as_submitter().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         sub = Submission.objects.get(pk=resp.data["id"])
         self.assertEqual(sub.payment["payment_type"], "Credit Card")
         self.assertIs(resp.data["payment_required"], True)
 
     def test_no_payment_needed_when_type_does_not_require_it(self):
-        resp = self.as_anon().post("/api/submissions/", submission_payload(self.type_free), format="json")
+        resp = self.as_submitter().post("/api/submissions/", submission_payload(self.type_free), format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         sub = Submission.objects.get(pk=resp.data["id"])
         self.assertEqual(sub.payment, {})
@@ -140,18 +140,18 @@ class CreateSubmissionPaymentTests(PaymentRequiredFixture):
         payload = submission_payload(
             self.type_free, payment={"payment_type": "DaFIS", "payment_info": "not-an-account"}
         )
-        resp = self.as_anon().post("/api/submissions/", payload, format="json")
+        resp = self.as_submitter().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertEqual(Submission.objects.get(pk=resp.data["id"]).payment, {})
 
     def test_payment_required_in_response_is_derived_not_posted(self):
         payload = submission_payload(self.type_a, payment=CREDIT_CARD, payment_required=False)
-        resp = self.as_anon().post("/api/submissions/", payload, format="json")
+        resp = self.as_submitter().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertIs(resp.data["payment_required"], True)
 
         payload = submission_payload(self.type_free, payment_required=True)
-        resp = self.as_anon().post("/api/submissions/", payload, format="json")
+        resp = self.as_submitter().post("/api/submissions/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertIs(resp.data["payment_required"], False)
 
@@ -315,11 +315,11 @@ class PluginValidatorTests(PaymentRequiredFixture):
         validators = PluginManager().submission_validators
         validators["_payment_required_test"] = validator
         try:
-            resp = self.as_anon().post(
+            resp = self.as_submitter().post(
                 "/api/submissions/", submission_payload(self.type_free), format="json"
             )
             self.assertEqual(resp.status_code, 201, resp.content)
-            resp = self.as_anon().post(
+            resp = self.as_submitter().post(
                 "/api/submissions/", submission_payload(self.type_a, payment=CREDIT_CARD), format="json"
             )
             self.assertEqual(resp.status_code, 201, resp.content)

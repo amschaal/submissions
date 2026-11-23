@@ -67,7 +67,7 @@ class BasePaymentSerializer(serializers.Serializer):
         self._submission_data = kwargs.pop('submission_data') # all submission data
         self._settings = self._lab.get_plugin_settings_by_id(self._plugin_id, private=True) if self._lab else {}
         self.fields['plugin_id'] = serializers.CharField(default=self._plugin_id)
-        sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
+        # sys.stderr.write('Serializer: {}\n'.format(self._plugin_id))
         super().__init__(instance, data, **kwargs)
         
 class PluginManager():
@@ -139,13 +139,17 @@ class PluginManager():
 
 
 # This decorator will take the submission_id from the url, get the submission, and pass it into the original view.  Optionally require ALL or ANY permissions.
+# The submission must be one the user can open (Submission.objects.visible_to); with no permissions listed that is all that is required.
 def plugin_submission_decorator(permissions=[], all=True):
+    from django.http import Http404
     from dnaorder.models import Submission
     from rest_framework.exceptions import PermissionDenied
     def wrapper(view_func):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
-            submission = Submission.objects.get(id=kwargs.pop('submission_id'))
+            submission = Submission.objects.visible_to(request.user).filter(id=kwargs.pop('submission_id')).first()
+            if not submission:
+                raise Http404
             if not submission.has_permission(request.user, permissions, all):
                 raise PermissionDenied('The current user does not have permission to perform this action.')
             plugin = SubmissionPlugin(kwargs.pop('plugin_id'), submission)

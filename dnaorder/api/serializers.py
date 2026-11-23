@@ -19,7 +19,7 @@ from random import sample
 from django.db import transaction
 from schema.utils import Schema, SchemaException, normalize_layout
 from _collections import OrderedDict
-from dnaorder.utils import assign_submission, absolute_url
+from dnaorder.utils import assign_submission, absolute_url, normalize_emails, verified_emails
 from dnaorder.file_fields import attach_uploads, template_errors, validate_file_fields
 from django.conf import settings
 from plugins import PluginManager
@@ -239,13 +239,41 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
     #temporarily disable the following serializer
 #     sample_data = SamplesField() #serializers.SerializerMethodField(read_only=False)
     table_count = serializers.SerializerMethodField()
+    #: Set by the lab through its own actions (lock, cancel, confirm, samples received, ...);
+    #: ignored when sent by anyone who is not a member of the lab.
+    LAB_ONLY_FIELDS = ['locked', 'confirmed', 'cancelled', 'completed', 'samples_received', 'received_by', 'plugin_data']
+    NOT_NAMED_MESSAGE = 'You must be the submitter, the PI or a contact on a submission you save. Enter {} as one of those email addresses, or sign in with an address that is already listed.'
     def validate(self, attrs):
         # Run default validation
         validated_data = super().validate(attrs)
+        self.apply_access_rules(attrs)
         # Apply each extra validator
         for validator in self.plugin_validators:
             validator(attrs, self)  # Pass attrs and serializer instance
         return validated_data
+    def apply_access_rules(self, attrs):
+        request = self._context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated or user.is_superuser:
+            return
+        lab = getattr(self, '_lab', None)
+        instance = self.instance if isinstance(self.instance, Submission) else None
+        if not (lab and lab.is_lab_member(user)):
+            for field in self.LAB_ONLY_FIELDS:
+                attrs.pop(field, None)
+        # A submission belongs to the people it names, so someone who is not working on
+        # it for the lab has to be one of them, and stays one when they edit it.
+        if lab and (lab.permissions.filter(user=user).exists() or (lab.institution and lab.institution.permissions.filter(user=user).exists())):
+            return
+        if instance and instance.participants.filter(pk=user.pk).exists():
+            return
+        contacts = attrs['contacts'] if 'contacts' in attrs else (list(instance.contacts.values('email')) if instance else [])
+        named = normalize_emails(
+            [attrs.get('email', getattr(instance, 'email', None)), attrs.get('pi_email', getattr(instance, 'pi_email', None))]
+            + [contact.get('email') for contact in contacts]
+        )
+        if not set(named) & set(verified_emails(user)):
+            raise serializers.ValidationError({'email': [self.NOT_NAMED_MESSAGE.format(user.email or 'your email address')]})
     def configure_plugins(self, instance, data, lab=None):
         # Payment first: the validators collected below may consult the payment
         # arrangement resolved here (see PluginManager.get_submission_validators).
@@ -422,6 +450,14 @@ class WritableSubmissionSerializer(serializers.ModelSerializer):
                 reversion.set_comment("Created on submission update")
                 return instance
     def get_editable(self,instance):
+        # Detail only: editable() spends several queries per submission, and a
+        # list page runs to 10,000 rows.  SubmissionSerializer.get_permissions
+        # is limited the same way, for the same reason.  Left computed when
+        # there is no view in the context, so a serializer used outside a
+        # viewset is unaffected.
+        view = self._context.get('view')
+        if view is not None and not getattr(view, 'detail', False):
+            return None
         request = self._context.get('request')
         if request:
             return instance.editable(request.user)
@@ -555,10 +591,13 @@ class SubmissionSerializer(WritableSubmissionSerializer):
     participant_names = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
     received_by_name = serializers.SerializerMethodField(read_only=True)
-    users = UserSerializer(many=True, read_only=True)
     pi = PISerializer(read_only=True)
     def get_participant_names(self,instance):
-        return ['{0} {1}'.format(p.first_name, p.last_name) for p in instance.participants.all().order_by('last_name', 'first_name')]
+        # Sorted in python, not with order_by: ordering the related manager
+        # issues a fresh query for every row and so defeats
+        # prefetch_related('participants').
+        participants = sorted(instance.participants.all(), key=lambda p: (p.last_name.casefold(), p.first_name.casefold()))
+        return ['{0} {1}'.format(p.first_name, p.last_name) for p in participants]
     def get_received_by_name(self,instance):
         return str(instance.received_by) if instance.received_by else None
     def get_url(self, instance):
@@ -569,7 +608,7 @@ class SubmissionSerializer(WritableSubmissionSerializer):
             return instance.permissions(self.context['request'].user)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'sample_schema','plugin_data']
+        exclude = ['sample_data', 'sample_schema','plugin_data', 'users']
 
 # A more efficent serializer for lists.  Limit attributes with large data or querying.
 class ListSubmissionSerializer(SubmissionSerializer):
@@ -577,7 +616,7 @@ class ListSubmissionSerializer(SubmissionSerializer):
     lab = LabListSerializer(read_only=True)
     class Meta:
         model = Submission
-        exclude = ['sample_data', 'sample_schema', 'import_data']#, 'submission_schema'
+        exclude = ['sample_data', 'sample_schema', 'import_data', 'users']#, 'submission_schema'
         
 class SubmissionFileField(serializers.FileField):
     # Uploads like a FileField, but reads back as the download endpoint; nginx no longer serves /media/submissions/.
@@ -597,6 +636,10 @@ class SubmissionFileSerializer(serializers.ModelSerializer):
         return instance.formatted_size()
     def get_date(self,instance):
         return instance.formatted_date()
+    def validate_submission(self, submission):
+        if self.instance and self.instance.submission_id != submission.pk:
+            raise serializers.ValidationError('A file cannot be moved to another submission.')
+        return submission
     class Meta:
         model = SubmissionFile
         exclude = ['uploaded_by']
@@ -616,7 +659,7 @@ class ImportSerializer(serializers.ModelSerializer):
 class DraftSerializer(serializers.ModelSerializer):
     class Meta:
         model = Draft
-        exclude = []
+        exclude = ['owner'] # set from the signed-in user when the draft is first saved
         read_only_fields = ('id','created','updated')
         
 class ProjectIDSerializer(serializers.ModelSerializer):
@@ -654,9 +697,15 @@ class NoteSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         data = kwargs.get('data')
         if data:
-            submission = Submission.objects.get(id=kwargs['data'].get('submission'))
+            instance = args[0] if args else kwargs.get('instance')
+            # An existing note stays on its submission (see validate_submission), so
+            # everything below is worked out from that one, not from what was posted.
+            submission = instance.submission if isinstance(instance, Note) else Submission.objects.get(id=kwargs['data'].get('submission'))
             request = kwargs['context'].get('request')
             data.update({'created_by':request.user.id})
+            if not submission.lab.is_lab_member(request.user):
+                # Only the lab writes private notes and log entries.
+                data.update({'public': True, 'type': Note.TYPE_NOTE})
             emails = []
             # Never mail the submitter/PI/contacts about a private (lab only) note.
             public = note_flag(data, 'public')
@@ -681,6 +730,16 @@ class NoteSerializer(serializers.ModelSerializer):
         request = self._context.get('request')
         if request:
             return instance.can_modify(request.user)
+    def validate_submission(self, submission):
+        if self.instance and self.instance.submission_id != submission.pk:
+            raise serializers.ValidationError('A note cannot be moved to another submission.')
+        return submission
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        submission = attrs.get('submission') or getattr(self.instance, 'submission', None)
+        if parent and submission and parent.submission_id != submission.pk:
+            raise serializers.ValidationError({'parent': ['A reply must belong to the same submission.']})
+        return attrs
     class Meta:
         model = Note
         exclude = []

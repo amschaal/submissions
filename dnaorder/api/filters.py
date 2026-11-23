@@ -20,7 +20,7 @@ class MySubmissionsFilter(filters.BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         my_submissions = view.request.query_params.get('my_submissions',None)
         if my_submissions is not None:
-            return queryset.filter(users__in=[request.user])
+            return queryset.named(request.user)
         else:
             return queryset
 

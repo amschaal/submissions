@@ -2,6 +2,8 @@ Dear {{submission.first_name}},
 
 Your submission request from {{submission.submitted|date}} has been received.  You may view your submission details and status at the following URL:
 {{BASE_URI}}{{submission.get_absolute_url}}
+
+You will be asked to sign in. Use the email address this message was sent to and we will email you a one-time sign-in code. Only the submitter, the PI and the contacts listed on the submission can open it.
 {% if submission.type.confirmation_text %}
 {{submission.type.confirmation_text}}
 {% endif %}

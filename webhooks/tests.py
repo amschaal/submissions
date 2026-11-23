@@ -138,7 +138,7 @@ class WebhookDeliveryTests(WebhookFixture):
     def test_create_and_update_send_a_thin_authenticated_event(self):
         self.hook()
         with self.capture_posts() as post:
-            resp = self.as_anon().post('/api/submissions/', submission_payload(self.type_free), format='json')
+            resp = self.as_submitter().post('/api/submissions/', submission_payload(self.type_free), format='json')
         self.assertEqual(resp.status_code, 201, resp.content)
         post.assert_called_once()
         (url,), kwargs = post.call_args
@@ -146,7 +146,7 @@ class WebhookDeliveryTests(WebhookFixture):
         self.assertEqual(url, PUBLIC_URL)
         self.assertEqual(kwargs['headers']['Authorization'], SECRET)
         self.assertFalse(kwargs['allow_redirects'])
-        self.assertEqual((payload['event'], payload['action'], payload['id'], payload['actor']), ('submission.created', 'create', resp.data['id'], None))
+        self.assertEqual((payload['event'], payload['action'], payload['id'], payload['actor']), ('submission.created', 'create', resp.data['id'], 'submitter'))
         self.assertTrue(payload['url'].endswith(f"api/submissions/{resp.data['id']}/"))
         self.assertNotIn('submission_data', payload)
 

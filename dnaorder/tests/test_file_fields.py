@@ -43,7 +43,7 @@ class FileFieldFixture(ApiTestCase):
 
     def upload(self, client=None, name='plate.csv', content=b'a,b\n', **data):
         payload = {'type': self.type_files.id, 'variable': 'plate', 'file': SimpleUploadedFile(name, content), **data}
-        return (client or self.as_anon()).post('/api/submission_files/field_upload/', payload, format='multipart')
+        return (client or self.as_submitter()).post('/api/submission_files/field_upload/', payload, format='multipart')
 
     def upload_id(self, **kwargs):
         resp = self.upload(**kwargs)
@@ -51,7 +51,7 @@ class FileFieldFixture(ApiTestCase):
         return resp.data['id']
 
     def submit(self, **submission_data):
-        return self.as_anon().post('/api/submissions/', submission_payload(self.type_files, submission_data=submission_data), format='json')
+        return self.as_submitter().post('/api/submissions/', submission_payload(self.type_files, submission_data=submission_data), format='json')
 
     def submitted(self, **submission_data):
         resp = self.submit(**submission_data)
@@ -71,8 +71,8 @@ class FieldUploadTests(FileFieldFixture):
         self.assertEqual(resp.data['variable'], 'plate')
         upload = SubmissionFile.objects.get(id=resp.data['id'])
         self.assertIsNone(upload.submission)
-        self.assertEqual(self.as_anon().get(f'/api/submission_files/{upload.id}/download/').status_code, 404)
-        self.assertEqual(self.as_anon().get(f'/api/submission_files/{upload.id}/').data['filename'], 'plate.csv')
+        self.assertEqual(self.as_submitter().get(f'/api/submission_files/{upload.id}/download/').status_code, 404)
+        self.assertEqual(self.as_submitter().get(f'/api/submission_files/{upload.id}/').data['filename'], 'plate.csv')
 
     def test_rejected_uploads(self):
         cases = [
@@ -110,9 +110,9 @@ class AttachOnSaveTests(FileFieldFixture):
         upload = SubmissionFile.objects.get(id=file_id)
         self.assertEqual(upload.submission, submission)
         self.assertEqual(submission.submission_data['plate'], file_id)
-        listed = self.as_anon().get(f'/api/submission_files/?submission={submission.id}').data['results']
+        listed = self.as_submitter().get(f'/api/submission_files/?submission={submission.id}').data['results']
         self.assertEqual([(f['id'], f['variable']) for f in listed], [(file_id, 'plate')])
-        resp = self.as_anon().get(f'/api/submission_files/{file_id}/download/')
+        resp = self.as_submitter().get(f'/api/submission_files/{file_id}/download/')
         self.assertEqual(b''.join(resp.streaming_content), b'a,b\n')
 
     def test_unknown_used_or_expired_uploads_are_rejected(self):
@@ -126,11 +126,11 @@ class AttachOnSaveTests(FileFieldFixture):
             self.assertEqual(resp.status_code, 400, file_id)
             self.assertIn('plate', resp.data['submission_data'], file_id)
 
-    def test_upload_by_a_logged_in_user_can_only_be_used_by_them(self):
+    def test_upload_can_only_be_used_by_the_user_who_made_it(self):
         file_id = self.upload_id(client=self.as_user(self.outsider))
-        payload = submission_payload(self.type_files, submission_data={'plate': file_id})
-        for client in [self.as_anon(), self.as_user(self.lab_b_member)]:
-            resp = client.post('/api/submissions/', payload, format='json')
+        payload = submission_payload(self.type_files, submission_data={'plate': file_id}, email=self.outsider.email)
+        for user in [self.pi_user, self.lab_b_member, self.lab_a_admin]:
+            resp = self.as_user(user).post('/api/submissions/', payload, format='json')
             self.assertEqual(resp.status_code, 400, resp.content)
             self.assertIn('plate', resp.data['submission_data'])
         self.assertIsNone(SubmissionFile.objects.get(id=file_id).submission)
@@ -138,15 +138,22 @@ class AttachOnSaveTests(FileFieldFixture):
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertEqual(SubmissionFile.objects.get(id=file_id).submission_id, resp.data['id'])
 
-    def test_lookup_by_file_id_does_not_reveal_the_submission(self):
+    def test_lookup_by_file_id_follows_the_submission(self):
         file_id = self.upload_id()
         submission = self.submitted(plate=file_id)
-        resp = self.as_anon().get(f'/api/submission_files/{file_id}/')
+        resp = self.as_submitter().get(f'/api/submission_files/{file_id}/')
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(resp.data['filename'], 'plate.csv')
-        self.assertNotIn('submission', resp.data)
-        resp = self.as_anon().get(f'/api/submission_files/{file_id}/?submission={submission.id}')
         self.assertEqual(resp.data['submission'], submission.id)
+        # Someone who can't open the submission can't look its files up either.
+        for path in [f'/api/submission_files/{file_id}/', f'/api/submission_files/{file_id}/download/']:
+            self.assertEqual(self.as_user(self.outsider).get(path).status_code, 404, path)
+
+    def test_unattached_upload_is_only_visible_to_its_uploader(self):
+        file_id = self.upload_id()
+        self.assertEqual(self.as_submitter().get(f'/api/submission_files/{file_id}/').status_code, 200)
+        for user in [self.outsider, self.lab_a_admin]:
+            self.assertEqual(self.as_user(user).get(f'/api/submission_files/{file_id}/').status_code, 404, user.username)
 
     def test_upload_checked_against_the_field_it_is_used_for(self):
         # Uploaded for another type's field with the same name, but this field only accepts .csv.
@@ -160,7 +167,8 @@ class AttachOnSaveTests(FileFieldFixture):
         first = self.upload_id()
         submission = self.submitted(plate=first)
         self.assertEqual(self.edit(submission, plate=first, notes='kept').status_code, 200)
-        second = self.upload_id(submission=submission.id, type='')
+        # A replacement has to be uploaded by whoever saves the edit.
+        second = self.upload_id(client=self.as_user(self.lab_a_admin), submission=submission.id, type='')
         resp = self.edit(submission, plate=second)
         self.assertEqual(resp.status_code, 200, resp.content)
         submission.refresh_from_db()
@@ -178,7 +186,7 @@ class AttachOnSaveTests(FileFieldFixture):
         self.assertTrue(SubmissionFile.objects.filter(id=file_id).exists())
 
     def test_attachments_still_need_a_submission(self):
-        resp = self.as_anon().post('/api/submission_files/', {'file': SimpleUploadedFile('a.txt', b'a')}, format='multipart')
+        resp = self.as_submitter().post('/api/submission_files/', {'file': SimpleUploadedFile('a.txt', b'a')}, format='multipart')
         self.assertEqual(resp.status_code, 400)
         self.assertIn('submission', resp.data)
 
@@ -212,3 +220,39 @@ class TemplateTests(FileFieldFixture):
             resp = self.save_schema(lab_file)
             self.assertEqual(resp.status_code, 400, lab_file)
             self.assertIn('submission_schema', resp.data)
+
+
+class DraftHandoffTests(FileFieldFixture):
+    """A draft that carries a form upload, finished by someone other than its owner.
+
+    A draft's link works for the people it names (DraftPermissions), and an
+    upload belongs to whoever made it (AttachOnSaveTests above).  Where the two
+    meet, the colleague can open the draft but has to upload the file again.
+    That is how it works today; whether a named user should instead be able to
+    take over the draft's uploads, or the form should ask for the file again
+    up front, is an open decision.
+    """
+
+    def test_a_named_colleague_has_to_upload_the_file_again(self):
+        file_id = self.upload_id()  # uploaded by self.submitter
+        draft = self.as_submitter().post('/api/drafts/', {'data': {
+            'email': self.submitter.email, 'pi_email': self.pi_user.email, 'plate': file_id,
+        }}, format='json')
+        self.assertEqual(draft.status_code, 201, draft.content)
+        # The PI is named on the draft, so its link works for them...
+        self.assertEqual(self.as_user(self.pi_user).get('/api/drafts/{}/'.format(draft.data['id'])).status_code, 200)
+
+        def submit(plate):
+            payload = submission_payload(
+                self.type_files, submission_data={'plate': plate},
+                email=self.submitter.email, pi_email=self.pi_user.email,
+            )
+            return self.as_user(self.pi_user).post('/api/submissions/', payload, format='json')
+
+        # ...but the upload in it is the submitter's.
+        resp = submit(file_id)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn('plate', resp.data['submission_data'])
+        # With a file of their own the same draft goes through.
+        own = self.upload_id(client=self.as_user(self.pi_user))
+        self.assertEqual(submit(own).status_code, 201)

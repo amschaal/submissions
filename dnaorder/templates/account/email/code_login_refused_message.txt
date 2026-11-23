@@ -1,0 +1,7 @@
+{% autoescape off %}A sign-in code was requested for this email address, but no code was sent.
+
+{% if reason == "sso" %}This address belongs to an account that signs in with single sign-on. On the sign-in page, choose the single sign-on option instead of requesting a code.{% else %}A code cannot be used to sign in with this address. Please contact the lab you are working with so they can help you get access.{% endif %}
+
+If you did not try to sign in you can ignore this email.
+
+{{ institution.name|default:"Core Omics" }}{% endautoescape %}

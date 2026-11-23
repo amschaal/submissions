@@ -10,6 +10,7 @@ django-filter==25.1
 django-reversion==6.2.0
 # django-sendfile==0.3.11      # unmaintained — consider migrating to django-sendfile2
 social-auth-app-django==6.0.1
+django-allauth[headless]==65.22.1  # emailed code login (dnaorder/code_login); exact pin, the views use allauth internals
 psycopg2==2.9.12             # >=2.9.9 required by Django 5.2
 gunicorn==23.0.0             # >=23 fixes request-smuggling CVE-2024-1135 / CVE-2024-6827
 openpyxl==3.1.5

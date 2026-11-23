@@ -1,9 +1,9 @@
 from rest_framework import viewsets, response, status
 from billing.models import Service, LineItem
 from billing.api.serializers import ServiceSerializer, LineItemSerializer
-from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import PermissionDenied
 from billing.api.permissions import LineItemPermissions
+from dnaorder.api.permissions import IsStaffPermission
 from dnaorder.models import Submission
 
 class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -12,7 +12,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Service.objects.filter(enabled=True).order_by('code')
     serializer_class = ServiceSerializer
     ordering_fields = ['name','code']
-    permission_classes = (AllowAny,)
+    permission_classes = (IsStaffPermission,) # only the staff charges tab lists services
 
 class LineItemViewSet(viewsets.ModelViewSet):
     queryset = LineItem.objects.all().order_by('service__code')

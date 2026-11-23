@@ -54,7 +54,7 @@ class LabFileSerializer(serializers.ModelSerializer):
 class LabFilePermissions(permissions.BasePermission):
     """Reads are limited by the queryset; lab admins/members manage the files."""
     def has_permission(self, request, view):
-        return request.method in permissions.SAFE_METHODS or request.user.is_authenticated
+        return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
@@ -65,7 +65,7 @@ class LabFilePermissions(permissions.BasePermission):
 
 class LabFileViewSet(viewsets.ModelViewSet):
     """Files labs offer for download, such as form templates. Only lab staff can list them;
-    anyone can fetch a public file by id, while internal files 404 for users without a lab permission."""
+    any signed-in user can fetch a public file by id, while internal files 404 for users without a lab permission."""
     serializer_class = LabFileSerializer
     permission_classes = [LabFilePermissions]
     filter_backends = viewsets.ModelViewSet.filter_backends + [LabFilter]
