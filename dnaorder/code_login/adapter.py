@@ -35,6 +35,8 @@ class AccountAdapter(DefaultAccountAdapter):
         # allauth would otherwise pick the first configured backend (Keycloak).
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         super().login(request, user)
+        # A code has to be waited for, so these sessions last longer than the default.
+        request.session.set_expiry(settings.CODE_LOGIN_SESSION_AGE)
 
     # -- email -----------------------------------------------------------------
     def _institution(self):

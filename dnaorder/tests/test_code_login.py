@@ -340,6 +340,25 @@ class LogoutTests(CodeLoginTestCase):
         self.assertTrue(resp.data["redirect_url"].startswith("https://sso.example.com/logout?"))
 
 
+class SessionLengthTests(CodeLoginTestCase):
+    def test_code_session_lasts_the_configured_time(self):
+        self.assertEqual(self.sign_in("keeper@example.com").status_code, 200)
+        self.assertGreater(settings.CODE_LOGIN_SESSION_AGE, settings.SESSION_COOKIE_AGE)
+        self.assertEqual(self.client.session.get_expiry_age(), settings.CODE_LOGIN_SESSION_AGE)
+        cookie = self.client.cookies[settings.SESSION_COOKIE_NAME]
+        self.assertEqual(cookie["max-age"], settings.CODE_LOGIN_SESSION_AGE)
+
+    @override_settings(CODE_LOGIN_SESSION_AGE=3600)
+    def test_code_session_follows_the_setting(self):
+        self.assertEqual(self.sign_in("keeper@example.com").status_code, 200)
+        self.assertEqual(self.client.session.get_expiry_age(), 3600)
+
+    def test_single_sign_on_session_keeps_the_default(self):
+        self.client.force_login(self.lab_a_member, backend=KEYCLOAK_BACKEND)
+        self.assertEqual(self.client.get("/api/get_user/").status_code, 200)
+        self.assertEqual(self.client.session.get_expiry_age(), settings.SESSION_COOKIE_AGE)
+
+
 class ClientIpTests(CodeLoginTestCase):
     def ip(self, num_proxies, **meta):
         request = RequestFactory().post(REQUEST, **meta)

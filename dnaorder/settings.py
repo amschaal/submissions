@@ -380,6 +380,9 @@ ACCOUNT_LOGIN_BY_CODE_FORMAT = {
 ACCOUNT_LOGIN_BY_CODE_TIMEOUT = int(os.environ.get('LOGIN_CODE_TIMEOUT', 600))
 ACCOUNT_LOGIN_BY_CODE_MAX_ATTEMPTS = 3
 ACCOUNT_LOGIN_BY_CODE_SUPPORTS_RESEND = False  # a new code is simply a new request
+# Seconds a session started with an emailed code lasts, counted from sign-in.
+# Single sign-on sessions keep SESSION_COOKIE_AGE.
+CODE_LOGIN_SESSION_AGE = int(os.environ.get('CODE_LOGIN_SESSION_AGE', 60 * 60 * 24 * 90))
 ACCOUNT_RATE_LIMITS = {
     # "key" is the email address the code is requested for.
     'request_login_code': '5/m/ip,30/h/ip,3/5m/key,10/h/key,30/d/key',
